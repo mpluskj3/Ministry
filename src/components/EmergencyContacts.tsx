@@ -70,6 +70,7 @@ export const EmergencyContacts: React.FC<EmergencyContactsProps> = ({ currentYea
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedGroupFilter, setSelectedGroupFilter] = useState('all');
+  const isSuperAdmin = manager?.role === 'super' || (!manager && import.meta.env.DEV);
 
   // 전도인 기록 카드(S-21) 모달
   const [cardModalData, setCardModalData] = useState<{ id: string; name: string } | null>(null);
@@ -267,6 +268,10 @@ export const EmergencyContacts: React.FC<EmergencyContactsProps> = ({ currentYea
   // 수정 모달 내에서 삭제 버튼 처리
   const handleDeleteContact = async () => {
     if (!editingContact) return;
+    if (!isSuperAdmin) {
+      alert('전도인 삭제 및 전출 처리는 최고관리자만 수행할 수 있습니다.');
+      return;
+    }
     const name = editingContact.name || '해당 전도인';
     const pubId = editingContact.publisher_id;
 
@@ -1301,7 +1306,7 @@ export const EmergencyContacts: React.FC<EmergencyContactsProps> = ({ currentYea
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 20 }}>
-                {editingContact?.publisher_id && (
+                {editingContact?.publisher_id && isSuperAdmin && (
                   <button
                     type="button"
                     onClick={handleDeleteContact}

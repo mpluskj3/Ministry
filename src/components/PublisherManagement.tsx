@@ -462,6 +462,10 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
 
   // 전출 / 무활동 처리 모달 열기
   const handleOpenDeactivate = (pub: Publisher) => {
+    if (!isSuperAdmin) {
+      alert('전출 처리는 최고관리자만 수행할 수 있습니다.');
+      return;
+    }
     setTargetPublisher(pub);
     setDeactivateReason('이사/전출');
     setDeactivateModalOpen(true);
@@ -469,6 +473,10 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
 
   // 전출 / 무활동 처리 실행 (과거 보고 연계 보존)
   const handleConfirmDeactivate = async () => {
+    if (!isSuperAdmin) {
+      alert('전출 처리는 최고관리자만 수행할 수 있습니다.');
+      return;
+    }
     if (!targetPublisher) return;
     try {
       await deactivatePublisher(targetPublisher.id, deactivateReason);
@@ -483,6 +491,10 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
 
   // 회중 복귀 (복원)
   const handleRestore = async (pub: Publisher) => {
+    if (!isSuperAdmin) {
+      alert('전도인 복원 처리는 최고관리자만 수행할 수 있습니다.');
+      return;
+    }
     if (!window.confirm(`'${pub.name}' 전도인을 활동 전도인 명단으로 복귀(복원)하시겠습니까?`)) return;
     try {
       await restorePublisher(pub.id);
@@ -495,6 +507,10 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
 
   // 영구 삭제 (보관함에서만 가능, 데이터베이스 완전 삭제)
   const handlePermanentDelete = async (id: string, name: string) => {
+    if (!isSuperAdmin) {
+      alert('전도인 영구 삭제는 최고관리자만 수행할 수 있습니다.');
+      return;
+    }
     if (!window.confirm(`⚠️ 경고: '${name}' 전도인을 영구 삭제하시겠습니까?\n영구 삭제 시 이 전도인의 모든 과거 봉사 보고 및 S-21 기록이 함께 삭제됩니다!`)) return;
     try {
       await deletePublisher(id);
@@ -506,6 +522,10 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
 
   // 수정 모달 내에서 삭제 버튼 처리
   const handleDeleteFromEdit = async () => {
+    if (!isSuperAdmin) {
+      alert('전도인 삭제 및 전출 처리는 최고관리자만 수행할 수 있습니다.');
+      return;
+    }
     if (!editingPublisher || !editingPublisher.id) return;
     const pub = editingPublisher as Publisher;
     const name = pub.name || '해당 전도인';
@@ -975,49 +995,55 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
                         </button>
 
                         {p.is_active ? (
-                          <button
-                            onClick={() => handleOpenDeactivate(p)}
-                            className="btn-secondary"
-                            style={{ 
-                              padding: '4px 8px', 
-                              fontSize: '0.78rem', 
-                              color: 'var(--accent-rose)',
-                              borderColor: 'rgba(244, 63, 94, 0.25)',
-                              background: 'rgba(244, 63, 94, 0.05)'
-                            }}
-                            title="전출 / 무활동 처리 (보고 기록 보존)"
-                          >
-                            <UserX size={13} /> 전출
-                          </button>
-                        ) : (
-                          <>
+                          isSuperAdmin && (
                             <button
-                              onClick={() => handleRestore(p)}
-                              className="btn-primary"
+                              onClick={() => handleOpenDeactivate(p)}
+                              className="btn-secondary"
                               style={{ 
                                 padding: '4px 8px', 
-                                fontSize: '0.78rem',
-                                background: 'var(--accent-emerald)',
-                                gap: 4
-                              }}
-                              title="활동 전도인으로 복귀"
-                            >
-                              <RotateCcw size={13} /> 복원
-                            </button>
-                            <button
-                              onClick={() => handlePermanentDelete(p.id, p.name)}
-                              className="btn-secondary"
-                              style={{
-                                padding: '4px 8px',
-                                fontSize: '0.78rem',
+                                fontSize: '0.78rem', 
                                 color: 'var(--accent-rose)',
                                 borderColor: 'rgba(244, 63, 94, 0.25)',
                                 background: 'rgba(244, 63, 94, 0.05)'
                               }}
-                              title="완전 삭제 (복구 불가)"
+                              title="전출 / 무활동 처리 (보고 기록 보존)"
                             >
-                              <Trash2 size={13} /> 삭제
+                              <UserX size={13} /> 전출
                             </button>
+                          )
+                        ) : (
+                          <>
+                            {isSuperAdmin && (
+                              <button
+                                onClick={() => handleRestore(p)}
+                                className="btn-primary"
+                                style={{ 
+                                  padding: '4px 8px', 
+                                  fontSize: '0.78rem',
+                                  background: 'var(--accent-emerald)',
+                                  gap: 4
+                                }}
+                                title="활동 전도인으로 복귀"
+                              >
+                                <RotateCcw size={13} /> 복원
+                              </button>
+                            )}
+                            {isSuperAdmin && (
+                              <button
+                                onClick={() => handlePermanentDelete(p.id, p.name)}
+                                className="btn-secondary"
+                                style={{
+                                  padding: '4px 8px',
+                                  fontSize: '0.78rem',
+                                  color: 'var(--accent-rose)',
+                                  borderColor: 'rgba(244, 63, 94, 0.25)',
+                                  background: 'rgba(244, 63, 94, 0.05)'
+                                }}
+                                title="완전 삭제 (복구 불가)"
+                              >
+                                <Trash2 size={13} /> 삭제
+                              </button>
+                            )}
                           </>
                         )}
                       </div>
@@ -1318,7 +1344,7 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 16 }}>
-              {editingPublisher?.id && (
+              {editingPublisher?.id && isSuperAdmin && (
                 <button
                   type="button"
                   onClick={handleDeleteFromEdit}
