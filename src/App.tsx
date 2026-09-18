@@ -248,9 +248,10 @@ export function App() {
     };
   }, []);
 
-  // Apply Theme Attribute
+  // Apply Theme Attribute & Color Scheme
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
+    document.documentElement.style.colorScheme = theme === 'dark' ? 'only dark' : 'only light';
     localStorage.setItem('ministry_theme', theme);
   }, [theme]);
 

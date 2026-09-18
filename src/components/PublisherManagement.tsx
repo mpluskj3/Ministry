@@ -694,7 +694,7 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
 
       {/* 3 Sub-Tabs Switcher: 활동 전도인 vs 전출/무활동 보관함 vs 비상연락망 */}
       <div 
-        className="no-print"
+        className="no-print publisher-subtabs-bar"
         style={{
           display: 'flex',
           alignItems: 'center',

@@ -5,6 +5,8 @@
    ============================================================================== */
 
 :root {
+  color-scheme: only light;
+
   /* Brand Primary & Accents */
   --primary: #4f46e5;
   --primary-hover: #4338ca;
@@ -65,6 +67,8 @@
 }
 
 [data-theme='dark'] {
+  color-scheme: only dark;
+
   --primary: #6366f1;
   --primary-hover: #4f46e5;
   --bg-app: #0f131f;
@@ -713,6 +717,146 @@ body {
 }
 
 /* ==============================================================================
+   View Mode Switcher & Mobile Responsiveness (<= 768px)
+   ============================================================================== */
+.view-mode-switcher-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  width: 100%;
+}
+
+.view-mode-pill-bar {
+  display: inline-flex;
+  align-items: center;
+  background: var(--bg-card-subtle, #f1f5f9);
+  padding: 4px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-xs);
+  gap: 4px;
+  max-width: 100%;
+}
+
+.view-mode-pill-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 18px;
+  border-radius: var(--radius-full);
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap !important;
+  flex-shrink: 0;
+}
+
+.view-mode-pill-btn:hover {
+  color: var(--text-main);
+}
+
+.view-mode-pill-btn.active {
+  background: var(--primary) !important;
+  color: #ffffff !important;
+}
+
+.view-mode-print-btn-wrapper {
+  position: absolute;
+  right: 0;
+}
+
+@media (max-width: 768px) {
+  /* 전반적인 레이아웃 여백 최적화 */
+  .dashboard-content-container,
+  .publisher-management-container {
+    padding: 12px 10px !important;
+  }
+
+  .unified-header-card {
+    padding: 16px 12px !important;
+    margin-bottom: 12px !important;
+  }
+
+  .unified-header-card h1 {
+    font-size: 1.35rem !important;
+    margin-bottom: 12px !important;
+    word-break: keep-all !important;
+    letter-spacing: -0.02em !important;
+    line-height: 1.35 !important;
+  }
+
+  /* 뷰모드 탭 전환 바 (모바일 가로 스크롤 및 글자 수직 줄바꿈 차단) */
+  .view-mode-switcher-container {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 10px !important;
+  }
+
+  .view-mode-pill-bar {
+    display: flex !important;
+    width: 100% !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: none !important;
+    border-radius: var(--radius-lg) !important;
+    padding: 3px !important;
+    gap: 3px !important;
+    justify-content: flex-start !important;
+  }
+
+  .view-mode-pill-bar::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  .view-mode-pill-btn {
+    padding: 7px 12px !important;
+    font-size: 0.82rem !important;
+    flex: 1 0 auto !important;
+    justify-content: center !important;
+    white-space: nowrap !important;
+  }
+
+  /* 모바일에서 인쇄 버튼이 탭을 가리지 않고 하단에 정갈하게 정렬 */
+  .view-mode-print-btn-wrapper {
+    position: static !important;
+    display: flex !important;
+    justify-content: flex-end !important;
+    width: 100% !important;
+  }
+
+  .view-mode-print-btn-wrapper button {
+    width: 100% !important;
+    justify-content: center !important;
+    padding: 8px 16px !important;
+  }
+
+  /* 모바일 테이블 셀 패딩 축소 */
+  .data-table th, .nfox-table th {
+    padding: 8px 10px !important;
+    font-size: 0.76rem !important;
+  }
+  .data-table td, .nfox-table td {
+    padding: 9px 10px !important;
+    font-size: 0.82rem !important;
+  }
+
+  /* 서브탭 바 */
+  .publisher-subtabs-bar {
+    gap: 6px !important;
+    overflow-x: auto !important;
+    white-space: nowrap !important;
+    -webkit-overflow-scrolling: touch !important;
+    padding-bottom: 4px !important;
+    margin-bottom: 12px !important;
+  }
+}
+
 /* ==============================================================================
    Print Stylesheet
    ============================================================================== */

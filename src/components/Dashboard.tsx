@@ -1195,7 +1195,7 @@ ${submitUrl}
   }, [congregationName, currentYear.year_name, viewMode, selectedMonth]);
 
   return (
-    <div style={{ maxWidth: 1400, margin: '0 auto', padding: '24px 28px' }}>
+    <div className="dashboard-content-container" style={{ maxWidth: 1400, margin: '0 auto' }}>
       {/* Unified Header Card */}
       <div className="nfox-card unified-header-card" style={{
         padding: '26px 30px',
@@ -1218,72 +1218,25 @@ ${submitUrl}
         </h1>
 
         {/* View Mode Switcher: 1년 통계, 월별 상세 내역, RP 통계 */}
-        <div className="no-print" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', position: 'relative' }}>
-          <div style={{
-            display: 'inline-flex',
-            background: 'var(--bg-card-subtle, #f1f5f9)',
-            padding: 4,
-            borderRadius: 'var(--radius-full)',
-            border: '1px solid var(--border-color)',
-            boxShadow: 'var(--shadow-xs)',
-            gap: 4
-          }}>
+        <div className="no-print view-mode-switcher-container">
+          <div className="view-mode-pill-bar">
             <button
               onClick={() => setViewMode('yearly')}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                padding: '7px 18px',
-                borderRadius: 'var(--radius-full)',
-                border: 'none',
-                background: viewMode === 'yearly' ? 'var(--primary)' : 'transparent',
-                color: viewMode === 'yearly' ? '#fff' : 'var(--text-secondary)',
-                fontSize: '0.88rem',
-                fontWeight: 700,
-                cursor: 'pointer',
-                transition: 'all 0.15s ease'
-              }}
+              className={`view-mode-pill-btn ${viewMode === 'yearly' ? 'active' : ''}`}
             >
               <BarChart3 size={15} />
               <span>1년 통계</span>
             </button>
             <button
               onClick={() => setViewMode('monthly')}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                padding: '7px 18px',
-                borderRadius: 'var(--radius-full)',
-                border: 'none',
-                background: viewMode === 'monthly' ? 'var(--primary)' : 'transparent',
-                color: viewMode === 'monthly' ? '#fff' : 'var(--text-secondary)',
-                fontSize: '0.88rem',
-                fontWeight: 700,
-                cursor: 'pointer',
-                transition: 'all 0.15s ease'
-              }}
+              className={`view-mode-pill-btn ${viewMode === 'monthly' ? 'active' : ''}`}
             >
               <FileText size={15} />
               <span>월별 상세 내역</span>
             </button>
             <button
               onClick={() => setViewMode('pioneers')}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                padding: '7px 18px',
-                borderRadius: 'var(--radius-full)',
-                border: 'none',
-                background: viewMode === 'pioneers' ? 'var(--primary)' : 'transparent',
-                color: viewMode === 'pioneers' ? '#fff' : 'var(--text-secondary)',
-                fontSize: '0.88rem',
-                fontWeight: 700,
-                cursor: 'pointer',
-                transition: 'all 0.15s ease'
-              }}
+              className={`view-mode-pill-btn ${viewMode === 'pioneers' ? 'active' : ''}`}
             >
               <Award size={15} />
               <span>RP 통계</span>
@@ -1291,20 +1244,7 @@ ${submitUrl}
             {isSuperAdmin && (
               <button
                 onClick={() => setViewMode('analysis')}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  padding: '7px 18px',
-                  borderRadius: 'var(--radius-full)',
-                  border: 'none',
-                  background: viewMode === 'analysis' ? 'var(--primary)' : 'transparent',
-                  color: viewMode === 'analysis' ? '#fff' : 'var(--text-secondary)',
-                  fontSize: '0.88rem',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  transition: 'all 0.15s ease'
-                }}
+                className={`view-mode-pill-btn ${viewMode === 'analysis' ? 'active' : ''}`}
               >
                 <FileBarChart size={15} />
                 <span>회중 분석 보고</span>
@@ -1312,7 +1252,7 @@ ${submitUrl}
             )}
           </div>
 
-          <div style={{ position: 'absolute', right: 0 }} className="no-print">
+          <div className="view-mode-print-btn-wrapper no-print">
             <button
               type="button"
               onClick={handlePrint}
