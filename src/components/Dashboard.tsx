@@ -185,6 +185,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
   const isClosed = !!statuses[selectedMonth];
   const canManageClosing = manager?.role === 'super' || !manager;
+  const isSuperAdmin = manager?.role === 'super' || (!manager && import.meta.env.DEV);
+
+  // 최고관리자가 아닌 경우 '회중 분석 보고' 뷰에 머무르지 못하도록 방어
+  useEffect(() => {
+    if (viewMode === 'analysis' && !isSuperAdmin) {
+      setViewMode('yearly');
+    }
+  }, [viewMode, isSuperAdmin]);
 
   // 월별 세부 보고서 정렬 및 필터 상태 (기본값: 성명 이름순 오름차순)
   type MonthlySortField = 'publisher_name' | 'participated' | 'bible_studies' | 'hours' | 'remarks' | 'pioneer_status' | 'position' | 'group_name';
@@ -1280,26 +1288,28 @@ ${submitUrl}
               <Award size={15} />
               <span>RP 통계</span>
             </button>
-            <button
-              onClick={() => setViewMode('analysis')}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                padding: '7px 18px',
-                borderRadius: 'var(--radius-full)',
-                border: 'none',
-                background: viewMode === 'analysis' ? 'var(--primary)' : 'transparent',
-                color: viewMode === 'analysis' ? '#fff' : 'var(--text-secondary)',
-                fontSize: '0.88rem',
-                fontWeight: 700,
-                cursor: 'pointer',
-                transition: 'all 0.15s ease'
-              }}
-            >
-              <FileBarChart size={15} />
-              <span>회중 분석 보고</span>
-            </button>
+            {isSuperAdmin && (
+              <button
+                onClick={() => setViewMode('analysis')}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '7px 18px',
+                  borderRadius: 'var(--radius-full)',
+                  border: 'none',
+                  background: viewMode === 'analysis' ? 'var(--primary)' : 'transparent',
+                  color: viewMode === 'analysis' ? '#fff' : 'var(--text-secondary)',
+                  fontSize: '0.88rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                <FileBarChart size={15} />
+                <span>회중 분석 보고</span>
+              </button>
+            )}
           </div>
 
           <div style={{ position: 'absolute', right: 0 }} className="no-print">
@@ -2992,7 +3002,7 @@ ${submitUrl}
       )}
 
       {/* 5. 회중 분석 보고 (1년에 한 번 지부 보고용) */}
-      {viewMode === 'analysis' && (
+      {viewMode === 'analysis' && isSuperAdmin && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
           {/* Action Bar (화면용) */}
           <div className="no-print" style={{
@@ -3355,7 +3365,7 @@ ${submitUrl}
       )}
 
       {/* 회중 분석 보고 항목 직접 수정 모달 */}
-      {analysisEditModalOpen && (
+      {analysisEditModalOpen && isSuperAdmin && (
         <div style={{
           position: 'fixed',
           top: 0,
