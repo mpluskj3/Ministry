@@ -643,73 +643,82 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
       <div style={{
         display: 'flex',
         alignItems: 'center',
-        gap: 8,
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: 12,
         marginBottom: 20,
         borderBottom: '1px solid var(--border-color)',
         paddingBottom: 2
       }}>
-        <button
-          onClick={() => setActiveSubTab('active')}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 8,
-            padding: '10px 18px',
-            border: 'none',
-            background: 'none',
-            borderBottom: activeSubTab === 'active' ? '2px solid var(--primary)' : '2px solid transparent',
-            color: activeSubTab === 'active' ? 'var(--primary)' : 'var(--text-muted)',
-            fontWeight: activeSubTab === 'active' ? 700 : 500,
-            fontSize: '0.92rem',
-            cursor: 'pointer',
-            transition: 'all 0.15s ease'
-          }}
-        >
-          <Users size={16} />
-          <span>활동 전도인 ({activePublishers.length}명)</span>
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <button
+            onClick={() => setActiveSubTab('active')}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '10px 18px',
+              border: 'none',
+              background: 'none',
+              borderBottom: activeSubTab === 'active' ? '2px solid var(--primary)' : '2px solid transparent',
+              color: activeSubTab === 'active' ? 'var(--primary)' : 'var(--text-muted)',
+              fontWeight: activeSubTab === 'active' ? 700 : 500,
+              fontSize: '0.92rem',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            <Users size={16} />
+            <span>활동 전도인 ({activePublishers.length}명)</span>
+          </button>
 
-        <button
-          onClick={() => setActiveSubTab('inactive')}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 8,
-            padding: '10px 18px',
-            border: 'none',
-            background: 'none',
-            borderBottom: activeSubTab === 'inactive' ? '2px solid var(--accent-rose)' : '2px solid transparent',
-            color: activeSubTab === 'inactive' ? 'var(--accent-rose)' : 'var(--text-muted)',
-            fontWeight: activeSubTab === 'inactive' ? 700 : 500,
-            fontSize: '0.92rem',
-            cursor: 'pointer',
-            transition: 'all 0.15s ease'
-          }}
-        >
-          <Archive size={16} />
-          <span>전출 / 무활동 보관함 ({inactivePublishers.length}명)</span>
-        </button>
+          <button
+            onClick={() => setActiveSubTab('inactive')}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '10px 18px',
+              border: 'none',
+              background: 'none',
+              borderBottom: activeSubTab === 'inactive' ? '2px solid var(--accent-rose)' : '2px solid transparent',
+              color: activeSubTab === 'inactive' ? 'var(--accent-rose)' : 'var(--text-muted)',
+              fontWeight: activeSubTab === 'inactive' ? 700 : 500,
+              fontSize: '0.92rem',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            <Archive size={16} />
+            <span>전출 / 무활동 보관함 ({inactivePublishers.length}명)</span>
+          </button>
 
-        <button
-          onClick={() => setActiveSubTab('emergency')}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 8,
-            padding: '10px 18px',
-            border: 'none',
-            background: 'none',
-            borderBottom: activeSubTab === 'emergency' ? '2px solid #f43f5e' : '2px solid transparent',
-            color: activeSubTab === 'emergency' ? '#f43f5e' : 'var(--text-muted)',
-            fontWeight: activeSubTab === 'emergency' ? 700 : 500,
-            fontSize: '0.92rem',
-            cursor: 'pointer',
-            transition: 'all 0.15s ease'
-          }}
-        >
-          <Phone size={16} />
-          <span>비상연락망</span>
-        </button>
+          <button
+            onClick={() => setActiveSubTab('emergency')}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '10px 18px',
+              border: 'none',
+              background: 'none',
+              borderBottom: activeSubTab === 'emergency' ? '2px solid #f43f5e' : '2px solid transparent',
+              color: activeSubTab === 'emergency' ? '#f43f5e' : 'var(--text-muted)',
+              fontWeight: activeSubTab === 'emergency' ? 700 : 500,
+              fontSize: '0.92rem',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            <Phone size={16} />
+            <span>비상연락망</span>
+          </button>
+        </div>
+
+        {/* 비상연락망 탭 선택 시 우측 상단 액션 메뉴 (가족 묶음 지정, CSV 저장, 인쇄) 컨테이너 */}
+        {activeSubTab === 'emergency' && (
+          <div id="emergency-header-actions" style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', paddingBottom: 4 }} />
+        )}
       </div>
 
       {activeSubTab === 'emergency' ? (

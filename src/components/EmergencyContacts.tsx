@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Phone,
   MapPin,
@@ -88,6 +89,15 @@ export const EmergencyContacts: React.FC<EmergencyContactsProps> = ({ currentYea
 
   // 모달 배경 드래그 오인 클릭 방지용 ref
   const overlayMouseDownRef = useRef(false);
+
+  // 상단 헤더 액션 포탈 (PublisherManagement 서브탭 우측 연동)
+  const [portalEl, setPortalEl] = useState<HTMLElement | null>(null);
+
+  useLayoutEffect(() => {
+    if (isEmbedded) {
+      setPortalEl(document.getElementById('emergency-header-actions'));
+    }
+  }, [isEmbedded]);
 
   // 집단 관리자 로그인 시 기본적으로 자신의 집단을 기본 필터로 설정 (전체 및 타 집단 선택 가능)
   useEffect(() => {
@@ -493,78 +503,84 @@ export const EmergencyContacts: React.FC<EmergencyContactsProps> = ({ currentYea
 
   const filteredContacts = sortedContacts;
 
+  const actionButtons = (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+      <button
+        onClick={() => handleOpenFamilyBatchModal()}
+        className="btn-secondary"
+        style={{ gap: 6, fontSize: '0.84rem' }}
+        title="가족 구성원을 가족 대표자 기준으로 묶고 색상으로 구분합니다."
+      >
+        <Users size={15} color="var(--accent-emerald)" />
+        <span>가족 묶음 지정</span>
+      </button>
+
+      <button
+        onClick={handleExportCsv}
+        className="btn-secondary"
+        style={{ gap: 6, fontSize: '0.84rem' }}
+      >
+        <Download size={14} />
+        <span>CSV 저장</span>
+      </button>
+
+      <button
+        onClick={() => window.print()}
+        className="btn-secondary"
+        style={{ gap: 6, fontSize: '0.84rem' }}
+      >
+        <Printer size={14} />
+        <span>인쇄</span>
+      </button>
+    </div>
+  );
+
   return (
     <div style={{ maxWidth: 1400, margin: '0 auto', padding: isEmbedded ? '0' : '24px 28px' }}>
-      {/* Page Header */}
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: isEmbedded ? 'flex-end' : 'space-between',
-        flexWrap: 'wrap',
-        gap: 16,
-        marginBottom: isEmbedded ? 16 : 24
-      }}>
-        {!isEmbedded && (
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div style={{
-                width: 38,
-                height: 38,
-                borderRadius: 'var(--radius-md)',
-                background: 'linear-gradient(135deg, #f43f5e 0%, #e11d48 100%)',
-                color: '#fff',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                boxShadow: '0 4px 10px rgba(244, 63, 94, 0.3)'
-              }}>
-                <Phone size={20} />
-              </div>
-              <div>
-                <h2 style={{ fontSize: '1.45rem', fontWeight: 800, margin: 0, letterSpacing: '-0.02em' }}>
-                  회중 비상연락망
-                </h2>
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.84rem', margin: '2px 0 0 0' }}>
-                  비상사태 및 재해 시 신속한 확인을 위한 전도인 비상연락망, 가족 대표자 및 거주지 주소 관리
-                </p>
+      {/* 임베디드 모드일 때 서브탭 바의 우측 컨테이너로 액션 버튼들을 포탈 렌더링 */}
+      {isEmbedded && portalEl && createPortal(actionButtons, portalEl)}
+
+      {/* 독립 페이지 모드이거나 포탈 컨테이너가 없는 경우에만 페이지 헤더 표시 */}
+      {(!isEmbedded || !portalEl) && (
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: isEmbedded ? 'flex-end' : 'space-between',
+          flexWrap: 'wrap',
+          gap: 16,
+          marginBottom: isEmbedded ? 16 : 24
+        }}>
+          {!isEmbedded && (
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{
+                  width: 38,
+                  height: 38,
+                  borderRadius: 'var(--radius-md)',
+                  background: 'linear-gradient(135deg, #f43f5e 0%, #e11d48 100%)',
+                  color: '#fff',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 4px 10px rgba(244, 63, 94, 0.3)'
+                }}>
+                  <Phone size={20} />
+                </div>
+                <div>
+                  <h2 style={{ fontSize: '1.45rem', fontWeight: 800, margin: 0, letterSpacing: '-0.02em' }}>
+                    회중 비상연락망
+                  </h2>
+                  <p style={{ color: 'var(--text-muted)', fontSize: '0.84rem', margin: '2px 0 0 0' }}>
+                    비상사태 및 재해 시 신속한 확인을 위한 전도인 비상연락망, 가족 대표자 및 거주지 주소 관리
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Action Buttons */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-          <button
-            onClick={() => handleOpenFamilyBatchModal()}
-            className="btn-secondary"
-            style={{ gap: 6, fontSize: '0.84rem' }}
-            title="가족 구성원을 가족 대표자 기준으로 묶고 색상으로 구분합니다."
-          >
-            <Users size={15} color="var(--accent-emerald)" />
-            <span>가족 묶음 지정</span>
-          </button>
-
-          <button
-            onClick={handleExportCsv}
-            className="btn-secondary"
-            style={{ gap: 6, fontSize: '0.84rem' }}
-          >
-            <Download size={14} />
-            <span>CSV 저장</span>
-          </button>
-
-          <button
-            onClick={() => window.print()}
-            className="btn-secondary"
-            style={{ gap: 6, fontSize: '0.84rem' }}
-          >
-            <Printer size={14} />
-            <span>인쇄</span>
-          </button>
-
-
+          {actionButtons}
         </div>
-      </div>
+      )}
 
       {/* Group & Search Filter Card */}
       <div className="nfox-card" style={{ padding: '18px 20px', marginBottom: 16 }}>
