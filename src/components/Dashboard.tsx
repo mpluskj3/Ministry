@@ -2123,23 +2123,7 @@ ${submitUrl}
                 <Printer size={15} />
                 <span>{selectedMonth} 상세 인쇄</span>
               </button>
-              {isClosed ? (
-                <span style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  padding: '6px 14px',
-                  borderRadius: 'var(--radius-full)',
-                  fontSize: '0.82rem',
-                  fontWeight: 700,
-                  background: 'rgba(16, 185, 129, 0.1)',
-                  color: 'var(--accent-emerald)',
-                  border: '1px solid rgba(16, 185, 129, 0.25)'
-                }}>
-                  <CheckCircle size={15} />
-                  전송 완료 확정 자료 (보관용)
-                </span>
-              ) : (
+              {!isClosed && (
                 <>
                   <button
                     onClick={handleCopySubmitLink}
@@ -2796,16 +2780,7 @@ ${submitUrl}
                         {r.participated ? (
                           <span style={{ color: 'var(--accent-emerald)', fontWeight: 700 }}>Y</span>
                         ) : (
-                          <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
-                            <span style={{ color: 'var(--accent-rose)', fontWeight: 800 }}>N</span>
-                            <span 
-                              className="badge badge-rose no-print" 
-                              style={{ fontSize: '0.68rem', padding: '2px 5px', cursor: 'help' }}
-                              title="실제 봉사에 참여하지 못했는지 확인이 필요합니다."
-                            >
-                              미참여 확인
-                            </span>
-                          </div>
+                          <span style={{ color: 'var(--accent-rose)', fontWeight: 800 }}>N</span>
                         )}
                       </td>
 
