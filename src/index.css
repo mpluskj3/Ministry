@@ -838,6 +838,30 @@ body {
   line-height: 1.1;
 }
 
+.monthly-report-data-table {
+  min-width: 880px;
+}
+
+.col-publisher-name {
+  width: 105px;
+  min-width: 105px;
+}
+
+.col-participated {
+  width: 60px;
+  min-width: 60px;
+}
+
+.col-studies {
+  width: 55px;
+  min-width: 55px;
+}
+
+.col-hours {
+  width: 55px;
+  min-width: 55px;
+}
+
 @media (max-width: 768px) {
   /* 전반적인 레이아웃 여백 최적화 */
   .dashboard-content-container,
@@ -968,15 +992,42 @@ body {
 
   /* 모바일 테이블 셀 간격(패딩) 대폭 축소 */
   .data-table th, .nfox-table th {
-    padding: 6px 6px !important;
+    padding: 6px 4px !important;
     font-size: 0.74rem !important;
   }
   .data-table td, .nfox-table td {
-    padding: 5px 6px !important;
+    padding: 5px 4px !important;
     font-size: 0.8rem !important;
   }
   .data-table .name-link-btn {
     font-size: 0.84rem !important;
+  }
+
+  /* 모바일 세부 목록 컬럼별 최적 폭 지정 (참여, 이름, 연구, 시간 열 간격 밀착) */
+  .monthly-report-data-table {
+    min-width: 680px !important;
+  }
+  .col-publisher-name {
+    width: 82px !important;
+    min-width: 82px !important;
+  }
+  .col-participated {
+    width: 48px !important;
+    min-width: 48px !important;
+    padding-left: 2px !important;
+    padding-right: 2px !important;
+  }
+  .col-studies {
+    width: 46px !important;
+    min-width: 46px !important;
+    padding-left: 2px !important;
+    padding-right: 2px !important;
+  }
+  .col-hours {
+    width: 46px !important;
+    min-width: 46px !important;
+    padding-left: 2px !important;
+    padding-right: 2px !important;
   }
 
   /* 서브탭 바 */

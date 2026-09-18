@@ -2429,13 +2429,14 @@ ${submitUrl}
 
           {/* Table */}
           <div className="data-table-container sticky-container">
-            <table className="data-table data-table-sticky" style={{ minWidth: 920 }}>
+            <table className="data-table data-table-sticky monthly-report-data-table">
               <thead>
                 <tr>
                   {/* 1. 이름 (클릭 시 가나다 오름/내림 정렬) */}
                   <th 
+                    className="col-publisher-name"
                     onClick={() => handleSort('publisher_name')}
-                    style={{ width: 110, minWidth: 110, textAlign: 'center', cursor: 'pointer', userSelect: 'none', background: monthlySortField === 'publisher_name' ? 'var(--primary-light, #eff6ff)' : undefined }}
+                    style={{ textAlign: 'center', cursor: 'pointer', userSelect: 'none', background: monthlySortField === 'publisher_name' ? 'var(--primary-light, #eff6ff)' : undefined }}
                     title="클릭하여 이름 순으로 정렬"
                   >
                     <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
@@ -2448,6 +2449,7 @@ ${submitUrl}
 
                   {/* 2. 참여 (클릭 시 참여/미참여 필터 및 정렬 팝오버) */}
                   <th 
+                    className="col-participated"
                     style={{
                       textAlign: 'center',
                       cursor: 'pointer',
@@ -2460,17 +2462,17 @@ ${submitUrl}
                     }}
                     title="클릭하여 참여 여부 필터 및 정렬"
                   >
-                    <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
                       <span style={{ fontWeight: 700, color: filterParticipated !== 'all' ? 'var(--primary)' : undefined }}>참여</span>
                       {monthlySortField === 'participated' && (
-                        monthlySortOrder === 'asc' ? <ArrowUp size={12} color="var(--primary)" /> : <ArrowDown size={12} color="var(--primary)" />
+                        monthlySortOrder === 'asc' ? <ArrowUp size={11} color="var(--primary)" /> : <ArrowDown size={11} color="var(--primary)" />
                       )}
                       {filterParticipated !== 'all' && (
-                        <span style={{ fontSize: '0.68rem', padding: '1px 5px', borderRadius: 4, background: 'var(--primary)', color: '#fff', fontWeight: 800 }}>
+                        <span style={{ fontSize: '0.62rem', padding: '1px 4px', borderRadius: 4, background: 'var(--primary)', color: '#fff', fontWeight: 800 }}>
                           {filterParticipated === 'yes' ? 'Y' : 'N'}
                         </span>
                       )}
-                      <ChevronDown size={12} style={{ opacity: filterParticipated !== 'all' ? 1 : 0.45 }} />
+                      <ChevronDown size={11} style={{ opacity: filterParticipated !== 'all' ? 1 : 0.45 }} />
                     </div>
 
                     {activeHeaderDropdown === 'participated' && (
@@ -2501,6 +2503,7 @@ ${submitUrl}
 
                   {/* 3. 연구 (클릭 시 건수 정렬) */}
                   <th 
+                    className="col-studies"
                     onClick={() => handleSort('bible_studies')}
                     style={{ textAlign: 'center', cursor: 'pointer', userSelect: 'none', background: monthlySortField === 'bible_studies' ? 'var(--primary-light, #eff6ff)' : undefined }}
                     title="클릭하여 성서연구 건수로 정렬"
@@ -2515,6 +2518,7 @@ ${submitUrl}
 
                   {/* 4. 시간 (클릭 시 봉사시간 정렬) */}
                   <th 
+                    className="col-hours"
                     onClick={() => handleSort('hours')}
                     style={{ textAlign: 'center', cursor: 'pointer', userSelect: 'none', background: monthlySortField === 'hours' ? 'var(--primary-light, #eff6ff)' : undefined }}
                     title="클릭하여 봉사시간으로 정렬"
@@ -2754,7 +2758,7 @@ ${submitUrl}
                   displayReports.map((r) => (
                     <tr key={r.id}>
                       {/* 성명: 클릭 시 S-21 전도인 기록 카드 모달 실행 */}
-                      <td style={{ width: 110, minWidth: 110, textAlign: 'center' }}>
+                      <td className="col-publisher-name" style={{ textAlign: 'center' }}>
                         <button
                           onClick={() => setCardModalData({ id: r.publisher_id, name: r.publisher_name || '' })}
                           style={{
@@ -2776,7 +2780,7 @@ ${submitUrl}
                       </td>
 
                       {/* 참여: Y / N */}
-                      <td style={{ textAlign: 'center' }}>
+                      <td className="col-participated" style={{ textAlign: 'center' }}>
                         {r.participated ? (
                           <span style={{ color: 'var(--accent-emerald)', fontWeight: 700 }}>Y</span>
                         ) : (
@@ -2785,12 +2789,12 @@ ${submitUrl}
                       </td>
 
                       {/* 연구: '건' 글자 없이 숫자만 표시 */}
-                      <td style={{ textAlign: 'center' }}>
+                      <td className="col-studies" style={{ textAlign: 'center' }}>
                         {r.bible_studies > 0 ? r.bible_studies : '-'}
                       </td>
 
                       {/* 시간: '시간' 글자 없이 숫자만 표시 */}
-                      <td style={{ textAlign: 'center', fontWeight: r.hours > 0 ? 700 : 400 }}>
+                      <td className="col-hours" style={{ textAlign: 'center', fontWeight: r.hours > 0 ? 700 : 400 }}>
                         {r.hours > 0 ? r.hours : '-'}
                       </td>
 
