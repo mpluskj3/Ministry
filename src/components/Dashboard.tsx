@@ -2091,28 +2091,24 @@ ${submitUrl}
             border: '1px solid var(--border-color)'
           }}>
             <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-                <h2 style={{ fontSize: '1.4rem', fontWeight: 800, margin: 0, color: 'var(--title-color, #1e3a8a)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginBottom: 4 }}>
+                <h2 className="monthly-header-title">
                   {congregationName} {currentYear.year_name}년 {selectedMonth} 봉사보고
                 </h2>
-                <span className={`badge ${isClosed ? 'badge-closed' : 'badge-open'}`}>
+                <span className={`badge ${isClosed ? 'badge-closed' : 'badge-open'}`} style={{ whiteSpace: 'nowrap' }}>
                   {isClosed ? <Lock size={12} /> : <Unlock size={12} />}
                   {isClosed ? '보고 마감 완료' : '보고 접수 진행 중'}
                 </span>
               </div>
-              <p style={{ fontSize: '0.84rem', color: 'var(--text-muted)', margin: 0 }}>
-                {effectiveGroupId === 'all' ? '전체 회중' : `${groups.find(g => g.id === effectiveGroupId)?.name || manager?.group_name || ''} 집단`}
-                {' · '}
-                {isClosed ? (
-                  <span>
-                    마감 완료 보관 기록 (총 <strong>{reports.length}명</strong>: 활동 {selectedMonthStat?.totalReporters ?? 0}명, 비정규 {selectedMonthStat?.unsharedCount ?? 0}명)
-                  </span>
-                ) : (
+              {!isClosed && (
+                <p style={{ fontSize: '0.84rem', color: 'var(--text-muted)', margin: 0, marginTop: 4 }}>
+                  {effectiveGroupId === 'all' ? '전체 회중' : `${groups.find(g => g.id === effectiveGroupId)?.name || manager?.group_name || ''} 집단`}
+                  {' · '}
                   <span>
                     전도인 {kpiStats?.totalPublishers || 0}명 중 <strong>{kpiStats?.totalSubmitted ?? kpiStats?.totalReporters ?? 0}명</strong> 보고 접수 ({kpiStats?.reportRate || 0}%)
                   </span>
-                )}
-              </p>
+                </p>
+              )}
             </div>
 
             {/* Quick Action Buttons */}
@@ -2185,71 +2181,74 @@ ${submitUrl}
           </div>
 
           {/* Image 2 Style: Monthly Top Statistics Summary Table & Boxes */}
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'minmax(420px, 1.45fr) minmax(280px, 1fr)',
-            gap: 20,
-            alignItems: 'stretch'
-          }}>
+          <div className="monthly-top-stats-container">
             {/* Left: Summary Table with Soft Blue Header (Image 2 style) */}
-            <div className="nfox-card" style={{ padding: '0', overflow: 'hidden', border: '1px solid var(--table-border, #cbd5e1)' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'center', fontSize: '0.88rem' }}>
+            <div className="nfox-card monthly-summary-card" style={{ padding: '0', overflow: 'hidden', border: '1px solid var(--table-border, #cbd5e1)' }}>
+              <table className="monthly-summary-table">
+                <colgroup>
+                  <col style={{ width: '17%' }} />
+                  <col style={{ width: '17%' }} />
+                  <col style={{ width: '16%' }} />
+                  <col style={{ width: '15%' }} />
+                  <col style={{ width: '18%' }} />
+                  <col style={{ width: '17%' }} />
+                </colgroup>
                 <thead>
                   <tr style={{ background: 'var(--summary-header-bg, #cfe2ff)', borderBottom: '2px solid var(--table-border-accent, #94a3b8)' }}>
-                    <th style={{ padding: '8px 10px', borderRight: '1px solid var(--table-border, #cbd5e1)', fontWeight: 800, color: 'var(--summary-header-text, #1e3a8a)' }}>{selectedMonth}</th>
-                    <th style={{ padding: '8px 10px', borderRight: '1px solid var(--table-border, #cbd5e1)', fontWeight: 800, color: 'var(--summary-header-text, #1e3a8a)' }}>인원(명)</th>
-                    <th style={{ padding: '8px 10px', borderRight: '1px solid var(--table-border, #cbd5e1)', fontWeight: 800, color: 'var(--summary-header-text, #1e3a8a)' }}>시간</th>
-                    <th style={{ padding: '8px 10px', borderRight: '1px solid var(--table-border, #cbd5e1)', fontWeight: 800, color: 'var(--summary-header-text, #1e3a8a)' }}>연구</th>
-                    <th style={{ padding: '8px 10px', borderRight: '1px solid var(--table-border, #cbd5e1)', fontWeight: 800, color: 'var(--summary-header-text, #1e3a8a)' }}>시간(평)</th>
-                    <th style={{ padding: '8px 10px', fontWeight: 800, color: 'var(--summary-header-text, #1e3a8a)' }}>연구(평)</th>
+                    <th style={{ borderRight: '1px solid var(--table-border, #cbd5e1)', fontWeight: 800, color: 'var(--summary-header-text, #1e3a8a)' }}>{selectedMonth}</th>
+                    <th style={{ borderRight: '1px solid var(--table-border, #cbd5e1)', fontWeight: 800, color: 'var(--summary-header-text, #1e3a8a)' }}>인원(명)</th>
+                    <th style={{ borderRight: '1px solid var(--table-border, #cbd5e1)', fontWeight: 800, color: 'var(--summary-header-text, #1e3a8a)' }}>시간</th>
+                    <th style={{ borderRight: '1px solid var(--table-border, #cbd5e1)', fontWeight: 800, color: 'var(--summary-header-text, #1e3a8a)' }}>연구</th>
+                    <th style={{ borderRight: '1px solid var(--table-border, #cbd5e1)', fontWeight: 800, color: 'var(--summary-header-text, #1e3a8a)' }}>시간(평)</th>
+                    <th style={{ fontWeight: 800, color: 'var(--summary-header-text, #1e3a8a)' }}>연구(평)</th>
                   </tr>
                 </thead>
                 <tbody>
                   {/* 전도인 */}
                   <tr style={{ borderBottom: '1px solid var(--table-border, #cbd5e1)' }}>
-                    <td style={{ padding: '9px 10px', fontWeight: 700, borderRight: '1px solid var(--table-border, #cbd5e1)', background: 'rgba(0,0,0,0.01)' }}>전도인</td>
-                    <td style={{ padding: '9px 10px', borderRight: '1px solid var(--table-border, #cbd5e1)', fontWeight: 700 }}>{selectedMonthStat.publisherCount}</td>
-                    <td style={{ padding: '9px 10px', borderRight: '1px solid var(--table-border, #cbd5e1)', color: 'var(--text-faint)' }}></td>
-                    <td style={{ padding: '9px 10px', borderRight: '1px solid var(--table-border, #cbd5e1)' }}>{selectedMonthStat.publisherStudies > 0 ? selectedMonthStat.publisherStudies : ''}</td>
-                    <td style={{ padding: '9px 10px', borderRight: '1px solid var(--table-border, #cbd5e1)', color: 'var(--text-faint)' }}></td>
-                    <td style={{ padding: '9px 10px' }}>{selectedMonthStat.publisherAvgStudies}</td>
+                    <td style={{ fontWeight: 700, borderRight: '1px solid var(--table-border, #cbd5e1)', background: 'rgba(0,0,0,0.01)' }}>전도인</td>
+                    <td style={{ borderRight: '1px solid var(--table-border, #cbd5e1)', fontWeight: 700 }}>{selectedMonthStat.publisherCount}</td>
+                    <td style={{ borderRight: '1px solid var(--table-border, #cbd5e1)', color: 'var(--text-faint)' }}></td>
+                    <td style={{ borderRight: '1px solid var(--table-border, #cbd5e1)' }}>{selectedMonthStat.publisherStudies > 0 ? selectedMonthStat.publisherStudies : ''}</td>
+                    <td style={{ borderRight: '1px solid var(--table-border, #cbd5e1)', color: 'var(--text-faint)' }}></td>
+                    <td>{selectedMonthStat.publisherAvgStudies}</td>
                   </tr>
 
                   {/* 보조 */}
                   <tr style={{ borderBottom: '1px solid var(--table-border, #cbd5e1)' }}>
-                    <td style={{ padding: '9px 10px', fontWeight: 700, borderRight: '1px solid var(--table-border, #cbd5e1)', background: 'rgba(0,0,0,0.01)' }}>보조</td>
-                    <td style={{ padding: '9px 10px', borderRight: '1px solid var(--table-border, #cbd5e1)', fontWeight: 700 }}>{selectedMonthStat.apCount > 0 ? selectedMonthStat.apCount : ''}</td>
-                    <td style={{ padding: '9px 10px', borderRight: '1px solid var(--table-border, #cbd5e1)' }}>{selectedMonthStat.apHours > 0 ? selectedMonthStat.apHours : ''}</td>
-                    <td style={{ padding: '9px 10px', borderRight: '1px solid var(--table-border, #cbd5e1)' }}>{selectedMonthStat.apCount > 0 ? selectedMonthStat.apStudies : ''}</td>
-                    <td style={{ padding: '9px 10px', borderRight: '1px solid var(--table-border, #cbd5e1)' }}>{selectedMonthStat.apCount > 0 ? selectedMonthStat.apAvgHours : ''}</td>
-                    <td style={{ padding: '9px 10px' }}>{selectedMonthStat.apCount > 0 ? selectedMonthStat.apAvgStudies : ''}</td>
+                    <td style={{ fontWeight: 700, borderRight: '1px solid var(--table-border, #cbd5e1)', background: 'rgba(0,0,0,0.01)' }}>보조</td>
+                    <td style={{ borderRight: '1px solid var(--table-border, #cbd5e1)', fontWeight: 700 }}>{selectedMonthStat.apCount > 0 ? selectedMonthStat.apCount : ''}</td>
+                    <td style={{ borderRight: '1px solid var(--table-border, #cbd5e1)' }}>{selectedMonthStat.apHours > 0 ? selectedMonthStat.apHours : ''}</td>
+                    <td style={{ borderRight: '1px solid var(--table-border, #cbd5e1)' }}>{selectedMonthStat.apCount > 0 ? selectedMonthStat.apStudies : ''}</td>
+                    <td style={{ borderRight: '1px solid var(--table-border, #cbd5e1)' }}>{selectedMonthStat.apCount > 0 ? selectedMonthStat.apAvgHours : ''}</td>
+                    <td>{selectedMonthStat.apCount > 0 ? selectedMonthStat.apAvgStudies : ''}</td>
                   </tr>
 
                   {/* 정규 */}
                   <tr style={{ borderBottom: '2px solid var(--table-border-accent, #94a3b8)' }}>
-                    <td style={{ padding: '9px 10px', fontWeight: 700, borderRight: '1px solid var(--table-border, #cbd5e1)', background: 'rgba(0,0,0,0.01)' }}>정규</td>
-                    <td style={{ padding: '9px 10px', borderRight: '1px solid var(--table-border, #cbd5e1)', fontWeight: 700 }}>{selectedMonthStat.rpCount > 0 ? selectedMonthStat.rpCount : ''}</td>
-                    <td style={{ padding: '9px 10px', borderRight: '1px solid var(--table-border, #cbd5e1)' }}>{selectedMonthStat.rpHours > 0 ? selectedMonthStat.rpHours : ''}</td>
-                    <td style={{ padding: '9px 10px', borderRight: '1px solid var(--table-border, #cbd5e1)' }}>{selectedMonthStat.rpStudies > 0 ? selectedMonthStat.rpStudies : ''}</td>
-                    <td style={{ padding: '9px 10px', borderRight: '1px solid var(--table-border, #cbd5e1)' }}>{selectedMonthStat.rpCount > 0 ? selectedMonthStat.rpAvgHours : ''}</td>
-                    <td style={{ padding: '9px 10px' }}>{selectedMonthStat.rpCount > 0 ? selectedMonthStat.rpAvgStudies : ''}</td>
+                    <td style={{ fontWeight: 700, borderRight: '1px solid var(--table-border, #cbd5e1)', background: 'rgba(0,0,0,0.01)' }}>정규</td>
+                    <td style={{ borderRight: '1px solid var(--table-border, #cbd5e1)', fontWeight: 700 }}>{selectedMonthStat.rpCount > 0 ? selectedMonthStat.rpCount : ''}</td>
+                    <td style={{ borderRight: '1px solid var(--table-border, #cbd5e1)' }}>{selectedMonthStat.rpHours > 0 ? selectedMonthStat.rpHours : ''}</td>
+                    <td style={{ borderRight: '1px solid var(--table-border, #cbd5e1)' }}>{selectedMonthStat.rpStudies > 0 ? selectedMonthStat.rpStudies : ''}</td>
+                    <td style={{ borderRight: '1px solid var(--table-border, #cbd5e1)' }}>{selectedMonthStat.rpCount > 0 ? selectedMonthStat.rpAvgHours : ''}</td>
+                    <td>{selectedMonthStat.rpCount > 0 ? selectedMonthStat.rpAvgStudies : ''}</td>
                   </tr>
 
                   {/* 총계 */}
                   <tr style={{ background: 'var(--bg-card-subtle, #f8fafc)', fontWeight: 800 }}>
-                    <td style={{ padding: '10px 10px', borderRight: '1px solid var(--table-border, #cbd5e1)', color: 'var(--primary)' }}>총계</td>
-                    <td style={{ padding: '10px 10px', borderRight: '1px solid var(--table-border, #cbd5e1)', color: 'var(--primary)' }}>{selectedMonthStat.totalReporters}</td>
-                    <td style={{ padding: '10px 10px', borderRight: '1px solid var(--table-border, #cbd5e1)', color: 'var(--primary)' }}>{selectedMonthStat.totalHours > 0 ? selectedMonthStat.totalHours : ''}</td>
-                    <td style={{ padding: '10px 10px', borderRight: '1px solid var(--table-border, #cbd5e1)', color: 'var(--primary)' }}>{selectedMonthStat.totalStudies > 0 ? selectedMonthStat.totalStudies : ''}</td>
-                    <td style={{ padding: '10px 10px', borderRight: '1px solid var(--table-border, #cbd5e1)', color: 'var(--text-faint)' }}></td>
-                    <td style={{ padding: '10px 10px', color: 'var(--primary)' }}>{selectedMonthStat.totalAvgStudies}</td>
+                    <td style={{ borderRight: '1px solid var(--table-border, #cbd5e1)', color: 'var(--primary)' }}>총계</td>
+                    <td style={{ borderRight: '1px solid var(--table-border, #cbd5e1)', color: 'var(--primary)' }}>{selectedMonthStat.totalReporters}</td>
+                    <td style={{ borderRight: '1px solid var(--table-border, #cbd5e1)', color: 'var(--primary)' }}>{selectedMonthStat.totalHours > 0 ? selectedMonthStat.totalHours : ''}</td>
+                    <td style={{ borderRight: '1px solid var(--table-border, #cbd5e1)', color: 'var(--primary)' }}>{selectedMonthStat.totalStudies > 0 ? selectedMonthStat.totalStudies : ''}</td>
+                    <td style={{ borderRight: '1px solid var(--table-border, #cbd5e1)', color: 'var(--text-faint)' }}></td>
+                    <td style={{ color: 'var(--primary)' }}>{selectedMonthStat.totalAvgStudies}</td>
                   </tr>
                 </tbody>
               </table>
             </div>
 
             {/* Right: Summary Key Stats (2-Tier Card matching Table Height) */}
-            <div className="nfox-card" style={{ padding: 0, overflow: 'hidden', border: '1px solid var(--table-border, #cbd5e1)', display: 'flex', flexDirection: 'column', height: '100%' }}>
+            <div className="nfox-card monthly-side-stats-card" style={{ padding: 0, overflow: 'hidden', border: '1px solid var(--table-border, #cbd5e1)' }}>
               {/* Tier 1 Header: 활동적인 전도인 & 비정규 */}
               <div style={{ 
                 display: 'grid', 
@@ -2257,10 +2256,10 @@ ${submitUrl}
                 borderBottom: '1px solid var(--table-border, #cbd5e1)',
                 background: 'var(--summary-header-bg, #cfe2ff)'
               }}>
-                <div style={{ padding: '8px 10px', textAlign: 'center', fontWeight: 800, fontSize: '0.84rem', color: 'var(--summary-header-text, #1e3a8a)', borderRight: '1px solid var(--table-border, #cbd5e1)' }}>
+                <div className="monthly-stat-header-cell" style={{ borderRight: '1px solid var(--table-border, #cbd5e1)' }}>
                   활동적인 전도인
                 </div>
-                <div style={{ padding: '8px 10px', textAlign: 'center', fontWeight: 800, fontSize: '0.84rem', color: 'var(--summary-header-text, #1e3a8a)' }}>
+                <div className="monthly-stat-header-cell">
                   비정규
                 </div>
               </div>
@@ -2273,53 +2272,37 @@ ${submitUrl}
                 flex: 1
               }}>
                 <div 
-                  style={{ 
-                    padding: '8px 6px', 
-                    textAlign: 'center', 
-                    borderRight: '1px solid var(--table-border, #cbd5e1)', 
-                    display: 'flex', 
-                    flexDirection: 'column', 
-                    alignItems: 'center', 
-                    justifyContent: 'center' 
-                  }}
+                  className="monthly-stat-val-box"
+                  style={{ borderRight: '1px solid var(--table-border, #cbd5e1)' }}
                   title={`활동적인 전도인: 총 ${selectedMonthStat.activePublishersCount}명 (봉사 참여 ${selectedMonthStat.totalReporters}명 + 비정규 ${selectedMonthStat.unsharedCount}명)`}
                 >
-                  <div style={{ fontSize: '1.65rem', fontWeight: 800, color: 'var(--text-main)', lineHeight: 1.1 }}>
+                  <div className="monthly-stat-number" style={{ color: 'var(--text-main)' }}>
                     {selectedMonthStat.activePublishersCount}
                   </div>
                 </div>
 
                 <div 
+                  className="monthly-stat-val-box"
                   onClick={() => {
                     if (selectedMonthStat.unsharedCount > 0) {
                       setFilterParticipated(prev => prev === 'no' ? 'all' : 'no');
                     }
                   }}
                   style={{ 
-                    padding: '8px 6px', 
-                    textAlign: 'center', 
-                    display: 'flex', 
-                    flexDirection: 'column', 
-                    alignItems: 'center', 
-                    justifyContent: 'center',
                     cursor: selectedMonthStat.unsharedCount > 0 ? 'pointer' : 'default',
                     background: filterParticipated === 'no' ? 'rgba(244, 63, 94, 0.08)' : 'transparent',
-                    transition: 'all 0.15s ease'
                   }}
                   title={selectedMonthStat.unsharedCount > 0 
                     ? `봉사 미참여(비정규): ${selectedMonthStat.unsharedCount}명 (클릭 시 해당 전도인 명단 필터링)` 
                     : '비정규 전도인이 없습니다.'}
                 >
-                  <div style={{ 
-                    fontSize: '1.65rem', 
-                    fontWeight: 800, 
+                  <div className="monthly-stat-number" style={{ 
                     color: selectedMonthStat.unsharedCount > 0 ? 'var(--accent-rose)' : 'var(--text-main)', 
-                    lineHeight: 1.1 
                   }}>
                     {selectedMonthStat.unsharedCount}
                   </div>
                   {selectedMonthStat.unsharedCount > 0 && (
-                    <div className="no-print" style={{ fontSize: '0.7rem', color: 'var(--accent-rose)', fontWeight: 600, marginTop: 3 }}>
+                    <div className="no-print" style={{ fontSize: '0.68rem', color: 'var(--accent-rose)', fontWeight: 600, marginTop: 2 }}>
                       {filterParticipated === 'no' ? '필터링 중' : '클릭 시 필터'}
                     </div>
                   )}
@@ -2335,38 +2318,23 @@ ${submitUrl}
               }}>
                 {/* 주말 집회 */}
                 <div style={{ display: 'flex', flexDirection: 'column', borderRight: '1px solid var(--table-border, #cbd5e1)' }}>
-                  <div style={{ 
-                    padding: '8px 4px', 
-                    textAlign: 'center', 
-                    fontWeight: 800, 
-                    fontSize: '0.78rem', 
-                    color: 'var(--summary-header-text, #1e3a8a)', 
+                  <div className="monthly-stat-header-cell" style={{ 
                     background: 'var(--summary-header-bg, #cfe2ff)',
                     borderBottom: '1px solid var(--table-border, #cbd5e1)',
-                    whiteSpace: 'nowrap'
                   }}>
                     주말 집회 평균 참석자 수
                   </div>
                   <div 
+                    className="monthly-stat-val-box"
                     onClick={handleEditWeekendAttendance}
-                    style={{ 
-                      flex: 1,
-                      padding: '8px 4px', 
-                      textAlign: 'center', 
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      cursor: 'pointer',
-                      transition: 'background 0.15s ease'
-                    }}
+                    style={{ cursor: 'pointer' }}
                     title="클릭하여 주말 집회 평균 참석자 수를 수정할 수 있습니다"
                   >
-                    <div style={{ fontSize: '1.5rem', fontWeight: 800, color: (meetingAttendance === '0' || !meetingAttendance) ? 'var(--accent-rose)' : 'var(--primary)', lineHeight: 1.1 }}>
+                    <div className="monthly-stat-number" style={{ color: (meetingAttendance === '0' || !meetingAttendance) ? 'var(--accent-rose)' : 'var(--primary)' }}>
                       {meetingAttendance}
                     </div>
                     {(meetingAttendance === '0' || !meetingAttendance) && (
-                      <div className="no-print" style={{ fontSize: '0.68rem', color: 'var(--accent-rose)', fontWeight: 700, marginTop: 4 }}>
+                      <div className="no-print" style={{ fontSize: '0.65rem', color: 'var(--accent-rose)', fontWeight: 700, marginTop: 2 }}>
                         ⚠️ 미입력
                       </div>
                     )}
@@ -2375,38 +2343,23 @@ ${submitUrl}
 
                 {/* 평일 집회 */}
                 <div style={{ display: 'flex', flexDirection: 'column' }}>
-                  <div style={{ 
-                    padding: '8px 4px', 
-                    textAlign: 'center', 
-                    fontWeight: 800, 
-                    fontSize: '0.78rem', 
-                    color: 'var(--summary-header-text, #1e3a8a)', 
+                  <div className="monthly-stat-header-cell" style={{ 
                     background: 'var(--summary-header-bg-subtle, #e0ecff)',
                     borderBottom: '1px solid var(--table-border, #cbd5e1)',
-                    whiteSpace: 'nowrap'
                   }}>
                     평일 집회 참석자 수
                   </div>
                   <div 
+                    className="monthly-stat-val-box"
                     onClick={handleEditWeekdayAttendance}
-                    style={{ 
-                      flex: 1,
-                      padding: '8px 4px', 
-                      textAlign: 'center', 
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      cursor: 'pointer',
-                      transition: 'background 0.15s ease'
-                    }}
+                    style={{ cursor: 'pointer' }}
                     title="클릭하여 평일 집회 참석자 수를 수정할 수 있습니다"
                   >
-                    <div style={{ fontSize: '1.5rem', fontWeight: 800, color: (weekdayMeetingAttendance === '0' || !weekdayMeetingAttendance) ? 'var(--accent-rose)' : '#0284c7', lineHeight: 1.1 }}>
+                    <div className="monthly-stat-number" style={{ color: (weekdayMeetingAttendance === '0' || !weekdayMeetingAttendance) ? 'var(--accent-rose)' : '#0284c7' }}>
                       {weekdayMeetingAttendance}
                     </div>
                     {(weekdayMeetingAttendance === '0' || !weekdayMeetingAttendance) && (
-                      <div className="no-print" style={{ fontSize: '0.68rem', color: 'var(--accent-rose)', fontWeight: 700, marginTop: 4 }}>
+                      <div className="no-print" style={{ fontSize: '0.65rem', color: 'var(--accent-rose)', fontWeight: 700, marginTop: 2 }}>
                         ⚠️ 미입력
                       </div>
                     )}
@@ -2417,7 +2370,7 @@ ${submitUrl}
           </div>
 
       {/* 4. Detailed Monthly Reports Table (Full Width) */}
-      <div className="nfox-card" style={{ padding: '24px' }}>
+      <div className="nfox-card monthly-detail-table-card" style={{ padding: '24px' }}>
           {/* Header & Controls */}
           <div style={{
             display: 'flex',

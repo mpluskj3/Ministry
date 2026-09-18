@@ -770,6 +770,74 @@ body {
   right: 0;
 }
 
+/* ==============================================================================
+   Monthly View Responsive Components
+   ============================================================================== */
+.monthly-header-title {
+  font-size: 1.4rem;
+  font-weight: 800;
+  margin: 0;
+  color: var(--title-color, #1e3a8a);
+  word-break: keep-all;
+  overflow-wrap: break-word;
+  line-height: 1.35;
+}
+
+.monthly-top-stats-container {
+  display: grid;
+  grid-template-columns: minmax(420px, 1.45fr) minmax(280px, 1fr);
+  gap: 20px;
+  align-items: stretch;
+}
+
+.monthly-summary-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: center;
+  font-size: 0.88rem;
+  table-layout: fixed;
+}
+
+.monthly-summary-table th {
+  padding: 8px 6px;
+}
+
+.monthly-summary-table td {
+  padding: 9px 6px;
+}
+
+.monthly-side-stats-card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.monthly-stat-header-cell {
+  padding: 8px 6px;
+  text-align: center;
+  font-weight: 800;
+  font-size: 0.82rem;
+  color: var(--summary-header-text, #1e3a8a);
+  white-space: nowrap;
+}
+
+.monthly-stat-val-box {
+  padding: 8px 6px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  transition: background 0.15s ease;
+}
+
+.monthly-stat-number {
+  font-size: 1.65rem;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
 @media (max-width: 768px) {
   /* 전반적인 레이아웃 여백 최적화 */
   .dashboard-content-container,
@@ -788,6 +856,63 @@ body {
     word-break: keep-all !important;
     letter-spacing: -0.02em !important;
     line-height: 1.35 !important;
+  }
+
+  /* 월별 헤더 제목 글자 줄바꿈 방지 */
+  .monthly-header-title {
+    font-size: 1.18rem !important;
+    word-break: keep-all !important;
+    line-height: 1.35 !important;
+  }
+
+  /* 월별 상단 요약 컨테이너: 모바일에서 상하 1열 스택 정렬 */
+  .monthly-top-stats-container {
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
+    gap: 12px !important;
+  }
+
+  /* 월별 상단 통계표: 모바일 폭(100%)에 딱 맞게 정렬 */
+  .monthly-summary-card {
+    width: 100% !important;
+  }
+
+  .monthly-summary-table {
+    width: 100% !important;
+    font-size: 0.75rem !important;
+    table-layout: fixed !important;
+  }
+
+  .monthly-summary-table th {
+    padding: 6px 2px !important;
+    font-size: 0.74rem !important;
+    letter-spacing: -0.5px !important;
+  }
+
+  .monthly-summary-table td {
+    padding: 6px 2px !important;
+    font-size: 0.75rem !important;
+    letter-spacing: -0.3px !important;
+  }
+
+  /* 활동적인 전도인 / 비정규 / 집회 카드: 모바일에서 통계표 아래로 컴팩트하게 정렬 */
+  .monthly-side-stats-card {
+    width: 100% !important;
+    height: auto !important;
+  }
+
+  .monthly-stat-header-cell {
+    padding: 6px 3px !important;
+    font-size: 0.74rem !important;
+  }
+
+  .monthly-stat-val-box {
+    padding: 6px 4px !important;
+  }
+
+  .monthly-stat-number {
+    font-size: 1.35rem !important;
   }
 
   /* 뷰모드 탭 전환 바 (모바일 가로 스크롤 및 글자 수직 줄바꿈 차단) */
@@ -836,14 +961,22 @@ body {
     padding: 8px 16px !important;
   }
 
-  /* 모바일 테이블 셀 패딩 축소 */
+  /* 세부 목록 카드 모바일 여백 */
+  .monthly-detail-table-card {
+    padding: 16px 12px !important;
+  }
+
+  /* 모바일 테이블 셀 간격(패딩) 대폭 축소 */
   .data-table th, .nfox-table th {
-    padding: 8px 10px !important;
-    font-size: 0.76rem !important;
+    padding: 6px 6px !important;
+    font-size: 0.74rem !important;
   }
   .data-table td, .nfox-table td {
-    padding: 9px 10px !important;
-    font-size: 0.82rem !important;
+    padding: 5px 6px !important;
+    font-size: 0.8rem !important;
+  }
+  .data-table .name-link-btn {
+    font-size: 0.84rem !important;
   }
 
   /* 서브탭 바 */
