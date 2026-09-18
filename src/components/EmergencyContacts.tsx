@@ -72,6 +72,25 @@ export const EmergencyContacts: React.FC<EmergencyContactsProps> = ({ currentYea
   const [selectedGroupFilter, setSelectedGroupFilter] = useState('all');
   const isSuperAdmin = manager?.role === 'super' || (!manager && import.meta.env.DEV);
 
+  // 집단 관리자인 경우 본인 소속 집단 ID 및 이름 추출
+  const myGroupId = manager?.role === 'group'
+    ? (manager.group_id || groups.find(g => g.name === manager.group_name)?.id || null)
+    : null;
+  const myGroupName = manager?.role === 'group'
+    ? (manager.group_name || groups.find(g => g.id === manager.group_id)?.name || null)
+    : null;
+
+  // 전도인/연락처 수정 권한 확인: 최고관리자는 전체, 집단관리자는 본인 소속 집단 전도인만 수정 가능
+  const canEditContact = (c: EmergencyContact) => {
+    if (isSuperAdmin) return true;
+    if (manager?.role === 'group') {
+      if (myGroupId && c.group_id === myGroupId) return true;
+      if (myGroupName && (c.group_name === myGroupName || groups.find(g => g.id === c.group_id)?.name === myGroupName)) return true;
+      return false;
+    }
+    return false;
+  };
+
   // 전도인 기록 카드(S-21) 모달
   const [cardModalData, setCardModalData] = useState<{ id: string; name: string } | null>(null);
 
@@ -165,6 +184,10 @@ export const EmergencyContacts: React.FC<EmergencyContactsProps> = ({ currentYea
   };
 
   const handleOpenEdit = (contact: EmergencyContact) => {
+    if (!canEditContact(contact)) {
+      alert('자신이 소속된 집단의 전도인 정보만 수정할 수 있습니다.');
+      return;
+    }
     const linkedPub = allPublishers.find(p => p.id === contact.publisher_id || p.name === contact.name);
     setEditingContact({
       ...contact,
@@ -178,6 +201,10 @@ export const EmergencyContacts: React.FC<EmergencyContactsProps> = ({ currentYea
 
   const handleSaveContact = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (editingContact && !canEditContact(editingContact as EmergencyContact)) {
+      alert('자신이 소속된 집단의 전도인 정보만 수정할 수 있습니다.');
+      return;
+    }
     const cleanName = editingContact?.name?.trim();
     if (!editingContact || !cleanName) {
       alert('이름을 입력해주세요.');
@@ -212,7 +239,7 @@ export const EmergencyContacts: React.FC<EmergencyContactsProps> = ({ currentYea
 
   // 가족 묶음 일괄 지정 모달 열기
   const handleOpenFamilyBatchModal = (groupId?: string) => {
-    const gId = groupId || (selectedGroupFilter !== 'all' ? selectedGroupFilter : (groups[0]?.id || ''));
+    const gId = myGroupId || groupId || (selectedGroupFilter !== 'all' ? selectedGroupFilter : (groups[0]?.id || ''));
     setTargetGroupIdForFamily(gId);
     setBatchFamilyHead('');
     setSelectedMemberIds({});
@@ -222,6 +249,10 @@ export const EmergencyContacts: React.FC<EmergencyContactsProps> = ({ currentYea
   // 가족 묶음 일괄 저장
   const handleSaveFamilyBatch = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (manager?.role === 'group' && myGroupId && targetGroupIdForFamily !== myGroupId) {
+      alert('자신이 소속된 집단만 가족 묶음을 지정할 수 있습니다.');
+      return;
+    }
     const cleanHead = batchFamilyHead.trim();
     if (!cleanHead) {
       alert('가족 대표자 이름을 입력하거나 선택해주세요.');
@@ -938,13 +969,17 @@ export const EmergencyContacts: React.FC<EmergencyContactsProps> = ({ currentYea
 
                         {/* 관리 */}
                         <td style={{ textAlign: 'center' }}>
-                          <button
-                            onClick={() => handleOpenEdit(c)}
-                            className="btn-secondary"
-                            style={{ padding: '4px 8px', fontSize: '0.78rem', gap: 4 }}
-                          >
-                            <Edit3 size={13} /> 수정
-                          </button>
+                          {canEditContact(c) ? (
+                            <button
+                              onClick={() => handleOpenEdit(c)}
+                              className="btn-secondary"
+                              style={{ padding: '4px 8px', fontSize: '0.78rem', gap: 4 }}
+                            >
+                              <Edit3 size={13} /> 수정
+                            </button>
+                          ) : (
+                            <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>-</span>
+                          )}
                         </td>
                       </tr>
                     </React.Fragment>
@@ -1400,6 +1435,7 @@ export const EmergencyContacts: React.FC<EmergencyContactsProps> = ({ currentYea
                   <select
                     className="form-select"
                     value={targetGroupIdForFamily}
+                    disabled={manager?.role === 'group'}
                     onChange={(e) => {
                       setTargetGroupIdForFamily(e.target.value);
                       setSelectedMemberIds({});

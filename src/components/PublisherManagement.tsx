@@ -371,6 +371,25 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
   const activePublishers = allPublishers.filter(p => p.is_active && !isChild(p));
   const inactivePublishers = allPublishers.filter(p => !p.is_active && !isChild(p));
 
+  // 집단 관리자인 경우 본인 소속 집단 ID 및 이름 추출
+  const myGroupId = manager?.role === 'group'
+    ? (manager.group_id || groups.find(g => g.name === manager.group_name)?.id || null)
+    : null;
+  const myGroupName = manager?.role === 'group'
+    ? (manager.group_name || groups.find(g => g.id === manager.group_id)?.name || null)
+    : null;
+
+  // 전도인 수정 권한 확인 함수: 최고관리자는 전체, 집단관리자는 본인 집단 소속 전도인만 수정 가능
+  const canEditPublisher = (p: Publisher) => {
+    if (isSuperAdmin) return true;
+    if (manager?.role === 'group') {
+      if (myGroupId && p.group_id === myGroupId) return true;
+      if (myGroupName && (p.group_name === myGroupName || groups.find(g => g.id === p.group_id)?.name === myGroupName)) return true;
+      return false;
+    }
+    return false;
+  };
+
   const handleOpenAdd = () => {
     if (!isSuperAdmin) {
       alert('신규 전도인 등록은 최고관리자만 가능합니다.');
@@ -402,6 +421,10 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
   };
 
   const handleOpenEdit = (pub: Publisher) => {
+    if (!canEditPublisher(pub)) {
+      alert('자신이 소속된 집단의 전도인 정보만 수정할 수 있습니다.');
+      return;
+    }
     setEditingPublisher({ ...pub });
     setEditModalOpen(true);
   };
@@ -436,6 +459,13 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
         return;
       }
     } else {
+      // 기존 전도인 수정 권한 확인
+      const existing = allPublishers.find(p => p.id === editingPublisher.id);
+      if (existing && !canEditPublisher(existing)) {
+        alert('자신이 소속된 집단의 전도인 정보만 수정할 수 있습니다.');
+        return;
+      }
+
       // 기존 전도인 이름 수정 시 다른 전도인과 이름 중복 검증
       const duplicate = allPublishers.find(p => p.id !== editingPublisher.id && p.name === cleanName);
       if (duplicate) {
@@ -985,14 +1015,16 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
                     {/* 작업 버튼들 */}
                     <td style={{ textAlign: 'center' }}>
                       <div style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
-                        <button
-                          onClick={() => handleOpenEdit(p)}
-                          className="btn-secondary"
-                          style={{ padding: '4px 8px', fontSize: '0.78rem', gap: 4 }}
-                          title="정보 수정"
-                        >
-                          <Edit3 size={13} /> 수정
-                        </button>
+                        {canEditPublisher(p) ? (
+                          <button
+                            onClick={() => handleOpenEdit(p)}
+                            className="btn-secondary"
+                            style={{ padding: '4px 8px', fontSize: '0.78rem', gap: 4 }}
+                            title="정보 수정"
+                          >
+                            <Edit3 size={13} /> 수정
+                          </button>
+                        ) : null}
 
                         {p.is_active ? (
                           isSuperAdmin && (
@@ -1047,6 +1079,9 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
                           </>
                         )}
                       </div>
+                      {!canEditPublisher(p) && !isSuperAdmin && (
+                        <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>-</span>
+                      )}
                     </td>
                   </tr>
                 ))
