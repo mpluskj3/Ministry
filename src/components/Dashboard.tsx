@@ -1614,9 +1614,9 @@ ${submitUrl}
                 <Users size={20} />
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600, whiteSpace: 'nowrap' }}>정규파이오니아</div>
+                <div className="rp-stat-title" style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600, whiteSpace: 'nowrap' }}>정규파이오니아</div>
                 <div className="rp-stat-value" style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--text-main)', whiteSpace: 'nowrap' }}>{pioneerStatsData.totalPioneers}명</div>
-                <div style={{ fontSize: '0.72rem', color: 'var(--text-faint)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{effectiveGroupId === 'all' ? '회중 전체 인원' : '해당 집단 인원'}</div>
+                <div className="rp-stat-desc" style={{ fontSize: '0.72rem', color: 'var(--text-faint)', whiteSpace: 'normal', wordBreak: 'keep-all' }}>{effectiveGroupId === 'all' ? '회중 전체 인원' : '해당 집단 인원'}</div>
               </div>
             </div>
 
@@ -1625,9 +1625,9 @@ ${submitUrl}
                 <Clock size={20} />
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600, whiteSpace: 'nowrap' }}>연간 총 봉사 시간</div>
+                <div className="rp-stat-title" style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600, whiteSpace: 'nowrap' }}>연간 총 봉사 시간</div>
                 <div className="rp-stat-value" style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--accent-emerald)', whiteSpace: 'nowrap' }}>{pioneerStatsData.grandTotalHours.toLocaleString()}시간</div>
-                <div style={{ fontSize: '0.72rem', color: 'var(--text-faint)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                <div className="rp-stat-desc" style={{ fontSize: '0.72rem', color: 'var(--text-faint)', whiteSpace: 'normal', wordBreak: 'keep-all', lineHeight: 1.25 }}>
                   {pioneerStatsData.grandTotalRemarkHours > 0 
                     ? `직접 ${pioneerStatsData.grandTotalHours.toLocaleString()}h + 비고 ${pioneerStatsData.grandTotalRemarkHours.toLocaleString()}h = 총 ${pioneerStatsData.grandTotalCombinedHours.toLocaleString()}h` 
                     : '12개월 누적 총계'}
@@ -1640,9 +1640,9 @@ ${submitUrl}
                 <TrendingUp size={20} />
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600, whiteSpace: 'nowrap' }}>1인당 월평균 시간</div>
+                <div className="rp-stat-title" style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600, whiteSpace: 'nowrap' }}>1인당 월평균 시간</div>
                 <div className="rp-stat-value" style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--accent-amber)', whiteSpace: 'nowrap' }}>{pioneerStatsData.overallMonthlyAvg}시간</div>
-                <div style={{ fontSize: '0.72rem', color: 'var(--text-faint)', whiteSpace: 'nowrap' }}>목표: 월 50시간 (연 600h)</div>
+                <div className="rp-stat-desc" style={{ fontSize: '0.72rem', color: 'var(--text-faint)', whiteSpace: 'normal', wordBreak: 'keep-all' }}>목표: 월 50시간 (연 600h)</div>
               </div>
             </div>
 
@@ -1651,11 +1651,11 @@ ${submitUrl}
                 <Target size={20} />
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600, whiteSpace: 'nowrap' }}>600시간 목표 달성</div>
+                <div className="rp-stat-title" style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600, whiteSpace: 'nowrap' }}>600시간 목표 달성</div>
                 <div className="rp-stat-value" style={{ fontSize: '1.3rem', fontWeight: 800, color: '#0284c7', whiteSpace: 'nowrap' }}>
                   {pioneerStatsData.achievedCount}명 <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>({pioneerStatsData.achievementRate}%)</span>
                 </div>
-                <div style={{ fontSize: '0.72rem', color: 'var(--text-faint)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>성서연구 총 {pioneerStatsData.grandTotalStudies}건 (월평균 {pioneerStatsData.overallAvgStudies})</div>
+                <div className="rp-stat-desc" style={{ fontSize: '0.72rem', color: 'var(--text-faint)', whiteSpace: 'normal', wordBreak: 'keep-all' }}>성서연구 총 {pioneerStatsData.grandTotalStudies}건 (월평균 {pioneerStatsData.overallAvgStudies})</div>
               </div>
             </div>
           </div>

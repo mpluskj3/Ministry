@@ -784,7 +784,7 @@ body {
     border-radius: 4px !important;
   }
 
-  /* RP 통계 요약 카드 슬림화 및 텍스트 줄바꿈 방지 */
+  /* RP 통계 요약 카드 슬림화 */
   .rp-stat-grid {
     grid-template-columns: repeat(4, 1fr) !important;
     gap: 6px !important;
@@ -804,14 +804,23 @@ body {
     width: 14px !important;
     height: 14px !important;
   }
+  /* 제목 및 핵심 수치는 줄바꿈 방지 */
+  .rp-stat-title,
+  .rp-stat-value {
+    white-space: nowrap !important;
+  }
   .rp-stat-value {
     font-size: 1.05rem !important;
-    white-space: nowrap !important;
     letter-spacing: -0.02em !important;
     line-height: 1.15 !important;
   }
-  .rp-stat-card div {
-    white-space: nowrap !important;
+  /* 하단 작은 설명 텍스트는 카드 폭에 맞춰 자연스럽게 줄바꿈 */
+  .rp-stat-desc {
+    white-space: normal !important;
+    word-break: keep-all !important;
+    font-size: 0.62rem !important;
+    line-height: 1.25 !important;
+    color: #64748b !important;
   }
 
   /* 색상 보존 */
