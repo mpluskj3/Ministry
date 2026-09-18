@@ -587,7 +587,7 @@ export const EmergencyContacts: React.FC<EmergencyContactsProps> = ({ currentYea
           marginBottom: isEmbedded ? 16 : 24
         }}>
           {!isEmbedded && (
-            <div>
+            <div className="no-print">
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <div style={{
                   width: 38,
@@ -618,8 +618,8 @@ export const EmergencyContacts: React.FC<EmergencyContactsProps> = ({ currentYea
         </div>
       )}
 
-      {/* Group & Search Filter Card */}
-      <div className="nfox-card" style={{ padding: '18px 20px', marginBottom: 16 }}>
+      {/* Group & Search Filter Card (인쇄 시 숨김) */}
+      <div className="nfox-card no-print" style={{ padding: '18px 20px', marginBottom: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 14 }}>
           {/* Group Tabs: 전체 및 각 집단 선택 가능 (집단 관리자는 본인 집단 기본 선택 및 '내 집단' 표시) */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
@@ -729,14 +729,32 @@ export const EmergencyContacts: React.FC<EmergencyContactsProps> = ({ currentYea
       </div>
 
 
+      {/* 인쇄 전용 헤더: 집단명, 인쇄일, 총 인원 깔끔하게 표시 */}
+      <div className="print-only emergency-print-header" style={{ marginBottom: 10 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderBottom: '2px solid #0f172a', paddingBottom: 4 }}>
+          <div>
+            <h1 style={{ fontSize: '15pt', fontWeight: 800, margin: 0, color: '#0f172a', letterSpacing: '-0.02em' }}>
+              회중 비상연락망 <span style={{ fontSize: '12pt', fontWeight: 700, color: '#2563eb' }}>({selectedGroupFilter === 'all' ? '전체' : (groups.find(g => g.id === selectedGroupFilter)?.name ? `${groups.find(g => g.id === selectedGroupFilter)?.name} 집단` : '선택 집단')})</span>
+            </h1>
+            <p style={{ fontSize: '7.8pt', color: '#64748b', margin: '2px 0 0 0' }}>
+              비상사태 및 재해 시 신속한 확인을 위한 전도인 비상연락망, 가족 대표자 및 주소
+            </p>
+          </div>
+          <div style={{ textAlign: 'right', fontSize: '7.8pt', color: '#64748b', lineHeight: 1.3 }}>
+            <div>인쇄일: {new Date().toLocaleDateString('ko-KR')}</div>
+            <div>총 {filteredContacts.length}명</div>
+          </div>
+        </div>
+      </div>
+
       {/* Contacts Table: 이름, 전화, 직책, RP, 주소, 비상연락처, 관계 */}
-      <div className="nfox-card" style={{ padding: 0, overflow: 'hidden' }}>
+      <div className="nfox-card emergency-table-card" style={{ padding: 0, overflow: 'hidden' }}>
         <div className="data-table-container sticky-container">
-          <table className="data-table data-table-sticky" style={{ minWidth: 1040 }}>
+          <table className="data-table data-table-sticky emergency-contacts-table" style={{ minWidth: 1040 }}>
             <thead>
               <tr>
                 <th style={{ width: 110, minWidth: 110 }}>
-                  이름 {selectedGroupFilter === 'all' && <span style={{ fontSize: '0.7rem', color: 'var(--primary)', fontWeight: 600 }}>(ㄱㄴ순)</span>}
+                  이름 {selectedGroupFilter === 'all' && <span style={{ fontSize: '0.7rem', color: 'var(--primary)', fontWeight: 600 }} className="no-print">(ㄱㄴ순)</span>}
                 </th>
                 <th style={{ width: 140, minWidth: 140 }}>전화</th>
                 <th style={{ width: 85, minWidth: 85 }}>직책</th>
@@ -744,7 +762,7 @@ export const EmergencyContacts: React.FC<EmergencyContactsProps> = ({ currentYea
                 <th style={{ minWidth: 260 }}>주소</th>
                 <th style={{ width: 140, minWidth: 140 }}>비상연락처</th>
                 <th style={{ width: 100, minWidth: 100 }}>관계</th>
-                <th style={{ width: 80, minWidth: 80, textAlign: 'center' }}>관리</th>
+                <th className="no-print" style={{ width: 80, minWidth: 80, textAlign: 'center' }}>관리</th>
               </tr>
             </thead>
             <tbody>
@@ -967,8 +985,8 @@ export const EmergencyContacts: React.FC<EmergencyContactsProps> = ({ currentYea
                           )}
                         </td>
 
-                        {/* 관리 */}
-                        <td style={{ textAlign: 'center' }}>
+                        {/* 관리 (인쇄 시 숨김) */}
+                        <td className="no-print" style={{ textAlign: 'center' }}>
                           {canEditContact(c) ? (
                             <button
                               onClick={() => handleOpenEdit(c)}

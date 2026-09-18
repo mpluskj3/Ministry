@@ -903,6 +903,84 @@ body {
     font-size: 7pt !important;
   }
 
+  /* 비상연락망 인쇄 스타일 최적화 (25명 이내 1페이지 완벽 출력) */
+  .publisher-management-container {
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: 100% !important;
+  }
+
+  .emergency-table-card {
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: transparent !important;
+    break-inside: auto !important;
+    page-break-inside: auto !important;
+  }
+
+  .emergency-print-header {
+    display: block !important;
+    margin-bottom: 8px !important;
+    page-break-after: avoid !important;
+    break-after: avoid !important;
+  }
+
+  table.emergency-contacts-table {
+    width: 100% !important;
+    min-width: 0 !important;
+    border-collapse: collapse !important;
+    font-size: 8pt !important;
+    table-layout: auto !important;
+  }
+
+  table.emergency-contacts-table th,
+  table.emergency-contacts-table td {
+    padding: 3.5px 5px !important;
+    border: 1px solid #cbd5e1 !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    font-size: 8pt !important;
+    line-height: 1.25 !important;
+  }
+
+  table.emergency-contacts-table th {
+    background-color: #f1f5f9 !important;
+    color: #0f172a !important;
+    font-weight: 700 !important;
+    font-size: 8pt !important;
+    text-align: center !important;
+    white-space: nowrap !important;
+  }
+
+  table.emergency-contacts-table td:nth-child(1) { text-align: left !important; }
+  table.emergency-contacts-table td:nth-child(2) { text-align: left !important; white-space: nowrap !important; }
+  table.emergency-contacts-table td:nth-child(3) { text-align: center !important; white-space: nowrap !important; }
+  table.emergency-contacts-table td:nth-child(4) { text-align: center !important; white-space: nowrap !important; }
+  table.emergency-contacts-table td:nth-child(5) { text-align: left !important; }
+  table.emergency-contacts-table td:nth-child(6) { text-align: left !important; white-space: nowrap !important; }
+  table.emergency-contacts-table td:nth-child(7) { text-align: left !important; white-space: nowrap !important; }
+
+  /* 주소 말줄임 해제 및 인쇄 시 전체 표시 */
+  table.emergency-contacts-table td:nth-child(5) div,
+  table.emergency-contacts-table td:nth-child(5) span {
+    max-width: none !important;
+    white-space: normal !important;
+    word-break: keep-all !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+  }
+
+  table.emergency-contacts-table a {
+    color: #0f172a !important;
+    text-decoration: none !important;
+  }
+  table.emergency-contacts-table a:after {
+    content: "" !important;
+    display: none !important;
+  }
+
   tr {
     page-break-inside: avoid;
     break-inside: avoid;

@@ -645,16 +645,19 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
   };
 
   return (
-    <div style={{ maxWidth: 1400, margin: '0 auto', padding: '24px 28px' }}>
+    <div className="publisher-management-container" style={{ maxWidth: 1400, margin: '0 auto', padding: '24px 28px' }}>
       {/* Header */}
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        flexWrap: 'wrap',
-        gap: 16,
-        marginBottom: 24
-      }}>
+      <div 
+        className={activeSubTab === 'emergency' ? 'no-print' : 'publisher-mgmt-header'}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: 16,
+          marginBottom: 24
+        }}
+      >
         <div>
           <h2 style={{ fontSize: '1.45rem', fontWeight: 800, margin: '0 0 4px 0' }}>전도인 명단 관리</h2>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', margin: 0 }}>
@@ -690,16 +693,19 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
       </div>
 
       {/* 3 Sub-Tabs Switcher: 활동 전도인 vs 전출/무활동 보관함 vs 비상연락망 */}
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        flexWrap: 'wrap',
-        gap: 12,
-        marginBottom: 20,
-        borderBottom: '1px solid var(--border-color)',
-        paddingBottom: 2
-      }}>
+      <div 
+        className="no-print"
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: 12,
+          marginBottom: 20,
+          borderBottom: '1px solid var(--border-color)',
+          paddingBottom: 2
+        }}
+      >
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           <button
             onClick={() => setActiveSubTab('active')}
