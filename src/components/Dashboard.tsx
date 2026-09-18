@@ -1609,25 +1609,25 @@ ${submitUrl}
             gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
             gap: 16
           }}>
-            <div className="nfox-card" style={{ padding: '18px 20px', display: 'flex', alignItems: 'center', gap: 16 }}>
-              <div style={{ width: 46, height: 46, borderRadius: 'var(--radius-md)', background: 'rgba(99, 102, 241, 0.12)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Users size={22} />
+            <div className="nfox-card rp-stat-card" style={{ padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div className="rp-stat-icon" style={{ width: 40, height: 40, flexShrink: 0, borderRadius: 'var(--radius-md)', background: 'rgba(99, 102, 241, 0.12)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Users size={20} />
               </div>
-              <div>
-                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600 }}>정규파이오니아</div>
-                <div style={{ fontSize: '1.45rem', fontWeight: 800, color: 'var(--text-main)' }}>{pioneerStatsData.totalPioneers}명</div>
-                <div style={{ fontSize: '0.74rem', color: 'var(--text-faint)' }}>{effectiveGroupId === 'all' ? '회중 전체 인원' : '해당 집단 인원'}</div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600, whiteSpace: 'nowrap' }}>정규파이오니아</div>
+                <div className="rp-stat-value" style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--text-main)', whiteSpace: 'nowrap' }}>{pioneerStatsData.totalPioneers}명</div>
+                <div style={{ fontSize: '0.72rem', color: 'var(--text-faint)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{effectiveGroupId === 'all' ? '회중 전체 인원' : '해당 집단 인원'}</div>
               </div>
             </div>
 
-            <div className="nfox-card" style={{ padding: '18px 20px', display: 'flex', alignItems: 'center', gap: 16 }}>
-              <div style={{ width: 46, height: 46, borderRadius: 'var(--radius-md)', background: 'rgba(16, 185, 129, 0.12)', color: 'var(--accent-emerald)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Clock size={22} />
+            <div className="nfox-card rp-stat-card" style={{ padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div className="rp-stat-icon" style={{ width: 40, height: 40, flexShrink: 0, borderRadius: 'var(--radius-md)', background: 'rgba(16, 185, 129, 0.12)', color: 'var(--accent-emerald)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Clock size={20} />
               </div>
-              <div>
-                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600 }}>연간 총 봉사 시간</div>
-                <div style={{ fontSize: '1.45rem', fontWeight: 800, color: 'var(--accent-emerald)' }}>{pioneerStatsData.grandTotalHours.toLocaleString()}시간</div>
-                <div style={{ fontSize: '0.74rem', color: 'var(--text-faint)' }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600, whiteSpace: 'nowrap' }}>연간 총 봉사 시간</div>
+                <div className="rp-stat-value" style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--accent-emerald)', whiteSpace: 'nowrap' }}>{pioneerStatsData.grandTotalHours.toLocaleString()}시간</div>
+                <div style={{ fontSize: '0.72rem', color: 'var(--text-faint)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                   {pioneerStatsData.grandTotalRemarkHours > 0 
                     ? `직접 ${pioneerStatsData.grandTotalHours.toLocaleString()}h + 비고 ${pioneerStatsData.grandTotalRemarkHours.toLocaleString()}h = 총 ${pioneerStatsData.grandTotalCombinedHours.toLocaleString()}h` 
                     : '12개월 누적 총계'}
@@ -1635,27 +1635,27 @@ ${submitUrl}
               </div>
             </div>
 
-            <div className="nfox-card" style={{ padding: '18px 20px', display: 'flex', alignItems: 'center', gap: 16 }}>
-              <div style={{ width: 46, height: 46, borderRadius: 'var(--radius-md)', background: 'rgba(245, 158, 11, 0.12)', color: 'var(--accent-amber)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <TrendingUp size={22} />
+            <div className="nfox-card rp-stat-card" style={{ padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div className="rp-stat-icon" style={{ width: 40, height: 40, flexShrink: 0, borderRadius: 'var(--radius-md)', background: 'rgba(245, 158, 11, 0.12)', color: 'var(--accent-amber)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <TrendingUp size={20} />
               </div>
-              <div>
-                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600 }}>1인당 월평균 시간</div>
-                <div style={{ fontSize: '1.45rem', fontWeight: 800, color: 'var(--accent-amber)' }}>{pioneerStatsData.overallMonthlyAvg}시간</div>
-                <div style={{ fontSize: '0.74rem', color: 'var(--text-faint)' }}>목표: 월 50시간 (연 600h)</div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600, whiteSpace: 'nowrap' }}>1인당 월평균 시간</div>
+                <div className="rp-stat-value" style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--accent-amber)', whiteSpace: 'nowrap' }}>{pioneerStatsData.overallMonthlyAvg}시간</div>
+                <div style={{ fontSize: '0.72rem', color: 'var(--text-faint)', whiteSpace: 'nowrap' }}>목표: 월 50시간 (연 600h)</div>
               </div>
             </div>
 
-            <div className="nfox-card" style={{ padding: '18px 20px', display: 'flex', alignItems: 'center', gap: 16 }}>
-              <div style={{ width: 46, height: 46, borderRadius: 'var(--radius-md)', background: 'rgba(14, 165, 233, 0.12)', color: '#0284c7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Target size={22} />
+            <div className="nfox-card rp-stat-card" style={{ padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div className="rp-stat-icon" style={{ width: 40, height: 40, flexShrink: 0, borderRadius: 'var(--radius-md)', background: 'rgba(14, 165, 233, 0.12)', color: '#0284c7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Target size={20} />
               </div>
-              <div>
-                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600 }}>600시간 목표 달성</div>
-                <div style={{ fontSize: '1.45rem', fontWeight: 800, color: '#0284c7' }}>
-                  {pioneerStatsData.achievedCount}명 <span style={{ fontSize: '0.9rem', fontWeight: 600 }}>({pioneerStatsData.achievementRate}%)</span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600, whiteSpace: 'nowrap' }}>600시간 목표 달성</div>
+                <div className="rp-stat-value" style={{ fontSize: '1.3rem', fontWeight: 800, color: '#0284c7', whiteSpace: 'nowrap' }}>
+                  {pioneerStatsData.achievedCount}명 <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>({pioneerStatsData.achievementRate}%)</span>
                 </div>
-                <div style={{ fontSize: '0.74rem', color: 'var(--text-faint)' }}>성서연구 총 {pioneerStatsData.grandTotalStudies}건 (월평균 {pioneerStatsData.overallAvgStudies})</div>
+                <div style={{ fontSize: '0.72rem', color: 'var(--text-faint)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>성서연구 총 {pioneerStatsData.grandTotalStudies}건 (월평균 {pioneerStatsData.overallAvgStudies})</div>
               </div>
             </div>
           </div>
