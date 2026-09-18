@@ -26,6 +26,7 @@ dist-ssr
 # Backup & Secret files
 *.bak
 *.txt
+*토큰*
 .env
 .env.local
 .env.*.local
