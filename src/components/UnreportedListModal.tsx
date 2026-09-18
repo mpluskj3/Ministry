@@ -91,14 +91,14 @@ ${submitUrl}
           {/* 1. 집단별 보고 달성률 (Group Progress Cards) */}
           {groupStatsList && groupStatsList.length > 0 && (
             <div style={{
-              background: '#f8fafc',
+              background: 'var(--bg-card-subtle, #f8fafc)',
               border: '1px solid var(--border-color)',
               borderRadius: 'var(--radius-md)',
               padding: '16px',
               marginBottom: 16
             }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 7, fontWeight: 800, fontSize: '0.92rem', color: '#1e3a8a' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 7, fontWeight: 800, fontSize: '0.92rem', color: 'var(--title-color, #1e3a8a)' }}>
                   <Building2 size={17} color="var(--primary)" />
                   <span>집단별 보고 달성률</span>
                 </div>
@@ -227,7 +227,7 @@ ${submitUrl}
           </div>
 
           {displayList.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '36px 16px', color: 'var(--accent-emerald)', background: '#f8fafc', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+            <div style={{ textAlign: 'center', padding: '36px 16px', color: 'var(--accent-emerald)', background: 'var(--bg-card-subtle, #f8fafc)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
               <div style={{ fontSize: '2rem', marginBottom: 8 }}>🎉</div>
               <h4 style={{ margin: 0, fontWeight: 800 }}>
                 {selectedGroupFilter === 'all' ? '모든 전도인이 보고를 완료했습니다!' : `${selectedGroupFilter} 집단은 전원 보고를 완료했습니다!`}

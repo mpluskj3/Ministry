@@ -28,8 +28,16 @@
   --bg-sidebar: #ffffff;
   --bg-card: #ffffff;
   --bg-card-hover: #fcfdfe;
+  --bg-card-subtle: #f8fafc;
   --border-color: #e5e9f2;
   --border-focus: #4f46e5;
+  --table-header-bg: #f8fafc;
+  --table-border: #cbd5e1;
+  --table-border-accent: #94a3b8;
+  --summary-header-bg: #cfe2ff;
+  --summary-header-bg-subtle: #e0ecff;
+  --summary-header-text: #1e3a8a;
+  --title-color: #1e3a8a;
 
   /* Typography */
   --text-main: #111827;
@@ -57,20 +65,30 @@
 }
 
 [data-theme='dark'] {
+  --primary: #6366f1;
+  --primary-hover: #4f46e5;
   --bg-app: #0f131f;
   --bg-sidebar: #161b2a;
   --bg-card: #192033;
   --bg-card-hover: #1f273d;
+  --bg-card-subtle: rgba(255, 255, 255, 0.04);
   --border-color: rgba(255, 255, 255, 0.08);
   --border-focus: #6366f1;
+  --table-header-bg: #1e293b;
+  --table-border: rgba(255, 255, 255, 0.12);
+  --table-border-accent: rgba(255, 255, 255, 0.2);
+  --summary-header-bg: rgba(99, 102, 241, 0.22);
+  --summary-header-bg-subtle: rgba(99, 102, 241, 0.15);
+  --summary-header-text: #c7d2fe;
+  --title-color: #f9fafb;
 
   --text-main: #f9fafb;
   --text-secondary: #d1d5db;
   --text-muted: #9ca3af;
   --text-faint: #6b7280;
 
-  --primary-light: rgba(79, 70, 229, 0.15);
-  --primary-border: rgba(79, 70, 229, 0.3);
+  --primary-light: rgba(99, 102, 241, 0.2);
+  --primary-border: rgba(99, 102, 241, 0.4);
   --accent-emerald-light: rgba(16, 185, 129, 0.12);
   --accent-amber-light: rgba(245, 158, 11, 0.12);
   --accent-rose-light: rgba(244, 63, 94, 0.12);
@@ -827,6 +845,17 @@ body {
   * {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
+  }
+
+  :root, [data-theme='dark'] {
+    --bg-card-subtle: #f8fafc !important;
+    --table-header-bg: #f1f5f9 !important;
+    --table-border: #cbd5e1 !important;
+    --table-border-accent: #94a3b8 !important;
+    --summary-header-bg: #cfe2ff !important;
+    --summary-header-bg-subtle: #e0ecff !important;
+    --summary-header-text: #1e3a8a !important;
+    --title-color: #1e3a8a !important;
   }
 
   /* 테이블 스타일 */
