@@ -72,6 +72,7 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedGroupFilter, setSelectedGroupFilter] = useState('all');
+  const isSuperAdmin = manager?.role === 'super' || (!manager && import.meta.env.DEV);
 
   // 활성 전도인 vs 전출/무활동 보관함 vs 비상연락망 탭
   const [activeSubTab, setActiveSubTab] = useState<'active' | 'inactive' | 'emergency'>(initialSubTab);
@@ -101,6 +102,11 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
 
 
   const handleImportPublishers = async () => {
+    if (!isSuperAdmin) {
+      alert('시트 명단 복사·가져오기는 최고관리자만 가능합니다.');
+      return;
+    }
+
     if (!csvInput.trim()) {
       alert('구글 시트에서 복사한 표 데이터 또는 CSV 내용을 입력해주세요.');
       return;
@@ -366,6 +372,11 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
   const inactivePublishers = allPublishers.filter(p => !p.is_active && !isChild(p));
 
   const handleOpenAdd = () => {
+    if (!isSuperAdmin) {
+      alert('신규 전도인 등록은 최고관리자만 가능합니다.');
+      return;
+    }
+
     const defaultGroupId = (manager?.role === 'group')
       ? (manager.group_id || groups.find(g => g.name === manager.group_name)?.id || groups[0]?.id || '')
       : (groups[0]?.id || '');
@@ -405,6 +416,10 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
 
     // 신규 등록 시 중복 이름 사전 검증
     if (!editingPublisher.id) {
+      if (!isSuperAdmin) {
+        alert('신규 전도인 등록은 최고관리자만 가능합니다.');
+        return;
+      }
       const existingActive = allPublishers.find(p => p.is_active && p.name === cleanName);
       if (existingActive) {
         alert(`'${cleanName}' 전도인은 이미 활동 전도인 명단에 등록되어 있습니다.\n(소속: ${existingActive.group_name || '미배정'})\n\n기존 전도인 정보를 수정하시거나, 동명이인인 경우 이름 뒤에 구분 기호(예: ${cleanName}A, ${cleanName}B 등)를 붙여주세요.`);
@@ -599,7 +614,7 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
           </p>
         </div>
 
-        {activeSubTab === 'active' && (
+        {activeSubTab === 'active' && isSuperAdmin && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <button
               type="button"
@@ -1438,7 +1453,7 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
       )}
 
       {/* 구글 시트 / 엑셀 표 명단 복사·가져오기 동기화 모달 */}
-      {sheetSyncModalOpen && (
+      {sheetSyncModalOpen && isSuperAdmin && (
         <div 
           className="modal-overlay" 
           onMouseDown={(e) => {
