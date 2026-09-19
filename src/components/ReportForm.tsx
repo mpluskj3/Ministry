@@ -1,14 +1,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { 
-  Send, 
-  Plus, 
-  Trash2, 
-  CheckCircle, 
-  Clock, 
-  BookOpen, 
-  Check, 
-  Calendar, 
-  Lock, 
+import {
+  Send,
+  Plus,
+  Trash2,
+  CheckCircle,
+  Clock,
+  BookOpen,
+  Check,
+  Calendar,
+  Lock,
   UserCheck,
   AlertCircle,
   AlertTriangle,
@@ -21,22 +21,22 @@ import {
   X
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import { 
-  Publisher, 
-  ServiceMonth, 
-  SERVICE_MONTHS, 
-  ServiceYear, 
+import {
+  Publisher,
+  ServiceMonth,
+  SERVICE_MONTHS,
+  ServiceYear,
   RemarkItem,
   MonthlyReport,
   isChildStatus,
   Manager
 } from '../types/database';
-import { 
-  getPublishers, 
-  getMonthlyStatuses, 
+import {
+  getPublishers,
+  getMonthlyStatuses,
   submitMinistryReport,
   getExistingReport,
-  getAutoSelectServiceMonth 
+  getAutoSelectServiceMonth
 } from '../services/ministryService';
 
 const REMARK_TYPES = [
@@ -57,8 +57,8 @@ interface ReportFormProps {
   manager?: Manager | null;
 }
 
-export const ReportForm: React.FC<ReportFormProps> = ({ 
-  currentYear, 
+export const ReportForm: React.FC<ReportFormProps> = ({
+  currentYear,
   onSuccessNavigate,
   isStandalone = false,
   manager
@@ -143,6 +143,14 @@ export const ReportForm: React.FC<ReportFormProps> = ({
 
   // 전도인 또는 월 변경 시 기존 제출 내역 확인
   const checkForExistingReport = useCallback(async (pubId: string, targetMonth: ServiceMonth) => {
+    // 마감된 월이면 기존 보고 알림을 띄우지 않음
+    const closedForUser = !(!isStandalone && (manager?.role === 'super' || manager?.role === 'group')) && !!monthStatuses[targetMonth];
+    if (closedForUser) {
+      setExistingReport(null);
+      setShowExistingAlert(false);
+      setIsEditMode(false);
+      return;
+    }
     try {
       const prev = await getExistingReport(currentYear.id, pubId, targetMonth);
       if (prev) {
@@ -156,7 +164,7 @@ export const ReportForm: React.FC<ReportFormProps> = ({
     } catch (err) {
       console.error('Failed to check existing report:', err);
     }
-  }, [currentYear.id]);
+  }, [currentYear.id, monthStatuses, isStandalone, manager]);
 
   useEffect(() => {
     if (selectedPublisher) {
@@ -1024,7 +1032,7 @@ export const ReportForm: React.FC<ReportFormProps> = ({
               ) : isEditMode ? (
                 <>
                   <RotateCcw size={18} />
-                  <span>{month} 봉사 보고 수정하여 다시 제출하기</span>
+                  <span>{month} 봉사 보고 다시 제출하기</span>
                 </>
               ) : (
                 <>
@@ -1042,8 +1050,8 @@ export const ReportForm: React.FC<ReportFormProps> = ({
       {/* ------------------------------------------------------------- */}
       {showExistingAlert && existingReport && (
         <div className="modal-overlay" onClick={handleCancelExistingAlert}>
-          <div 
-            className="modal-content" 
+          <div
+            className="modal-content"
             style={{ maxWidth: 460, animation: 'scaleUp 0.2s ease-out', position: 'relative' }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -1133,7 +1141,7 @@ export const ReportForm: React.FC<ReportFormProps> = ({
             </div>
 
             <p style={{ fontSize: '0.84rem', color: 'var(--text-muted)', textAlign: 'center', marginBottom: 20 }}>
-              기존 보고 내용을 불러와서 수정하여 다시 제출하시겠습니까?
+              기존 보고 내용을 불러와서 수정하시겠습니까?
             </p>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -1281,8 +1289,8 @@ export const ReportForm: React.FC<ReportFormProps> = ({
       {/* ------------------------------------------------------------- */}
       {showApConfirmModal && pendingPublisher && (
         <div className="modal-overlay" onClick={() => setShowApConfirmModal(false)}>
-          <div 
-            className="modal-content" 
+          <div
+            className="modal-content"
             style={{ maxWidth: 440, animation: 'scaleUp 0.2s ease-out', position: 'relative', textAlign: 'center', padding: '24px 20px' }}
             onClick={(e) => e.stopPropagation()}
           >
