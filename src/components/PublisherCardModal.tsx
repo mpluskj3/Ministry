@@ -55,38 +55,23 @@ export const PublisherCardModal: React.FC<PublisherCardModalProps> = ({
       <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 840 }}>
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: 20 }}>
-          {/* 아이콘 + 제목 + 다운로드 */}
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, minWidth: 0, flex: 1 }}>
-            <div style={{
-              width: 42,
-              height: 42,
-              borderRadius: 'var(--radius-md)',
-              background: 'var(--primary-gradient)',
-              color: '#fff',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexShrink: 0
-            }}>
-              <FileText size={22} />
-            </div>
-            <div style={{ minWidth: 0 }}>
-              <h3 style={{ fontSize: '1.05rem', margin: 0, lineHeight: 1.3 }}>
-                {publisherName} 전도인 기록 카드 (S-21)
-              </h3>
-              <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '2px 0 10px' }}>
-                {serviceYear.year_name} 봉사연도 12개월 봉사 기록 집계
-              </p>
-              <button
-                onClick={handleDownloadPdf}
-                disabled={pdfGenerating || loading}
-                className="btn-primary"
-                style={{ padding: '7px 13px', fontSize: '0.83rem' }}
-              >
-                <Download size={14} />
-                <span>{pdfGenerating ? 'PDF 생성 중...' : 'S-21 PDF 다운로드'}</span>
-              </button>
-            </div>
+          {/* 제목 + 다운로드 */}
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <h3 style={{ fontSize: '1.05rem', margin: 0, lineHeight: 1.4, fontWeight: 700 }}>
+              {publisherName} 전도인 기록 카드 (S-21)
+            </h3>
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '3px 0 12px' }}>
+              {serviceYear.year_name} 봉사연도 12개월 봉사 기록 집계
+            </p>
+            <button
+              onClick={handleDownloadPdf}
+              disabled={pdfGenerating || loading}
+              className="btn-primary"
+              style={{ padding: '7px 13px', fontSize: '0.83rem' }}
+            >
+              <Download size={14} />
+              <span>{pdfGenerating ? 'PDF 생성 중...' : 'S-21 PDF 다운로드'}</span>
+            </button>
           </div>
 
           {/* 닫기 버튼 */}
