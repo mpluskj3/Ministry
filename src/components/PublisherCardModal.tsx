@@ -54,8 +54,8 @@ export const PublisherCardModal: React.FC<PublisherCardModalProps> = ({
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 840 }}>
         {/* Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '12px 8px', marginBottom: 20 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flex: '1 1 auto' }}>
             <div style={{
               width: 42,
               height: 42,
@@ -64,12 +64,13 @@ export const PublisherCardModal: React.FC<PublisherCardModalProps> = ({
               color: '#fff',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center'
+              justifyContent: 'center',
+              flexShrink: 0
             }}>
               <FileText size={22} />
             </div>
-            <div>
-              <h3 style={{ fontSize: '1.3rem', margin: 0 }}>
+            <div style={{ minWidth: 0 }}>
+              <h3 style={{ fontSize: '1.1rem', margin: 0, wordBreak: 'keep-all' }}>
                 {publisherName} 전도인 기록 카드 (S-21)
               </h3>
               <p style={{ fontSize: '0.825rem', color: 'var(--text-muted)', margin: 0 }}>
@@ -77,7 +78,7 @@ export const PublisherCardModal: React.FC<PublisherCardModalProps> = ({
               </p>
             </div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
             <button
               onClick={handleDownloadPdf}
               disabled={pdfGenerating || loading}
