@@ -1,11 +1,11 @@
 import React from 'react';
-import { 
-  LayoutDashboard, 
-  FileEdit, 
-  Users, 
-  Settings, 
-  LogOut, 
-  LogIn, 
+import {
+  LayoutDashboard,
+  FileEdit,
+  Users,
+  Settings,
+  LogOut,
+  LogIn,
   Database,
   CalendarClock,
   ChevronRight,
@@ -84,7 +84,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     <>
       {/* Mobile Backdrop */}
       {isOpenMobile && (
-        <div 
+        <div
           onClick={onCloseMobile}
           style={{
             position: 'fixed',
@@ -122,13 +122,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <CalendarClock size={15} style={{ opacity: 0.85 }} />
             </div>
             <div style={{ minWidth: 0, flex: 1 }}>
-              <div 
+              <div
                 style={{ fontWeight: 800, fontSize: '0.92rem', letterSpacing: '-0.02em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
                 title={congregationName ? `${congregationName} - 봉사보고 관리` : '봉사보고 관리'}
               >
                 {congregationName ? `${congregationName} - 봉사보고 관리` : '봉사보고 관리'}
               </div>
-              
+
               {/* 봉사연도 전환기: 집단감독자/보조자/최고관리자 누구나 연도를 변경하여 조회 가능 */}
               <div style={{ marginTop: 3, display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
                 <select
@@ -155,7 +155,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 >
                   {(serviceYears.length > 0 ? serviceYears : [currentYear]).map(y => (
                     <option key={y.id} value={y.id}>
-                      {y.year_name}연도 {systemDefaultYear?.id === y.id ? '★(기본)' : ''}
+                      {y.year_name}연도 {systemDefaultYear?.id === y.id ? '(기본)' : ''}
                     </option>
                   ))}
                 </select>
