@@ -727,8 +727,8 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
           <h2 style={{ fontSize: '1.35rem', fontWeight: 800, margin: '0 0 4px 0' }}>전도인 명단 관리</h2>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.82rem', margin: 0, lineHeight: 1.4 }}>
             {activeSubTab === 'emergency'
-              ? '비상사태 및 재해 시 신속한 확인을 위한 전도인 비상연락망, 가족 대표자 및 주소 관리'
-              : '활동 전도인 인적사항 관리 및 전출/이사 전도인 보관함 (과거 보고 기록 및 통계 영구 연동)'}
+              ? '비상사태 및 재해시 비상연락망, 가족 대표자 및 주소 관리'
+              : '활동 전도인 카드 및 전출/무활동자 관리'}
           </p>
         </div>
 

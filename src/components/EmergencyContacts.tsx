@@ -625,130 +625,136 @@ export const EmergencyContacts: React.FC<EmergencyContactsProps> = ({ currentYea
       )}
 
       {/* Group & Search Filter Card (인쇄 시 숨김) */}
-      <div className="nfox-card no-print" style={{ padding: '18px 20px', marginBottom: 16 }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 14 }}>
-          {/* Group Tabs: 전체 및 각 집단 선택 가능 (집단 관리자는 본인 집단 기본 선택 및 '내 집단' 표시) */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-            <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-muted)' }}>집단별:</span>
-            <button
-              onClick={() => setSelectedGroupFilter('all')}
+      <div className="nfox-card no-print" style={{ padding: '16px 18px', marginBottom: 16 }}>
+        {/* 1. 집단 필터 버튼 목록 ('집단별:' 라벨 제거) */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
+          <button
+            onClick={() => setSelectedGroupFilter('all')}
+            style={{
+              padding: '6px 14px',
+              borderRadius: 'var(--radius-full)',
+              fontSize: '0.82rem',
+              fontWeight: 600,
+              cursor: 'pointer',
+              border: selectedGroupFilter === 'all' ? '1px solid var(--primary)' : '1px solid var(--border-color)',
+              background: selectedGroupFilter === 'all' ? 'var(--primary)' : 'var(--bg-card)',
+              color: selectedGroupFilter === 'all' ? '#fff' : 'var(--text-secondary)',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            전체 ({contacts.length}명)
+          </button>
+          {groups.map(g => {
+            const isMyGroup = manager?.role === 'group' && (g.id === manager.group_id || g.name === manager.group_name);
+            const countInGroup = contacts.filter(c => c.group_id === g.id || c.group_name === g.name).length;
+            return (
+              <button
+                key={g.id}
+                onClick={() => setSelectedGroupFilter(g.id)}
+                style={{
+                  padding: '6px 14px',
+                  borderRadius: 'var(--radius-full)',
+                  fontSize: '0.82rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  border: selectedGroupFilter === g.id ? '1px solid var(--primary)' : '1px solid var(--border-color)',
+                  background: selectedGroupFilter === g.id ? 'var(--primary)' : 'var(--bg-card)',
+                  color: selectedGroupFilter === g.id ? '#fff' : 'var(--text-secondary)',
+                  transition: 'all 0.15s ease',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 5
+                }}
+              >
+                <span>{g.name} 집단</span>
+                {isMyGroup && (
+                  <span style={{
+                    fontSize: '0.7rem',
+                    padding: '1px 5px',
+                    borderRadius: 4,
+                    background: selectedGroupFilter === g.id ? 'rgba(255,255,255,0.25)' : 'var(--primary-light)',
+                    color: selectedGroupFilter === g.id ? '#fff' : 'var(--primary)',
+                    fontWeight: 700
+                  }}>
+                    내 집단
+                  </span>
+                )}
+                <span style={{ opacity: 0.75, fontSize: '0.76rem' }}>({countInGroup})</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* 2. 하단 컨트롤 바: 검색창 + 감독자/보조자 범례 (줄바꿈 및 정렬 방지) */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: 10,
+          borderTop: '1px solid var(--border-subtle)',
+          paddingTop: 12
+        }}>
+          {/* Search Box: 반응형 확장 */}
+          <div style={{ position: 'relative', flex: '1 1 200px', minWidth: 180 }}>
+            <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-faint)' }} />
+            <input
+              type="text"
+              placeholder="이름, 연락처, 주소, 비고 검색..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="form-input"
               style={{
-                padding: '6px 14px',
-                borderRadius: 'var(--radius-full)',
-                fontSize: '0.82rem',
-                fontWeight: 600,
-                cursor: 'pointer',
-                border: selectedGroupFilter === 'all' ? '1px solid var(--primary)' : '1px solid var(--border-color)',
-                background: selectedGroupFilter === 'all' ? 'var(--primary)' : 'var(--bg-card)',
-                color: selectedGroupFilter === 'all' ? '#fff' : 'var(--text-secondary)',
-                transition: 'all 0.15s ease'
+                width: '100%',
+                paddingLeft: 34,
+                paddingRight: 12,
+                paddingTop: 7,
+                paddingBottom: 7,
+                fontSize: '0.84rem',
+                borderRadius: 'var(--radius-full)'
               }}
-            >
-              전체 ({contacts.length}명)
-            </button>
-            {groups.map(g => {
-              const isMyGroup = manager?.role === 'group' && (g.id === manager.group_id || g.name === manager.group_name);
-              const countInGroup = contacts.filter(c => c.group_id === g.id || c.group_name === g.name).length;
-              return (
-                <button
-                  key={g.id}
-                  onClick={() => setSelectedGroupFilter(g.id)}
-                  style={{
-                    padding: '6px 14px',
-                    borderRadius: 'var(--radius-full)',
-                    fontSize: '0.82rem',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    border: selectedGroupFilter === g.id ? '1px solid var(--primary)' : '1px solid var(--border-color)',
-                    background: selectedGroupFilter === g.id ? 'var(--primary)' : 'var(--bg-card)',
-                    color: selectedGroupFilter === g.id ? '#fff' : 'var(--text-secondary)',
-                    transition: 'all 0.15s ease',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 5
-                  }}
-                >
-                  <span>{g.name} 집단</span>
-                  {isMyGroup && (
-                    <span style={{
-                      fontSize: '0.7rem',
-                      padding: '1px 5px',
-                      borderRadius: 4,
-                      background: selectedGroupFilter === g.id ? 'rgba(255,255,255,0.25)' : 'var(--primary-light)',
-                      color: selectedGroupFilter === g.id ? '#fff' : 'var(--primary)',
-                      fontWeight: 700
-                    }}>
-                      내 집단
-                    </span>
-                  )}
-                  <span style={{ opacity: 0.75, fontSize: '0.76rem' }}>({countInGroup})</span>
-                </button>
-              );
-            })}
+            />
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            {/* 감독자/보조자 ● 범례 안내 */}
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 10,
-              fontSize: '0.78rem',
-              color: 'var(--text-muted)',
-              padding: '5px 12px',
-              background: 'var(--bg-card)',
-              borderRadius: 'var(--radius-full)',
-              border: '1px solid var(--border-color)'
-            }}>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                <span style={{ color: '#2563eb', fontSize: '0.85rem' }}>●</span>
-                <span style={{ fontWeight: 600, color: 'var(--text-main)' }}>감독자</span>
-              </span>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                <span style={{ color: '#10b981', fontSize: '0.85rem' }}>●</span>
-                <span style={{ fontWeight: 600, color: 'var(--text-main)' }}>보조자</span>
-              </span>
-            </div>
-
-            {/* Search Box */}
-            <div style={{ position: 'relative' }}>
-              <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-faint)' }} />
-              <input
-                type="text"
-                placeholder="이름, 연락처, 주소, 비고 검색..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="form-input"
-                style={{
-                  paddingLeft: 34,
-                  paddingRight: 12,
-                  paddingTop: 6,
-                  paddingBottom: 6,
-                  fontSize: '0.84rem',
-                  width: 240,
-                  borderRadius: 'var(--radius-full)'
-                }}
-              />
-            </div>
+          {/* 감독자/보조자 ● 범례 안내 (가로 정렬 고정, 글자 줄바꿈 방지) */}
+          <div style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 12,
+            fontSize: '0.78rem',
+            color: 'var(--text-muted)',
+            padding: '6px 14px',
+            background: 'var(--bg-app)',
+            borderRadius: 'var(--radius-full)',
+            border: '1px solid var(--border-color)',
+            whiteSpace: 'nowrap',
+            flexShrink: 0
+          }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap' }}>
+              <span style={{ color: '#2563eb', fontSize: '0.9rem', lineHeight: 1 }}>●</span>
+              <span style={{ fontWeight: 600, color: 'var(--text-main)' }}>감독자</span>
+            </span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap' }}>
+              <span style={{ color: '#10b981', fontSize: '0.9rem', lineHeight: 1 }}>●</span>
+              <span style={{ fontWeight: 600, color: 'var(--text-main)' }}>보조자</span>
+            </span>
           </div>
         </div>
       </div>
 
-
-      {/* 인쇄 전용 헤더: 집단명, 인쇄일, 총 인원 깔끔하게 표시 */}
-      <div className="print-only emergency-print-header" style={{ marginBottom: 10 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderBottom: '2px solid #0f172a', paddingBottom: 4 }}>
+      {/* 헤더: 집단명, 총 인원 (인쇄일 삭제 및 깔끔한 좌우 정렬) */}
+      <div className="emergency-print-header" style={{ marginBottom: 10 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderBottom: '2px solid var(--border-color)', paddingBottom: 6 }}>
           <div>
-            <h1 style={{ fontSize: '15pt', fontWeight: 800, margin: 0, color: '#0f172a', letterSpacing: '-0.02em' }}>
-              회중 비상연락망 <span style={{ fontSize: '12pt', fontWeight: 700, color: '#2563eb' }}>({selectedGroupFilter === 'all' ? '전체' : (groups.find(g => g.id === selectedGroupFilter)?.name ? `${groups.find(g => g.id === selectedGroupFilter)?.name} 집단` : '선택 집단')})</span>
+            <h1 style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0, color: 'var(--text-main)', letterSpacing: '-0.02em' }}>
+              회중 비상연락망 <span style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--primary)' }}>({selectedGroupFilter === 'all' ? '전체' : (groups.find(g => g.id === selectedGroupFilter)?.name ? `${groups.find(g => g.id === selectedGroupFilter)?.name} 집단` : '선택 집단')})</span>
             </h1>
-            <p style={{ fontSize: '7.8pt', color: '#64748b', margin: '2px 0 0 0' }}>
-              비상사태 및 재해 시 신속한 확인을 위한 전도인 비상연락망, 가족 대표자 및 주소
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '3px 0 0 0' }}>
+              비상사태 및 재해시 비상연락망, 가족 대표자 및 주소 관리
             </p>
           </div>
-          <div style={{ textAlign: 'right', fontSize: '7.8pt', color: '#64748b', lineHeight: 1.3 }}>
-            <div>인쇄일: {new Date().toLocaleDateString('ko-KR')}</div>
-            <div>총 {filteredContacts.length}명</div>
+          <div style={{ textAlign: 'right', fontSize: '0.82rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', flexShrink: 0, paddingLeft: 8 }}>
+            <span style={{ fontWeight: 700, color: 'var(--text-main)' }}>총 {filteredContacts.length}명</span>
           </div>
         </div>
       </div>
