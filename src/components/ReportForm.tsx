@@ -84,6 +84,10 @@ export const ReportForm: React.FC<ReportFormProps> = ({
   const [showExistingAlert, setShowExistingAlert] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
 
+  // 보조 파이오니아(AP) 확인 안내 모달 상태
+  const [showApConfirmModal, setShowApConfirmModal] = useState(false);
+  const [pendingPublisher, setPendingPublisher] = useState<Publisher | null>(null);
+
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [submittedReceipt, setSubmittedReceipt] = useState<any | null>(null);
@@ -275,6 +279,22 @@ export const ReportForm: React.FC<ReportFormProps> = ({
       return;
     }
 
+    // RP, SP, FM이 아닌데 시간 보고를 할 경우 AP 체크가 안된 상태에서 보고를 제출하려고 할 때 확인 모달 노출
+    const isFulltimePioneer = ['RP', 'SP', 'FM'].includes(targetPublisher.pioneer_status || '');
+    if (!isFulltimePioneer && participated && numHours > 0 && !isAuxiliaryPioneer) {
+      setPendingPublisher(targetPublisher);
+      setShowApConfirmModal(true);
+      return;
+    }
+
+    await doSubmit(targetPublisher, isAuxiliaryPioneer);
+  };
+
+  // 실제 보고서 저장 및 제출 실행
+  const doSubmit = async (targetPublisher: Publisher, finalIsAuxiliaryPioneer: boolean) => {
+    const numHours = parseFloat(hours) || 0;
+    const numStudies = parseInt(bibleStudies) || 0;
+
     setLoading(true);
     try {
       const validRemarks = remarks
@@ -293,7 +313,7 @@ export const ReportForm: React.FC<ReportFormProps> = ({
         bibleStudies: numStudies,
         hours: numHours,
         remarks: validRemarks,
-        isAuxiliaryPioneer,
+        isAuxiliaryPioneer: finalIsAuxiliaryPioneer,
         isAdminOverride: isManager,
       });
 
@@ -319,7 +339,7 @@ export const ReportForm: React.FC<ReportFormProps> = ({
       setSubmittedReceipt({
         name: targetPublisher.name,
         groupName: targetPublisher.group_name || '미배정',
-        pioneerStatus: targetPublisher.pioneer_status,
+        pioneerStatus: finalIsAuxiliaryPioneer ? 'AP' : targetPublisher.pioneer_status,
         month,
         participated,
         hours: numHours,
@@ -344,6 +364,8 @@ export const ReportForm: React.FC<ReportFormProps> = ({
       setErrorMsg(err.message || '보고서 제출 중 오류가 발생했습니다.');
     } finally {
       setLoading(false);
+      setShowApConfirmModal(false);
+      setPendingPublisher(null);
     }
   };
 
@@ -700,31 +722,38 @@ export const ReportForm: React.FC<ReportFormProps> = ({
 
           {/* 3. 해당 월에 어떤 형태로든 봉사에 참여했습니까? (S-4 필수 항목) */}
           <div className="form-group">
-            <label className="form-label">
+            <label className="form-label" style={{
+              whiteSpace: 'nowrap',
+              fontSize: 'clamp(0.76rem, 3.4vw, 0.92rem)',
+              letterSpacing: '-0.025em',
+              display: 'block'
+            }}>
               해당 월에 어떤 형태로든 야외 봉사에 참여했습니까? <span style={{ color: 'var(--accent-rose)' }}>*</span>
             </label>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
               <button
                 type="button"
                 onClick={() => setParticipated(true)}
                 disabled={isClosed}
                 style={{
-                  padding: '14px',
+                  padding: '12px 6px',
                   borderRadius: 'var(--radius-md)',
                   border: participated ? '2px solid var(--accent-emerald)' : '1px solid var(--border-color)',
                   background: participated ? 'rgba(16, 185, 129, 0.1)' : 'var(--bg-app)',
                   color: participated ? 'var(--accent-emerald)' : 'var(--text-muted)',
                   fontWeight: 700,
-                  fontSize: '0.95rem',
+                  fontSize: 'clamp(0.82rem, 3.2vw, 0.94rem)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: 8,
+                  gap: 6,
+                  whiteSpace: 'nowrap',
+                  letterSpacing: '-0.02em',
                   cursor: isClosed ? 'not-allowed' : 'pointer',
                   transition: 'var(--transition-fast)'
                 }}
               >
-                <Check size={18} />
+                <Check size={16} style={{ flexShrink: 0 }} />
                 <span>예 (참여함)</span>
               </button>
 
@@ -737,17 +766,19 @@ export const ReportForm: React.FC<ReportFormProps> = ({
                 }}
                 disabled={isClosed}
                 style={{
-                  padding: '14px',
+                  padding: '12px 6px',
                   borderRadius: 'var(--radius-md)',
                   border: !participated ? '2px solid var(--accent-rose)' : '1px solid var(--border-color)',
                   background: !participated ? 'rgba(244, 63, 94, 0.1)' : 'var(--bg-app)',
                   color: !participated ? 'var(--accent-rose)' : 'var(--text-muted)',
                   fontWeight: 700,
-                  fontSize: '0.95rem',
+                  fontSize: 'clamp(0.82rem, 3.2vw, 0.94rem)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: 8,
+                  gap: 6,
+                  whiteSpace: 'nowrap',
+                  letterSpacing: '-0.02em',
                   cursor: isClosed ? 'not-allowed' : 'pointer',
                   transition: 'var(--transition-fast)'
                 }}
@@ -824,17 +855,7 @@ export const ReportForm: React.FC<ReportFormProps> = ({
                     placeholder="0"
                     value={hours}
                     onChange={(e) => {
-                      const val = e.target.value;
-                      setHours(val);
-                      // 시간을 기록하면 아래 AP 선택이 자동으로 되도록 처리 (RP 제외)
-                      if (selectedPublisher?.pioneer_status !== 'RP') {
-                        const num = parseFloat(val);
-                        if (!isNaN(num) && num > 0) {
-                          setIsAuxiliaryPioneer(true);
-                        } else if (val === '' || num === 0) {
-                          setIsAuxiliaryPioneer(false);
-                        }
-                      }
+                      setHours(e.target.value);
                     }}
                     disabled={isClosed}
                     style={{ fontSize: '1.05rem', fontWeight: 700 }}
@@ -847,18 +868,24 @@ export const ReportForm: React.FC<ReportFormProps> = ({
                 background: isAuxiliaryPioneer ? 'var(--primary-light)' : 'var(--bg-app)',
                 border: isAuxiliaryPioneer ? '1px solid var(--primary)' : '1px solid var(--border-color)',
                 borderRadius: 'var(--radius-md)',
-                padding: '12px 16px',
+                padding: '12px 14px',
                 marginBottom: 20,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
+                gap: 10,
                 cursor: isClosed ? 'not-allowed' : 'pointer'
               }} onClick={() => !isClosed && setIsAuxiliaryPioneer(!isAuxiliaryPioneer)}>
-                <div>
-                  <div style={{ fontWeight: 700, fontSize: '0.92rem' }}>
-                    이번 달 보조 파이오니아(AP)로 봉사함
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <div style={{
+                    fontWeight: 700,
+                    fontSize: 'clamp(0.82rem, 3.4vw, 0.92rem)',
+                    whiteSpace: 'nowrap',
+                    letterSpacing: '-0.02em'
+                  }}>
+                    이번 달 보조 파이오니아로 봉사함
                   </div>
-                  <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)' }}>
+                  <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)', marginTop: 2 }}>
                     보조 파이오니아 15시간 또는 30시간 활동 시 체크해 주세요.
                   </div>
                 </div>
@@ -867,24 +894,29 @@ export const ReportForm: React.FC<ReportFormProps> = ({
                   checked={isAuxiliaryPioneer}
                   onChange={(e) => setIsAuxiliaryPioneer(e.target.checked)}
                   disabled={isClosed}
-                  style={{ width: 18, height: 18, accentColor: 'var(--primary)', cursor: 'pointer' }}
+                  style={{ width: 18, height: 18, accentColor: 'var(--primary)', cursor: 'pointer', flexShrink: 0 }}
                 />
               </div>
 
-              {/* 6. 비고 (특기 사항 및 인정 시간) */}
+              {/* 6. 비고 (고려받을 시간) */}
               <div className="form-group">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                  <label className="form-label" style={{ margin: 0 }}>
-                    비고 (인정 시간 및 특기 사항)
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, gap: 8 }}>
+                  <label className="form-label" style={{
+                    margin: 0,
+                    whiteSpace: 'nowrap',
+                    fontSize: 'clamp(0.82rem, 3.4vw, 0.9rem)',
+                    letterSpacing: '-0.02em'
+                  }}>
+                    비고 (고려받을 시간)
                   </label>
                   <button
                     type="button"
                     onClick={handleAddRemark}
                     disabled={isClosed}
                     className="btn-secondary"
-                    style={{ padding: '4px 8px', fontSize: '0.78rem', gap: 4 }}
+                    style={{ padding: '4px 10px', fontSize: '0.78rem', gap: 4, whiteSpace: 'nowrap', flexShrink: 0 }}
                   >
-                    <Plus size={14} /> 비고 항목 추가
+                    <Plus size={14} /> <span>비고 항목 추가</span>
                   </button>
                 </div>
 
@@ -1239,6 +1271,148 @@ export const ReportForm: React.FC<ReportFormProps> = ({
                   관리자 대시보드로 이동
                 </button>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+      {/* ------------------------------------------------------------- */}
+      {/* 보조 파이오니아(AP) 확인 안내 모달 */}
+      {/* RP, SP, FM이 아닌 전도인이 시간 입력 후 AP 미체크 상태로 제출 시 안내 */}
+      {/* ------------------------------------------------------------- */}
+      {showApConfirmModal && pendingPublisher && (
+        <div className="modal-overlay" onClick={() => setShowApConfirmModal(false)}>
+          <div 
+            className="modal-content" 
+            style={{ maxWidth: 440, animation: 'scaleUp 0.2s ease-out', position: 'relative', textAlign: 'center', padding: '24px 20px' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* 닫기 버튼 */}
+            <button
+              type="button"
+              onClick={() => setShowApConfirmModal(false)}
+              style={{
+                position: 'absolute',
+                top: 14,
+                right: 14,
+                background: 'transparent',
+                border: 'none',
+                color: 'var(--text-muted)',
+                cursor: 'pointer',
+                padding: 6,
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'background 0.15s ease'
+              }}
+              title="닫기"
+            >
+              <X size={18} />
+            </button>
+
+            <div style={{
+              width: 52,
+              height: 52,
+              borderRadius: '50%',
+              background: 'rgba(99, 102, 241, 0.12)',
+              color: 'var(--primary)',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginBottom: 14
+            }}>
+              <HelpCircle size={28} />
+            </div>
+
+            <h3 style={{ fontSize: '1.2rem', fontWeight: 800, margin: '0 0 8px 0' }}>
+              보조 파이오니아 확인
+            </h3>
+
+            <div style={{
+              background: 'var(--bg-app)',
+              border: '1px solid var(--border-color)',
+              borderRadius: 'var(--radius-md)',
+              padding: '14px 16px',
+              fontSize: '0.88rem',
+              lineHeight: 1.5,
+              marginBottom: 20,
+              textAlign: 'left'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                <span style={{ color: 'var(--text-muted)' }}>전도인</span>
+                <span style={{ fontWeight: 700 }}>{pendingPublisher.name} ({pendingPublisher.group_name || '미배정'})</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                <span style={{ color: 'var(--text-muted)' }}>보고 월</span>
+                <span style={{ fontWeight: 700 }}>{month}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: 8, borderBottom: '1px solid var(--border-color)' }}>
+                <span style={{ color: 'var(--text-muted)' }}>입력된 봉사 시간</span>
+                <span style={{ fontWeight: 700, color: 'var(--primary)' }}>{hours}시간</span>
+              </div>
+              <p style={{ margin: '10px 0 0 0', fontSize: '0.84rem', color: 'var(--text-secondary)' }}>
+                봉사 시간을 입력하셨으나 <strong>'보조 파이오니아'</strong> 항목이 체크되어 있지 않습니다.<br />
+                이번 달에 <strong>보조 파이오니아</strong>로 봉사하셨습니까?
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsAuxiliaryPioneer(true);
+                  doSubmit(pendingPublisher, true);
+                }}
+                className="btn-primary"
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  fontSize: '0.92rem',
+                  fontWeight: 700,
+                  justifyContent: 'center',
+                  gap: 6
+                }}
+              >
+                <Check size={16} />
+                <span>예, 보조 파이오니아입니다 (체크 후 제출)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setIsAuxiliaryPioneer(false);
+                  doSubmit(pendingPublisher, false);
+                }}
+                className="btn-secondary"
+                style={{
+                  width: '100%',
+                  padding: '10px',
+                  fontSize: '0.86rem',
+                  fontWeight: 600,
+                  justifyContent: 'center'
+                }}
+              >
+                <span>아니오 (일반 시간으로 제출)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setShowApConfirmModal(false);
+                  setPendingPublisher(null);
+                }}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--text-muted)',
+                  fontSize: '0.82rem',
+                  padding: '6px',
+                  cursor: 'pointer',
+                  textDecoration: 'underline'
+                }}
+              >
+                양식으로 돌아가서 직접 수정하기
+              </button>
             </div>
           </div>
         </div>

@@ -132,8 +132,8 @@ export const AdminAuthGate: React.FC<AdminAuthGateProps> = ({
             <CalendarClock size={32} />
           </div>
 
-          <h2 style={{ fontSize: '1.45rem', fontWeight: 800, margin: '0 0 6px 0', letterSpacing: '-0.02em' }}>
-            {congregationName} 관리자 시스템
+          <h2 style={{ fontSize: '1.35rem', fontWeight: 800, margin: '0 0 6px 0', letterSpacing: '-0.02em' }}>
+            {congregationName ? `${congregationName} - 봉사보고 관리` : '봉사보고 관리'}
           </h2>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.84rem', margin: '0 0 26px 0' }}>
             {currentYear.year_name} 봉사연도 · 관리자 전용 인증

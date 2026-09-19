@@ -70,7 +70,7 @@ export const EmergencyContacts: React.FC<EmergencyContactsProps> = ({ currentYea
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedGroupFilter, setSelectedGroupFilter] = useState('all');
-  const isSuperAdmin = manager?.role === 'super' || (!manager && import.meta.env.DEV);
+  const isSuperAdmin = manager?.role === 'super';
 
   // 집단 관리자인 경우 본인 소속 집단 ID 및 이름 추출
   const myGroupId = manager?.role === 'group'
@@ -356,6 +356,10 @@ export const EmergencyContacts: React.FC<EmergencyContactsProps> = ({ currentYea
 
   // CSV Export: 이름, 전화, 직책, RP, 주소, 비상연락처, 관계
   const handleExportCsv = () => {
+    if (!isSuperAdmin) {
+      alert('CSV 다운로드는 최고관리자만 가능합니다.');
+      return;
+    }
     if (contacts.length === 0) {
       alert('내보낼 데이터가 없습니다.');
       return;
@@ -551,14 +555,16 @@ export const EmergencyContacts: React.FC<EmergencyContactsProps> = ({ currentYea
         <span>가족 묶음 지정</span>
       </button>
 
-      <button
-        onClick={handleExportCsv}
-        className="btn-secondary"
-        style={{ gap: 6, fontSize: '0.84rem' }}
-      >
-        <Download size={14} />
-        <span>CSV 저장</span>
-      </button>
+      {isSuperAdmin && (
+        <button
+          onClick={handleExportCsv}
+          className="btn-secondary"
+          style={{ gap: 6, fontSize: '0.84rem' }}
+        >
+          <Download size={14} />
+          <span>CSV 저장</span>
+        </button>
+      )}
 
       <button
         onClick={() => window.print()}

@@ -1,15 +1,15 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { 
-  Users, 
-  CheckCircle, 
-  Clock, 
-  BookOpen, 
-  Lock, 
-  Unlock, 
-  UserX, 
-  Download, 
-  Search, 
-  Calendar, 
+import {
+  Users,
+  CheckCircle,
+  Clock,
+  BookOpen,
+  Lock,
+  Unlock,
+  UserX,
+  Download,
+  Search,
+  Calendar,
   Filter,
   Building2,
   Copy,
@@ -35,24 +35,24 @@ import {
   Edit3,
   Save
 } from 'lucide-react';
-import { 
-  ServiceYear, 
-  Group, 
-  Manager, 
-  MonthlyReport, 
-  MonthlyKpiStats, 
-  Publisher, 
-  ServiceMonth, 
+import {
+  ServiceYear,
+  Group,
+  Manager,
+  MonthlyReport,
+  MonthlyKpiStats,
+  Publisher,
+  ServiceMonth,
   SERVICE_MONTHS,
   isChildStatus,
   getCurrentDateServiceMonth
 } from '../types/database';
-import { 
-  getMonthlyReports, 
-  getMonthlyKpiStats, 
-  getMonthlyStatuses, 
-  toggleMonthStatus, 
-  getGroups, 
+import {
+  getMonthlyReports,
+  getMonthlyKpiStats,
+  getMonthlyStatuses,
+  toggleMonthStatus,
+  getGroups,
   getUnreportedMembers,
   batchCloseUnreportedPublishers,
   getAllServiceYearReports,
@@ -69,8 +69,8 @@ interface DashboardProps {
   onSelectGroup: (groupId: string) => void;
 }
 
-export const Dashboard: React.FC<DashboardProps> = ({ 
-  currentYear, 
+export const Dashboard: React.FC<DashboardProps> = ({
+  currentYear,
   manager,
   selectedGroupId,
   onSelectGroup
@@ -87,7 +87,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [pioneerSearchQuery, setPioneerSearchQuery] = useState('');
   const [congregationName, setCongregationName] = useState(() => localStorage.getItem('ministry_congregation_name') || '춘천남부 회중');
-  
+
   // 주말 및 평일 집회 참석자 수
   const [meetingAttendance, setMeetingAttendance] = useState<string>(() => {
     return localStorage.getItem(`ministry_attendance_${currentYear.id}_${getCurrentDateServiceMonth(currentYear?.year_name)}`) || '0';
@@ -184,8 +184,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
     : selectedGroupId;
 
   const isClosed = !!statuses[selectedMonth];
-  const canManageClosing = manager?.role === 'super' || !manager;
-  const isSuperAdmin = manager?.role === 'super' || (!manager && import.meta.env.DEV);
+  const canManageClosing = manager?.role === 'super';
+  const isSuperAdmin = manager?.role === 'super';
 
   // 최고관리자가 아닌 경우 '회중 분석 보고' 뷰에 머무르지 못하도록 방어
   useEffect(() => {
@@ -419,11 +419,11 @@ ${submitUrl}
     }
   }, [activeHeaderDropdown, activeRpHeaderDropdown]);
 
-  const isFilterActive = searchQuery.trim() !== '' || 
-    filterParticipated !== 'all' || 
-    filterPioneerStatus !== 'all' || 
-    filterPosition !== 'all' || 
-    filterGroup !== 'all' || 
+  const isFilterActive = searchQuery.trim() !== '' ||
+    filterParticipated !== 'all' ||
+    filterPioneerStatus !== 'all' ||
+    filterPosition !== 'all' ||
+    filterGroup !== 'all' ||
     filterRemarks !== 'all';
 
   const displayReports = useMemo(() => {
@@ -556,6 +556,10 @@ ${submitUrl}
 
   // CSV 다운로드
   const handleExportCsv = () => {
+    if (!isSuperAdmin) {
+      alert('엑셀/CSV 다운로드는 최고관리자만 가능합니다.');
+      return;
+    }
     if (displayReports.length === 0) {
       alert('내보낼 보고서 데이터가 없습니다.');
       return;
@@ -567,8 +571,8 @@ ${submitUrl}
       r.bible_studies || 0,
       r.hours || 0,
       (r.remarks || []).map(rm => `${rm.type}: ${rm.hours}시간`).join(' '),
-      r.pioneer_status === 'RP' 
-        ? 'RP' 
+      r.pioneer_status === 'RP'
+        ? 'RP'
         : (Number(r.hours || 0) > 0 ? 'AP' : (isChildStatus(r.pioneer_status) ? '자녀' : '전도인')),
       r.position && r.position !== '일반' ? (r.position === '봉사의 종' ? '봉종' : r.position) : '',
       r.group_name || '',
@@ -740,7 +744,7 @@ ${submitUrl}
     if (effectiveGroupId !== 'all') {
       const targetGroup = groups.find(g => g.id === effectiveGroupId);
       const targetGroupName = targetGroup?.name || manager?.group_name;
-      targetRpList = targetRpList.filter(rp => 
+      targetRpList = targetRpList.filter(rp =>
         rp.group_id === effectiveGroupId || (targetGroupName && rp.group_name === targetGroupName)
       );
     }
@@ -752,14 +756,14 @@ ${submitUrl}
     // 3. 검색어 필터
     if (pioneerSearchQuery.trim()) {
       const q = pioneerSearchQuery.trim().toLowerCase();
-      targetRpList = targetRpList.filter(rp => 
+      targetRpList = targetRpList.filter(rp =>
         rp.name.toLowerCase().includes(q) || rp.group_name.toLowerCase().includes(q)
       );
     }
 
     // 4. 각 RP별 12개월 시간 및 통계 매핑
     const rows = targetRpList.map(rp => {
-      const rpReports = allYearReports.filter(r => 
+      const rpReports = allYearReports.filter(r =>
         r.publisher_name === rp.name || (rp.id && r.publisher_id === rp.id)
       );
       const monthMap: Record<ServiceMonth, { hours: number; remarkHours: number; studies: number; participated: boolean }> = {} as any;
@@ -865,15 +869,15 @@ ${submitUrl}
     const grandTotalRemarkHours = rows.reduce((acc, r) => acc + r.totalRemarkHours, 0);
     const grandTotalCombinedHours = grandTotalHours + grandTotalRemarkHours;
     const grandTotalStudies = rows.reduce((acc, r) => acc + r.totalStudies, 0);
-    const overallMonthlyAvg = totalPioneers > 0 
-      ? Math.round((grandTotalHours / (totalPioneers * 12)) * 10) / 10 
+    const overallMonthlyAvg = totalPioneers > 0
+      ? Math.round((grandTotalHours / (totalPioneers * 12)) * 10) / 10
       : 0;
-    const overallAvgStudies = totalPioneers > 0 
-      ? (grandTotalStudies / (totalPioneers * 12)).toFixed(1) 
+    const overallAvgStudies = totalPioneers > 0
+      ? (grandTotalStudies / (totalPioneers * 12)).toFixed(1)
       : '0.0';
     const achievedCount = rows.filter(r => r.isTargetAchieved).length;
-    const achievementRate = totalPioneers > 0 
-      ? Math.round((achievedCount / totalPioneers) * 100) 
+    const achievementRate = totalPioneers > 0
+      ? Math.round((achievedCount / totalPioneers) * 100)
       : 0;
 
     // 월별 총 시간 합계
@@ -904,7 +908,7 @@ ${submitUrl}
       return;
     }
     const headers = [
-      '이름', '집단', 
+      '이름', '집단',
       '9월', '10월', '11월', '12월', '1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월',
       '총시간', '비고시간', '합계시간', '월평균', '연구(합계/평균)', '600h달성률(%)', '달성여부'
     ];
@@ -1044,6 +1048,10 @@ ${submitUrl}
   };
 
   const handleEditWeekendAttendance = () => {
+    if (!isSuperAdmin) {
+      alert('주말 집회 평균 참석자 수 입력 및 수정은 최고관리자만 가능합니다.');
+      return;
+    }
     const input = prompt(`${selectedMonth} 주말 집회 평균 참석자 수를 입력하세요:`, meetingAttendance);
     if (input !== null && input.trim() !== '') {
       setMeetingAttendance(input.trim());
@@ -1052,6 +1060,10 @@ ${submitUrl}
   };
 
   const handleEditWeekdayAttendance = () => {
+    if (!isSuperAdmin) {
+      alert('평일 집회 참석자 수 입력 및 수정은 최고관리자만 가능합니다.');
+      return;
+    }
     const input = prompt(`${selectedMonth} 평일 집회 평균 참석자 수를 입력하세요:`, weekdayMeetingAttendance);
     if (input !== null && input.trim() !== '') {
       setWeekdayMeetingAttendance(input.trim());
@@ -1305,10 +1317,7 @@ ${submitUrl}
                   <BarChart3 size={15} />
                 </span>
                 <span style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--text-main)' }}>
-                  {currentYear.year_name} 봉사연도 1년 합계 및 월평균 통계표
-                </span>
-                <span style={{ fontSize: '0.76rem', color: 'var(--text-muted)', marginLeft: 4 }}>
-                  (보고된 {yearlySummaryStats.reportedMonthsCount}개 월 기준 집계)
+                  {currentYear.year_name} 봉사연도 월평균 통계표
                 </span>
               </div>
             </div>
@@ -1432,20 +1441,20 @@ ${submitUrl}
                 </thead>
                 <tbody>
                   {yearlyStats.map((row) => (
-                    <tr 
+                    <tr
                       key={row.month}
-                      style={{ 
+                      style={{
                         cursor: 'pointer',
                         transition: 'background 0.15s ease'
                       }}
                       className="yearly-table-row"
                     >
                       {/* 월 (클릭 시 상세 이동) */}
-                      <td 
+                      <td
                         onClick={() => handleSelectMonthAndGoDetail(row.month)}
-                        style={{ 
-                          fontWeight: 800, 
-                          color: 'var(--primary)', 
+                        style={{
+                          fontWeight: 800,
+                          color: 'var(--primary)',
                           background: 'rgba(99, 102, 241, 0.04)',
                           fontSize: '0.92rem'
                         }}
@@ -1578,8 +1587,8 @@ ${submitUrl}
                 <div className="rp-stat-title" style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600, whiteSpace: 'nowrap' }}>연간 총 봉사 시간</div>
                 <div className="rp-stat-value" style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--accent-emerald)', whiteSpace: 'nowrap' }}>{pioneerStatsData.grandTotalHours.toLocaleString()}시간</div>
                 <div className="rp-stat-desc" style={{ fontSize: '0.72rem', color: 'var(--text-faint)', whiteSpace: 'normal', wordBreak: 'keep-all', lineHeight: 1.25 }}>
-                  {pioneerStatsData.grandTotalRemarkHours > 0 
-                    ? `직접 ${pioneerStatsData.grandTotalHours.toLocaleString()}h + 비고 ${pioneerStatsData.grandTotalRemarkHours.toLocaleString()}h = 총 ${pioneerStatsData.grandTotalCombinedHours.toLocaleString()}h` 
+                  {pioneerStatsData.grandTotalRemarkHours > 0
+                    ? `직접 ${pioneerStatsData.grandTotalHours.toLocaleString()}h + 비고 ${pioneerStatsData.grandTotalRemarkHours.toLocaleString()}h = 총 ${pioneerStatsData.grandTotalCombinedHours.toLocaleString()}h`
                     : '12개월 누적 총계'}
                 </div>
               </div>
@@ -1693,12 +1702,12 @@ ${submitUrl}
                 <thead>
                   <tr style={{ background: 'var(--table-header-bg, #f8fafc)', borderBottom: '2px solid var(--border-color)' }}>
                     {/* 1. 이름 (정렬 가능) */}
-                    <th 
+                    <th
                       onClick={() => handleRpSort('name')}
-                      style={{ 
-                        width: 110, 
-                        minWidth: 110, 
-                        textAlign: 'center', 
+                      style={{
+                        width: 110,
+                        minWidth: 110,
+                        textAlign: 'center',
                         cursor: 'pointer',
                         userSelect: 'none',
                         background: rpSortField === 'name' ? 'var(--primary-light, #eff6ff)' : undefined
@@ -1714,10 +1723,10 @@ ${submitUrl}
                     </th>
 
                     {/* 2. 집단 (그룹 선택 팝오버) */}
-                    <th 
-                      style={{ 
-                        width: 95, 
-                        minWidth: 95, 
+                    <th
+                      style={{
+                        width: 95,
+                        minWidth: 95,
                         textAlign: 'center',
                         cursor: 'pointer',
                         userSelect: 'none',
@@ -1744,8 +1753,8 @@ ${submitUrl}
                           <div className="popover-header">
                             <span>집단 선택 필터</span>
                           </div>
-                          <div 
-                            className={`popover-item ${rpFilterGroup === 'all' ? 'active' : ''}`} 
+                          <div
+                            className={`popover-item ${rpFilterGroup === 'all' ? 'active' : ''}`}
                             onClick={() => { setRpFilterGroup('all'); setActiveRpHeaderDropdown(null); }}
                           >
                             <span>전체 집단</span>
@@ -1753,9 +1762,9 @@ ${submitUrl}
                           </div>
                           <div className="popover-divider" />
                           {groups.map(g => (
-                            <div 
-                              key={g.id} 
-                              className={`popover-item ${rpFilterGroup === g.name ? 'active' : ''}`} 
+                            <div
+                              key={g.id}
+                              className={`popover-item ${rpFilterGroup === g.name ? 'active' : ''}`}
                               onClick={() => { setRpFilterGroup(g.name); setActiveRpHeaderDropdown(null); }}
                             >
                               <span>{g.name} 집단</span>
@@ -1771,17 +1780,17 @@ ${submitUrl}
                     ))}
 
                     {/* 총 시간 (정렬 가능) */}
-                    <th 
+                    <th
                       onClick={() => handleRpSort('totalHours')}
-                      style={{ 
-                        width: 80, 
-                        minWidth: 80, 
-                        textAlign: 'center', 
+                      style={{
+                        width: 80,
+                        minWidth: 80,
+                        textAlign: 'center',
                         cursor: 'pointer',
                         userSelect: 'none',
-                        background: rpSortField === 'totalHours' ? 'var(--primary-light, #eff6ff)' : undefined, 
-                        color: rpSortField === 'totalHours' ? 'var(--primary)' : 'var(--text-main)', 
-                        fontWeight: 800 
+                        background: rpSortField === 'totalHours' ? 'var(--primary-light, #eff6ff)' : undefined,
+                        color: rpSortField === 'totalHours' ? 'var(--primary)' : 'var(--text-main)',
+                        fontWeight: 800
                       }}
                       title="클릭하여 총 봉사시간으로 정렬"
                     >
@@ -1794,11 +1803,11 @@ ${submitUrl}
                     </th>
 
                     {/* 비고 시간 (정렬 가능) */}
-                    <th 
+                    <th
                       onClick={() => handleRpSort('totalRemarkHours')}
-                      style={{ 
-                        width: 85, 
-                        minWidth: 85, 
+                      style={{
+                        width: 85,
+                        minWidth: 85,
                         textAlign: 'center',
                         cursor: 'pointer',
                         userSelect: 'none',
@@ -1815,11 +1824,11 @@ ${submitUrl}
                     </th>
 
                     {/* 월평균 (정렬 가능) */}
-                    <th 
+                    <th
                       onClick={() => handleRpSort('avgHours')}
-                      style={{ 
-                        width: 75, 
-                        minWidth: 75, 
+                      style={{
+                        width: 75,
+                        minWidth: 75,
                         textAlign: 'center',
                         cursor: 'pointer',
                         userSelect: 'none',
@@ -1836,11 +1845,11 @@ ${submitUrl}
                     </th>
 
                     {/* 연구 (합계/평균) (정렬 가능) */}
-                    <th 
+                    <th
                       onClick={() => handleRpSort('studies')}
-                      style={{ 
-                        width: 110, 
-                        minWidth: 110, 
+                      style={{
+                        width: 110,
+                        minWidth: 110,
                         textAlign: 'center',
                         cursor: 'pointer',
                         userSelect: 'none',
@@ -1857,11 +1866,11 @@ ${submitUrl}
                     </th>
 
                     {/* 600h 달성률 (정렬 가능) */}
-                    <th 
+                    <th
                       onClick={() => handleRpSort('progressRate')}
-                      style={{ 
-                        width: 140, 
-                        minWidth: 140, 
+                      style={{
+                        width: 140,
+                        minWidth: 140,
                         textAlign: 'center',
                         cursor: 'pointer',
                         userSelect: 'none',
@@ -1922,16 +1931,16 @@ ${submitUrl}
                           );
                         })}
                         {/* 총 시간 (단위 h 삭제) */}
-                        <td style={{ 
-                          fontWeight: 800, 
-                          color: 'var(--primary)', 
+                        <td style={{
+                          fontWeight: 800,
+                          color: 'var(--primary)',
                           background: 'rgba(99, 102, 241, 0.05)',
                           fontSize: '0.92rem'
                         }}>
                           {row.totalHours}
                         </td>
                         {/* 비고 시간 */}
-                        <td style={{ 
+                        <td style={{
                           fontWeight: row.totalRemarkHours > 0 ? 700 : 400,
                           color: row.totalRemarkHours > 0 ? 'var(--text-main)' : 'var(--text-faint)'
                         }}>
@@ -1969,7 +1978,7 @@ ${submitUrl}
                                 </span>
                               )}
                             </div>
-                            <div 
+                            <div
                               className="rp-progress-bar no-print"
                               style={{
                                 width: 80,
@@ -2015,8 +2024,8 @@ ${submitUrl}
                         {pioneerStatsData.overallMonthlyAvg}
                       </td>
                       <td>
-                        {pioneerStatsData.grandTotalStudies > 0 
-                          ? `${pioneerStatsData.grandTotalStudies} / ${pioneerStatsData.overallAvgStudies}` 
+                        {pioneerStatsData.grandTotalStudies > 0
+                          ? `${pioneerStatsData.grandTotalStudies} / ${pioneerStatsData.overallAvgStudies}`
                           : '-'}
                       </td>
                       <td>
@@ -2039,41 +2048,109 @@ ${submitUrl}
       {viewMode === 'monthly' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
           {/* Top Month Navigation Bar */}
-          {/* 12 Months Pill Tabs */}
+          {/* 마감 및 활성 월 색상 구분 범례 */}
           <div style={{
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
+            gap: 16,
+            fontSize: '0.76rem',
+            color: 'var(--text-muted)',
+            marginBottom: -8
+          }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+              <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#10b981' }} />
+              <span style={{ fontWeight: 600, color: 'var(--accent-emerald, #10b981)' }}>활성 월 (보고 접수 중)</span>
+            </span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+              <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--text-muted)', opacity: 0.6 }} />
+              <span>마감된 월 (완료)</span>
+            </span>
+          </div>
+
+          {/* 12 Months Pill Tabs (최대 2줄: 6열 그리드로 3줄 넘어가지 않도록 고정) */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(6, minmax(0, 1fr))',
             gap: 6,
-            overflowX: 'auto',
+            maxWidth: 680,
+            margin: '0 auto',
             padding: '4px 0',
-            flexWrap: 'wrap'
+            width: '100%'
           }}>
             {SERVICE_MONTHS.map((m) => {
               const isSelected = selectedMonth === m;
               const closed = !!statuses[m];
+
+              // 마감된 월 vs 활성된 월 색상 구분 스타일
+              let btnBg = 'var(--bg-card)';
+              let btnColor = 'var(--text-secondary)';
+              let btnBorder = '1px solid var(--border-color)';
+              let btnShadow = 'none';
+
+              if (isSelected) {
+                if (closed) {
+                  // 마감된 월 선택 시
+                  btnBg = 'var(--primary)';
+                  btnColor = '#ffffff';
+                  btnBorder = '1px solid var(--primary)';
+                  btnShadow = '0 2px 8px rgba(79, 70, 229, 0.3)';
+                } else {
+                  // 활성된 월 선택 시 (초록 에메랄드)
+                  btnBg = 'linear-gradient(135deg, #10b981 0%, #059669 100%)';
+                  btnColor = '#ffffff';
+                  btnBorder = '1px solid #059669';
+                  btnShadow = '0 2px 10px rgba(16, 185, 129, 0.4)';
+                }
+              } else {
+                if (closed) {
+                  // 마감된 월 미선택 시 (차분한 회색조)
+                  btnBg = 'var(--bg-card)';
+                  btnColor = 'var(--text-muted)';
+                  btnBorder = '1px solid var(--border-color)';
+                } else {
+                  // 활성된 월 미선택 시 (선명한 에메랄드 강조)
+                  btnBg = 'rgba(16, 185, 129, 0.12)';
+                  btnColor = 'var(--accent-emerald, #10b981)';
+                  btnBorder = '1.5px solid rgba(16, 185, 129, 0.45)';
+                }
+              }
+
               return (
                 <button
                   key={m}
                   onClick={() => setSelectedMonth(m)}
                   style={{
-                    padding: '6px 14px',
+                    padding: '6px 4px',
                     borderRadius: 'var(--radius-full)',
-                    fontSize: '0.84rem',
-                    fontWeight: isSelected ? 700 : 500,
+                    fontSize: 'clamp(0.74rem, 2.5vw, 0.84rem)',
+                    fontWeight: isSelected ? 800 : (closed ? 500 : 700),
                     cursor: 'pointer',
-                    border: isSelected ? '1px solid var(--primary)' : '1px solid var(--border-color)',
-                    background: isSelected ? 'var(--primary)' : 'var(--bg-card)',
-                    color: isSelected ? '#ffffff' : 'var(--text-secondary)',
+                    border: btnBorder,
+                    background: btnBg,
+                    color: btnColor,
                     display: 'inline-flex',
                     alignItems: 'center',
+                    justifyContent: 'center',
                     gap: 4,
-                    boxShadow: isSelected ? '0 2px 8px rgba(79, 70, 229, 0.25)' : 'none',
+                    boxShadow: btnShadow,
+                    whiteSpace: 'nowrap',
                     transition: 'all 0.15s ease'
                   }}
+                  title={closed ? `${m} (보고 마감)` : `${m} (보고 진행 중)`}
                 >
+                  {/* 활성 월 전용 인디케이터 점 */}
+                  {!closed && (
+                    <span style={{
+                      width: 6,
+                      height: 6,
+                      borderRadius: '50%',
+                      background: isSelected ? '#ffffff' : '#10b981',
+                      display: 'inline-block',
+                      flexShrink: 0
+                    }} />
+                  )}
                   <span>{m}</span>
-                  {closed && <span style={{ fontSize: '0.7rem' }}>🔒</span>}
                 </button>
               );
             })}
@@ -2093,7 +2170,7 @@ ${submitUrl}
             <div>
               <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginBottom: 4 }}>
                 <h2 className="monthly-header-title">
-                  {congregationName} {currentYear.year_name}년 {selectedMonth} 봉사보고
+                  {currentYear.year_name}년 {selectedMonth} 봉사보고
                 </h2>
                 <span className={`badge ${isClosed ? 'badge-closed' : 'badge-open'}`} style={{ whiteSpace: 'nowrap' }}>
                   {isClosed ? <Lock size={12} /> : <Unlock size={12} />}
@@ -2234,9 +2311,9 @@ ${submitUrl}
             {/* Right: Summary Key Stats (2-Tier Card matching Table Height) */}
             <div className="nfox-card monthly-side-stats-card" style={{ padding: 0, overflow: 'hidden', border: '1px solid var(--table-border, #cbd5e1)' }}>
               {/* Tier 1 Header: 활동적인 전도인 & 비정규 */}
-              <div style={{ 
-                display: 'grid', 
-                gridTemplateColumns: '1fr 1fr', 
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
                 borderBottom: '1px solid var(--table-border, #cbd5e1)',
                 background: 'var(--summary-header-bg, #cfe2ff)'
               }}>
@@ -2249,13 +2326,13 @@ ${submitUrl}
               </div>
 
               {/* Tier 1 Values */}
-              <div style={{ 
-                display: 'grid', 
-                gridTemplateColumns: '1fr 1fr', 
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
                 borderBottom: '2px solid var(--table-border-accent, #94a3b8)',
                 flex: 1
               }}>
-                <div 
+                <div
                   className="monthly-stat-val-box"
                   style={{ borderRight: '1px solid var(--table-border, #cbd5e1)' }}
                   title={`활동적인 전도인: 총 ${selectedMonthStat.activePublishersCount}명 (봉사 참여 ${selectedMonthStat.totalReporters}명 + 비정규 ${selectedMonthStat.unsharedCount}명)`}
@@ -2265,23 +2342,23 @@ ${submitUrl}
                   </div>
                 </div>
 
-                <div 
+                <div
                   className="monthly-stat-val-box"
                   onClick={() => {
                     if (selectedMonthStat.unsharedCount > 0) {
                       setFilterParticipated(prev => prev === 'no' ? 'all' : 'no');
                     }
                   }}
-                  style={{ 
+                  style={{
                     cursor: selectedMonthStat.unsharedCount > 0 ? 'pointer' : 'default',
                     background: filterParticipated === 'no' ? 'rgba(244, 63, 94, 0.08)' : 'transparent',
                   }}
-                  title={selectedMonthStat.unsharedCount > 0 
-                    ? `봉사 미참여(비정규): ${selectedMonthStat.unsharedCount}명 (클릭 시 해당 전도인 명단 필터링)` 
+                  title={selectedMonthStat.unsharedCount > 0
+                    ? `봉사 미참여(비정규): ${selectedMonthStat.unsharedCount}명 (클릭 시 해당 전도인 명단 필터링)`
                     : '비정규 전도인이 없습니다.'}
                 >
-                  <div className="monthly-stat-number" style={{ 
-                    color: selectedMonthStat.unsharedCount > 0 ? 'var(--accent-rose)' : 'var(--text-main)', 
+                  <div className="monthly-stat-number" style={{
+                    color: selectedMonthStat.unsharedCount > 0 ? 'var(--accent-rose)' : 'var(--text-main)',
                   }}>
                     {selectedMonthStat.unsharedCount}
                   </div>
@@ -2302,17 +2379,17 @@ ${submitUrl}
               }}>
                 {/* 주말 집회 */}
                 <div style={{ display: 'flex', flexDirection: 'column', borderRight: '1px solid var(--table-border, #cbd5e1)' }}>
-                  <div className="monthly-stat-header-cell" style={{ 
+                  <div className="monthly-stat-header-cell" style={{
                     background: 'var(--summary-header-bg, #cfe2ff)',
                     borderBottom: '1px solid var(--table-border, #cbd5e1)',
                   }}>
                     주말 집회 평균 참석자 수
                   </div>
-                  <div 
+                  <div
                     className="monthly-stat-val-box"
-                    onClick={handleEditWeekendAttendance}
-                    style={{ cursor: 'pointer' }}
-                    title="클릭하여 주말 집회 평균 참석자 수를 수정할 수 있습니다"
+                    onClick={isSuperAdmin ? handleEditWeekendAttendance : () => alert('주말 집회 평균 참석자 수 입력 및 수정은 최고관리자만 가능합니다.')}
+                    style={{ cursor: isSuperAdmin ? 'pointer' : 'default' }}
+                    title={isSuperAdmin ? "클릭하여 주말 집회 평균 참석자 수를 수정할 수 있습니다" : "주말 집회 평균 참석자 수 (최고관리자만 입력 가능)"}
                   >
                     <div className="monthly-stat-number" style={{ color: (meetingAttendance === '0' || !meetingAttendance) ? 'var(--accent-rose)' : 'var(--primary)' }}>
                       {meetingAttendance}
@@ -2327,17 +2404,17 @@ ${submitUrl}
 
                 {/* 평일 집회 */}
                 <div style={{ display: 'flex', flexDirection: 'column' }}>
-                  <div className="monthly-stat-header-cell" style={{ 
+                  <div className="monthly-stat-header-cell" style={{
                     background: 'var(--summary-header-bg-subtle, #e0ecff)',
                     borderBottom: '1px solid var(--table-border, #cbd5e1)',
                   }}>
                     평일 집회 참석자 수
                   </div>
-                  <div 
+                  <div
                     className="monthly-stat-val-box"
-                    onClick={handleEditWeekdayAttendance}
-                    style={{ cursor: 'pointer' }}
-                    title="클릭하여 평일 집회 참석자 수를 수정할 수 있습니다"
+                    onClick={isSuperAdmin ? handleEditWeekdayAttendance : () => alert('평일 집회 참석자 수 입력 및 수정은 최고관리자만 가능합니다.')}
+                    style={{ cursor: isSuperAdmin ? 'pointer' : 'default' }}
+                    title={isSuperAdmin ? "클릭하여 평일 집회 참석자 수를 수정할 수 있습니다" : "평일 집회 참석자 수 (최고관리자만 입력 가능)"}
                   >
                     <div className="monthly-stat-number" style={{ color: (weekdayMeetingAttendance === '0' || !weekdayMeetingAttendance) ? 'var(--accent-rose)' : '#0284c7' }}>
                       {weekdayMeetingAttendance}
@@ -2353,524 +2430,526 @@ ${submitUrl}
             </div>
           </div>
 
-      {/* 4. Detailed Monthly Reports Table (Full Width) */}
-      <div className="nfox-card monthly-detail-table-card" style={{ padding: '24px' }}>
-          {/* Header & Controls */}
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            flexWrap: 'wrap',
-            gap: 12,
-            marginBottom: 20
-          }}>
-            <div>
-              <h3 style={{ fontSize: '1.15rem', fontWeight: 800, margin: 0 }}>
-                {selectedMonth} 전도인 보고 세부 목록
-              </h3>
-              <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', margin: 0 }}>
-                총 {displayReports.length}건이 표시되고 있습니다.
-              </p>
-            </div>
-
-            <div className="no-print" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              {/* Search */}
-              <div style={{ position: 'relative' }}>
-                <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-faint)' }} />
-                <input
-                  type="text"
-                  placeholder="전도인 검색..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="form-input"
-                  style={{
-                    paddingLeft: 30,
-                    paddingRight: 10,
-                    paddingTop: 6,
-                    paddingBottom: 6,
-                    fontSize: '0.82rem',
-                    width: 170,
-                    borderRadius: 'var(--radius-full)'
-                  }}
-                />
+          {/* 4. Detailed Monthly Reports Table (Full Width) */}
+          <div className="nfox-card monthly-detail-table-card" style={{ padding: '24px' }}>
+            {/* Header & Controls */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexWrap: 'wrap',
+              gap: 12,
+              marginBottom: 20
+            }}>
+              <div>
+                <h3 style={{ fontSize: '1.15rem', fontWeight: 800, margin: 0 }}>
+                  {selectedMonth} 보고 세부 목록
+                </h3>
+                <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', margin: 0 }}>
+                  총 {displayReports.length}건이 표시되고 있습니다.
+                </p>
               </div>
 
-              {/* 필터 초기화 버튼 (필터 또는 검색이 적용되었을 때만 노출) */}
-              {isFilterActive && (
-                <button
-                  type="button"
-                  onClick={handleResetFilters}
-                  className="btn-secondary"
-                  style={{
-                    padding: '6px 12px',
-                    fontSize: '0.8rem',
-                    gap: 5,
-                    color: 'var(--accent-rose)',
-                    borderColor: 'rgba(244, 63, 94, 0.3)'
-                  }}
-                  title="모든 필터를 해제하고 기본 이름순으로 되돌립니다"
-                >
-                  <RotateCcw size={13} />
-                  <span>필터 초기화</span>
-                </button>
-              )}
+              <div className="no-print" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                {/* Search */}
+                <div style={{ position: 'relative' }}>
+                  <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-faint)' }} />
+                  <input
+                    type="text"
+                    placeholder="전도인 검색..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="form-input"
+                    style={{
+                      paddingLeft: 30,
+                      paddingRight: 10,
+                      paddingTop: 6,
+                      paddingBottom: 6,
+                      fontSize: '0.82rem',
+                      width: 170,
+                      borderRadius: 'var(--radius-full)'
+                    }}
+                  />
+                </div>
 
-              {/* Export CSV */}
-              <button
-                onClick={handleExportCsv}
-                className="btn-secondary"
-                style={{ padding: '6px 12px', fontSize: '0.8rem', gap: 5 }}
-              >
-                <Download size={13} />
-                <span>엑셀/CSV</span>
-              </button>
+                {/* 필터 초기화 버튼 (필터 또는 검색이 적용되었을 때만 노출) */}
+                {isFilterActive && (
+                  <button
+                    type="button"
+                    onClick={handleResetFilters}
+                    className="btn-secondary"
+                    style={{
+                      padding: '6px 12px',
+                      fontSize: '0.8rem',
+                      gap: 5,
+                      color: 'var(--accent-rose)',
+                      borderColor: 'rgba(244, 63, 94, 0.3)'
+                    }}
+                    title="모든 필터를 해제하고 기본 이름순으로 되돌립니다"
+                  >
+                    <RotateCcw size={13} />
+                    <span>필터 초기화</span>
+                  </button>
+                )}
+
+                {/* Export CSV */}
+                {isSuperAdmin && (
+                  <button
+                    onClick={handleExportCsv}
+                    className="btn-secondary"
+                    style={{ padding: '6px 12px', fontSize: '0.8rem', gap: 5 }}
+                  >
+                    <Download size={13} />
+                    <span>엑셀/CSV</span>
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Table */}
+            <div className="data-table-container sticky-container">
+              <table className="data-table data-table-sticky monthly-report-data-table">
+                <thead>
+                  <tr>
+                    {/* 1. 이름 (클릭 시 가나다 오름/내림 정렬) */}
+                    <th
+                      className="col-publisher-name"
+                      onClick={() => handleSort('publisher_name')}
+                      style={{ textAlign: 'center', cursor: 'pointer', userSelect: 'none', background: monthlySortField === 'publisher_name' ? 'var(--primary-light, #eff6ff)' : undefined }}
+                      title="클릭하여 이름 순으로 정렬"
+                    >
+                      <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                        <span style={{ color: monthlySortField === 'publisher_name' ? 'var(--primary)' : undefined, fontWeight: 700 }}>이름</span>
+                        {monthlySortField === 'publisher_name' && (
+                          monthlySortOrder === 'asc' ? <ArrowUp size={13} color="var(--primary)" /> : <ArrowDown size={13} color="var(--primary)" />
+                        )}
+                      </div>
+                    </th>
+
+                    {/* 2. 참여 (클릭 시 참여/미참여 필터 및 정렬 팝오버) */}
+                    <th
+                      className="col-participated"
+                      style={{
+                        textAlign: 'center',
+                        cursor: 'pointer',
+                        userSelect: 'none',
+                        background: filterParticipated !== 'all' || monthlySortField === 'participated' ? 'var(--primary-light, #eff6ff)' : undefined
+                      }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveHeaderDropdown(activeHeaderDropdown === 'participated' ? null : 'participated');
+                      }}
+                      title="클릭하여 참여 여부 필터 및 정렬"
+                    >
+                      <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
+                        <span style={{ fontWeight: 700, color: filterParticipated !== 'all' ? 'var(--primary)' : undefined }}>참여</span>
+                        {monthlySortField === 'participated' && (
+                          monthlySortOrder === 'asc' ? <ArrowUp size={11} color="var(--primary)" /> : <ArrowDown size={11} color="var(--primary)" />
+                        )}
+                        {filterParticipated !== 'all' && (
+                          <span style={{ fontSize: '0.62rem', padding: '1px 4px', borderRadius: 4, background: 'var(--primary)', color: '#fff', fontWeight: 800 }}>
+                            {filterParticipated === 'yes' ? 'Y' : 'N'}
+                          </span>
+                        )}
+                        <ChevronDown size={11} style={{ opacity: filterParticipated !== 'all' ? 1 : 0.45 }} />
+                      </div>
+
+                      {activeHeaderDropdown === 'participated' && (
+                        <div className="header-filter-popover" onClick={e => e.stopPropagation()}>
+                          <div className="popover-header">
+                            <span>참여 정렬 & 필터</span>
+                          </div>
+                          <div className={`popover-item ${monthlySortField === 'participated' && monthlySortOrder === 'asc' ? 'active' : ''}`} onClick={() => { handleSort('participated'); setActiveHeaderDropdown(null); }}>
+                            <span>참여(Y) 우선 정렬</span>
+                            {monthlySortField === 'participated' && monthlySortOrder === 'asc' && <Check size={13} />}
+                          </div>
+                          <div className="popover-divider" />
+                          <div className={`popover-item ${filterParticipated === 'all' ? 'active' : ''}`} onClick={() => { setFilterParticipated('all'); setActiveHeaderDropdown(null); }}>
+                            <span>참여 전체</span>
+                            {filterParticipated === 'all' && <Check size={13} />}
+                          </div>
+                          <div className={`popover-item ${filterParticipated === 'yes' ? 'active' : ''}`} onClick={() => { setFilterParticipated('yes'); setActiveHeaderDropdown(null); }}>
+                            <span>참여 (Y)</span>
+                            {filterParticipated === 'yes' && <Check size={13} />}
+                          </div>
+                          <div className={`popover-item ${filterParticipated === 'no' ? 'active' : ''}`} onClick={() => { setFilterParticipated('no'); setActiveHeaderDropdown(null); }}>
+                            <span>미참여 (N)</span>
+                            {filterParticipated === 'no' && <Check size={13} />}
+                          </div>
+                        </div>
+                      )}
+                    </th>
+
+                    {/* 3. 연구 (클릭 시 건수 정렬) */}
+                    <th
+                      className="col-studies"
+                      onClick={() => handleSort('bible_studies')}
+                      style={{ textAlign: 'center', cursor: 'pointer', userSelect: 'none', background: monthlySortField === 'bible_studies' ? 'var(--primary-light, #eff6ff)' : undefined }}
+                      title="클릭하여 성서연구 건수로 정렬"
+                    >
+                      <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                        <span style={{ color: monthlySortField === 'bible_studies' ? 'var(--primary)' : undefined, fontWeight: 700 }}>연구</span>
+                        {monthlySortField === 'bible_studies' && (
+                          monthlySortOrder === 'asc' ? <ArrowUp size={13} color="var(--primary)" /> : <ArrowDown size={13} color="var(--primary)" />
+                        )}
+                      </div>
+                    </th>
+
+                    {/* 4. 시간 (클릭 시 봉사시간 정렬) */}
+                    <th
+                      className="col-hours"
+                      onClick={() => handleSort('hours')}
+                      style={{ textAlign: 'center', cursor: 'pointer', userSelect: 'none', background: monthlySortField === 'hours' ? 'var(--primary-light, #eff6ff)' : undefined }}
+                      title="클릭하여 봉사시간으로 정렬"
+                    >
+                      <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                        <span style={{ color: monthlySortField === 'hours' ? 'var(--primary)' : undefined, fontWeight: 700 }}>시간</span>
+                        {monthlySortField === 'hours' && (
+                          monthlySortOrder === 'asc' ? <ArrowUp size={13} color="var(--primary)" /> : <ArrowDown size={13} color="var(--primary)" />
+                        )}
+                      </div>
+                    </th>
+
+                    {/* 5. 비고 (클릭 시 비고 유무 필터 및 정렬 팝오버) */}
+                    <th
+                      style={{
+                        textAlign: 'center',
+                        cursor: 'pointer',
+                        userSelect: 'none',
+                        background: filterRemarks !== 'all' || monthlySortField === 'remarks' ? 'var(--primary-light, #eff6ff)' : undefined
+                      }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveHeaderDropdown(activeHeaderDropdown === 'remarks' ? null : 'remarks');
+                      }}
+                      title="클릭하여 비고/인정시간 필터 및 정렬"
+                    >
+                      <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                        <span style={{ fontWeight: 700, color: filterRemarks !== 'all' ? 'var(--primary)' : undefined }}>비고</span>
+                        {monthlySortField === 'remarks' && (
+                          monthlySortOrder === 'asc' ? <ArrowUp size={12} color="var(--primary)" /> : <ArrowDown size={12} color="var(--primary)" />
+                        )}
+                        {filterRemarks !== 'all' && (
+                          <span style={{ fontSize: '0.68rem', padding: '1px 5px', borderRadius: 4, background: 'var(--primary)', color: '#fff', fontWeight: 800 }}>
+                            {filterRemarks === 'has_remarks' ? '있음' : '없음'}
+                          </span>
+                        )}
+                        <ChevronDown size={12} style={{ opacity: filterRemarks !== 'all' ? 1 : 0.45 }} />
+                      </div>
+
+                      {activeHeaderDropdown === 'remarks' && (
+                        <div className="header-filter-popover" onClick={e => e.stopPropagation()}>
+                          <div className="popover-header">
+                            <span>비고 정렬 & 필터</span>
+                          </div>
+                          <div className={`popover-item ${monthlySortField === 'remarks' && monthlySortOrder === 'desc' ? 'active' : ''}`} onClick={() => { handleSort('remarks'); setActiveHeaderDropdown(null); }}>
+                            <span>인정시간 많은 순 정렬</span>
+                            {monthlySortField === 'remarks' && monthlySortOrder === 'desc' && <Check size={13} />}
+                          </div>
+                          <div className="popover-divider" />
+                          <div className={`popover-item ${filterRemarks === 'all' ? 'active' : ''}`} onClick={() => { setFilterRemarks('all'); setActiveHeaderDropdown(null); }}>
+                            <span>비고 전체</span>
+                            {filterRemarks === 'all' && <Check size={13} />}
+                          </div>
+                          <div className={`popover-item ${filterRemarks === 'has_remarks' ? 'active' : ''}`} onClick={() => { setFilterRemarks('has_remarks'); setActiveHeaderDropdown(null); }}>
+                            <span>비고 있음 (인정시간)</span>
+                            {filterRemarks === 'has_remarks' && <Check size={13} />}
+                          </div>
+                          <div className={`popover-item ${filterRemarks === 'no_remarks' ? 'active' : ''}`} onClick={() => { setFilterRemarks('no_remarks'); setActiveHeaderDropdown(null); }}>
+                            <span>비고 없음</span>
+                            {filterRemarks === 'no_remarks' && <Check size={13} />}
+                          </div>
+                        </div>
+                      )}
+                    </th>
+
+                    {/* 6. 구분 (클릭 시 RP/AP/일반/자녀 선택 팝오버) */}
+                    <th
+                      style={{
+                        textAlign: 'center',
+                        cursor: 'pointer',
+                        userSelect: 'none',
+                        background: filterPioneerStatus !== 'all' || monthlySortField === 'pioneer_status' ? 'var(--primary-light, #eff6ff)' : undefined
+                      }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveHeaderDropdown(activeHeaderDropdown === 'pioneer_status' ? null : 'pioneer_status');
+                      }}
+                      title="클릭하여 구분(RP/AP/일반/자녀) 필터 선택"
+                    >
+                      <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                        <span style={{ fontWeight: 700, color: filterPioneerStatus !== 'all' ? 'var(--primary)' : undefined }}>구분</span>
+                        {monthlySortField === 'pioneer_status' && (
+                          monthlySortOrder === 'asc' ? <ArrowUp size={12} color="var(--primary)" /> : <ArrowDown size={12} color="var(--primary)" />
+                        )}
+                        {filterPioneerStatus !== 'all' && (
+                          <span style={{ fontSize: '0.68rem', padding: '1px 5px', borderRadius: 4, background: 'var(--primary)', color: '#fff', fontWeight: 800 }}>
+                            {filterPioneerStatus}
+                          </span>
+                        )}
+                        <ChevronDown size={12} style={{ opacity: filterPioneerStatus !== 'all' ? 1 : 0.45 }} />
+                      </div>
+
+                      {activeHeaderDropdown === 'pioneer_status' && (
+                        <div className="header-filter-popover" onClick={e => e.stopPropagation()}>
+                          <div className="popover-header">
+                            <span>구분 선택 필터</span>
+                          </div>
+                          <div className={`popover-item ${filterPioneerStatus === 'all' ? 'active' : ''}`} onClick={() => { setFilterPioneerStatus('all'); setActiveHeaderDropdown(null); }}>
+                            <span>전체 구분</span>
+                            {filterPioneerStatus === 'all' && <Check size={13} />}
+                          </div>
+                          <div className={`popover-item ${filterPioneerStatus === 'RP' ? 'active' : ''}`} onClick={() => { setFilterPioneerStatus('RP'); setActiveHeaderDropdown(null); }}>
+                            <span>정규 (RP)</span>
+                            {filterPioneerStatus === 'RP' && <Check size={13} />}
+                          </div>
+                          <div className={`popover-item ${filterPioneerStatus === 'AP' ? 'active' : ''}`} onClick={() => { setFilterPioneerStatus('AP'); setActiveHeaderDropdown(null); }}>
+                            <span>보조 (AP)</span>
+                            {filterPioneerStatus === 'AP' && <Check size={13} />}
+                          </div>
+                          <div className={`popover-item ${filterPioneerStatus === '일반' ? 'active' : ''}`} onClick={() => { setFilterPioneerStatus('일반'); setActiveHeaderDropdown(null); }}>
+                            <span>일반 전도인</span>
+                            {filterPioneerStatus === '일반' && <Check size={13} />}
+                          </div>
+                          <div className={`popover-item ${filterPioneerStatus === '자녀' ? 'active' : ''}`} onClick={() => { setFilterPioneerStatus('자녀'); setActiveHeaderDropdown(null); }}>
+                            <span>자녀</span>
+                            {filterPioneerStatus === '자녀' && <Check size={13} />}
+                          </div>
+                        </div>
+                      )}
+                    </th>
+
+                    {/* 7. 직책 (클릭 시 장로/봉종/일반 선택 팝오버) */}
+                    <th
+                      style={{
+                        textAlign: 'center',
+                        cursor: 'pointer',
+                        userSelect: 'none',
+                        background: filterPosition !== 'all' || monthlySortField === 'position' ? 'var(--primary-light, #eff6ff)' : undefined
+                      }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveHeaderDropdown(activeHeaderDropdown === 'position' ? null : 'position');
+                      }}
+                      title="클릭하여 직책(장로/봉종/일반) 필터 선택"
+                    >
+                      <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                        <span style={{ fontWeight: 700, color: filterPosition !== 'all' ? 'var(--primary)' : undefined }}>직책</span>
+                        {monthlySortField === 'position' && (
+                          monthlySortOrder === 'asc' ? <ArrowUp size={12} color="var(--primary)" /> : <ArrowDown size={12} color="var(--primary)" />
+                        )}
+                        {filterPosition !== 'all' && (
+                          <span style={{ fontSize: '0.68rem', padding: '1px 5px', borderRadius: 4, background: 'var(--primary)', color: '#fff', fontWeight: 800 }}>
+                            {filterPosition}
+                          </span>
+                        )}
+                        <ChevronDown size={12} style={{ opacity: filterPosition !== 'all' ? 1 : 0.45 }} />
+                      </div>
+
+                      {activeHeaderDropdown === 'position' && (
+                        <div className="header-filter-popover" onClick={e => e.stopPropagation()}>
+                          <div className="popover-header">
+                            <span>직책 선택 필터</span>
+                          </div>
+                          <div className={`popover-item ${filterPosition === 'all' ? 'active' : ''}`} onClick={() => { setFilterPosition('all'); setActiveHeaderDropdown(null); }}>
+                            <span>전체 직책</span>
+                            {filterPosition === 'all' && <Check size={13} />}
+                          </div>
+                          <div className={`popover-item ${filterPosition === '장로' ? 'active' : ''}`} onClick={() => { setFilterPosition('장로'); setActiveHeaderDropdown(null); }}>
+                            <span>장로</span>
+                            {filterPosition === '장로' && <Check size={13} />}
+                          </div>
+                          <div className={`popover-item ${filterPosition === '봉종' ? 'active' : ''}`} onClick={() => { setFilterPosition('봉종'); setActiveHeaderDropdown(null); }}>
+                            <span>봉종</span>
+                            {filterPosition === '봉종' && <Check size={13} />}
+                          </div>
+                          <div className={`popover-item ${filterPosition === '일반' ? 'active' : ''}`} onClick={() => { setFilterPosition('일반'); setActiveHeaderDropdown(null); }}>
+                            <span>일반</span>
+                            {filterPosition === '일반' && <Check size={13} />}
+                          </div>
+                        </div>
+                      )}
+                    </th>
+
+                    {/* 8. 집단 (클릭 시 집단 선택 팝오버 - 사용자 요청 핵심) */}
+                    <th
+                      style={{
+                        textAlign: 'center',
+                        cursor: 'pointer',
+                        userSelect: 'none',
+                        background: filterGroup !== 'all' || monthlySortField === 'group_name' ? 'var(--primary-light, #eff6ff)' : undefined
+                      }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveHeaderDropdown(activeHeaderDropdown === 'group_name' ? null : 'group_name');
+                      }}
+                      title="클릭하여 집단 선택 필터"
+                    >
+                      <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                        <span style={{ fontWeight: 700, color: filterGroup !== 'all' ? 'var(--primary)' : undefined }}>집단</span>
+                        {monthlySortField === 'group_name' && (
+                          monthlySortOrder === 'asc' ? <ArrowUp size={12} color="var(--primary)" /> : <ArrowDown size={12} color="var(--primary)" />
+                        )}
+                        {filterGroup !== 'all' && (
+                          <span style={{ fontSize: '0.68rem', padding: '1px 5px', borderRadius: 4, background: 'var(--primary)', color: '#fff', fontWeight: 800 }}>
+                            {filterGroup}
+                          </span>
+                        )}
+                        <ChevronDown size={12} style={{ opacity: filterGroup !== 'all' ? 1 : 0.45 }} />
+                      </div>
+
+                      {activeHeaderDropdown === 'group_name' && (
+                        <div className="header-filter-popover align-right" onClick={e => e.stopPropagation()}>
+                          <div className="popover-header">
+                            <span>집단 선택 필터</span>
+                          </div>
+                          <div className={`popover-item ${monthlySortField === 'group_name' && monthlySortOrder === 'asc' ? 'active' : ''}`} onClick={() => { handleSort('group_name'); setActiveHeaderDropdown(null); }}>
+                            <span>집단순 정렬</span>
+                            {monthlySortField === 'group_name' && monthlySortOrder === 'asc' && <Check size={13} />}
+                          </div>
+                          <div className="popover-divider" />
+                          <div className={`popover-item ${filterGroup === 'all' ? 'active' : ''}`} onClick={() => { setFilterGroup('all'); setActiveHeaderDropdown(null); }}>
+                            <span>전체 집단</span>
+                            {filterGroup === 'all' && <Check size={13} />}
+                          </div>
+                          <div className="popover-divider" />
+                          {groups.map(g => (
+                            <div key={g.id} className={`popover-item ${filterGroup === g.name ? 'active' : ''}`} onClick={() => { setFilterGroup(g.name); setActiveHeaderDropdown(null); }}>
+                              <span>{g.name} 집단</span>
+                              {filterGroup === g.name && <Check size={13} />}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </th>
+
+                    <th style={{ textAlign: 'center', width: 68 }} className="no-print">수정</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {displayReports.length === 0 ? (
+                    <tr>
+                      <td colSpan={9} style={{ textAlign: 'center', padding: '36px', color: 'var(--text-muted)' }}>
+                        해당 조건의 보고서가 없습니다.
+                      </td>
+                    </tr>
+                  ) : (
+                    displayReports.map((r) => (
+                      <tr key={r.id}>
+                        {/* 성명: 클릭 시 S-21 전도인 기록 카드 모달 실행 */}
+                        <td className="col-publisher-name" style={{ textAlign: 'center' }}>
+                          <button
+                            onClick={() => setCardModalData({ id: r.publisher_id, name: r.publisher_name || '' })}
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              padding: 0,
+                              margin: 0,
+                              cursor: 'pointer',
+                              fontWeight: 700,
+                              color: 'var(--primary)',
+                              fontSize: '0.92rem',
+                              textAlign: 'center'
+                            }}
+                            className="name-link-btn"
+                            title={`${r.publisher_name} 전도인 기록 카드 (S-21) 열기`}
+                          >
+                            {r.publisher_name}
+                          </button>
+                        </td>
+
+                        {/* 참여: Y / N */}
+                        <td className="col-participated" style={{ textAlign: 'center' }}>
+                          {r.participated ? (
+                            <span style={{ color: 'var(--accent-emerald)', fontWeight: 700 }}>Y</span>
+                          ) : (
+                            <span style={{ color: 'var(--accent-rose)', fontWeight: 800 }}>N</span>
+                          )}
+                        </td>
+
+                        {/* 연구: '건' 글자 없이 숫자만 표시 */}
+                        <td className="col-studies" style={{ textAlign: 'center' }}>
+                          {r.bible_studies > 0 ? r.bible_studies : '-'}
+                        </td>
+
+                        {/* 시간: '시간' 글자 없이 숫자만 표시 */}
+                        <td className="col-hours" style={{ textAlign: 'center', fontWeight: r.hours > 0 ? 700 : 400 }}>
+                          {r.hours > 0 ? r.hours : '-'}
+                        </td>
+
+                        {/* 비고: 특기사항 및 인정시간 */}
+                        <td style={{ fontSize: '0.8rem', color: 'var(--text-muted)', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', textAlign: 'center' }}>
+                          {(r.remarks || []).map(rm => `${rm.type}: ${rm.hours}시간`).join(', ') || '-'}
+                        </td>
+
+                        {/* 구분: RP가 아닌데 시간 보고가 되어 있다면 AP로 표시 */}
+                        <td style={{ textAlign: 'center' }}>
+                          {isChildStatus(r.pioneer_status) ? (
+                            <span className="badge badge-child">자녀</span>
+                          ) : r.pioneer_status === 'RP' ? (
+                            <span className="badge badge-rp">RP</span>
+                          ) : Number(r.hours || 0) > 0 ? (
+                            <span className="badge badge-ap">AP</span>
+                          ) : r.pioneer_status && r.pioneer_status !== '일반' && r.pioneer_status !== 'AP' ? (
+                            <span className={`badge badge-${r.pioneer_status?.toLowerCase()}`}>
+                              {r.pioneer_status}
+                            </span>
+                          ) : (
+                            <span style={{ color: 'var(--text-faint)' }}>-</span>
+                          )}
+                        </td>
+
+                        {/* 직책: '일반' 구분은 없앰 (오직 장로, 봉종만 표시) */}
+                        <td style={{ textAlign: 'center' }}>
+                          {r.position === '장로' ? (
+                            <span className="badge badge-elder">장로</span>
+                          ) : (r.position === '봉종' || r.position === '봉사의 종') ? (
+                            <span className="badge badge-servant">봉종</span>
+                          ) : r.position && r.position !== '일반' ? (
+                            <span className="badge badge-publisher">{r.position}</span>
+                          ) : (
+                            ''
+                          )}
+                        </td>
+
+                        {/* 집단 */}
+                        <td style={{ textAlign: 'center' }}>
+                          <span className="badge badge-group">
+                            {r.group_name}
+                          </span>
+                        </td>
+
+                        {/* 수정 버튼 */}
+                        <td style={{ textAlign: 'center' }} className="no-print">
+                          <button
+                            onClick={() => setEditModalData({
+                              publisher: {
+                                id: r.publisher_id,
+                                name: r.publisher_name || '',
+                                group_name: r.group_name,
+                                position: r.position,
+                                pioneer_status: r.pioneer_status
+                              },
+                              month: selectedMonth,
+                              existingReport: r
+                            })}
+                            className="btn-secondary"
+                            style={{ padding: '4px 8px', fontSize: '0.76rem', gap: 4 }}
+                            title={`${r.publisher_name} 보고서 내용 수정`}
+                          >
+                            <Edit2 size={12} />
+                            <span>수정</span>
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
 
-          {/* Table */}
-          <div className="data-table-container sticky-container">
-            <table className="data-table data-table-sticky monthly-report-data-table">
-              <thead>
-                <tr>
-                  {/* 1. 이름 (클릭 시 가나다 오름/내림 정렬) */}
-                  <th 
-                    className="col-publisher-name"
-                    onClick={() => handleSort('publisher_name')}
-                    style={{ textAlign: 'center', cursor: 'pointer', userSelect: 'none', background: monthlySortField === 'publisher_name' ? 'var(--primary-light, #eff6ff)' : undefined }}
-                    title="클릭하여 이름 순으로 정렬"
-                  >
-                    <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
-                      <span style={{ color: monthlySortField === 'publisher_name' ? 'var(--primary)' : undefined, fontWeight: 700 }}>이름</span>
-                      {monthlySortField === 'publisher_name' && (
-                        monthlySortOrder === 'asc' ? <ArrowUp size={13} color="var(--primary)" /> : <ArrowDown size={13} color="var(--primary)" />
-                      )}
-                    </div>
-                  </th>
-
-                  {/* 2. 참여 (클릭 시 참여/미참여 필터 및 정렬 팝오버) */}
-                  <th 
-                    className="col-participated"
-                    style={{
-                      textAlign: 'center',
-                      cursor: 'pointer',
-                      userSelect: 'none',
-                      background: filterParticipated !== 'all' || monthlySortField === 'participated' ? 'var(--primary-light, #eff6ff)' : undefined
-                    }}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setActiveHeaderDropdown(activeHeaderDropdown === 'participated' ? null : 'participated');
-                    }}
-                    title="클릭하여 참여 여부 필터 및 정렬"
-                  >
-                    <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
-                      <span style={{ fontWeight: 700, color: filterParticipated !== 'all' ? 'var(--primary)' : undefined }}>참여</span>
-                      {monthlySortField === 'participated' && (
-                        monthlySortOrder === 'asc' ? <ArrowUp size={11} color="var(--primary)" /> : <ArrowDown size={11} color="var(--primary)" />
-                      )}
-                      {filterParticipated !== 'all' && (
-                        <span style={{ fontSize: '0.62rem', padding: '1px 4px', borderRadius: 4, background: 'var(--primary)', color: '#fff', fontWeight: 800 }}>
-                          {filterParticipated === 'yes' ? 'Y' : 'N'}
-                        </span>
-                      )}
-                      <ChevronDown size={11} style={{ opacity: filterParticipated !== 'all' ? 1 : 0.45 }} />
-                    </div>
-
-                    {activeHeaderDropdown === 'participated' && (
-                      <div className="header-filter-popover" onClick={e => e.stopPropagation()}>
-                        <div className="popover-header">
-                          <span>참여 정렬 & 필터</span>
-                        </div>
-                        <div className={`popover-item ${monthlySortField === 'participated' && monthlySortOrder === 'asc' ? 'active' : ''}`} onClick={() => { handleSort('participated'); setActiveHeaderDropdown(null); }}>
-                          <span>참여(Y) 우선 정렬</span>
-                          {monthlySortField === 'participated' && monthlySortOrder === 'asc' && <Check size={13} />}
-                        </div>
-                        <div className="popover-divider" />
-                        <div className={`popover-item ${filterParticipated === 'all' ? 'active' : ''}`} onClick={() => { setFilterParticipated('all'); setActiveHeaderDropdown(null); }}>
-                          <span>참여 전체</span>
-                          {filterParticipated === 'all' && <Check size={13} />}
-                        </div>
-                        <div className={`popover-item ${filterParticipated === 'yes' ? 'active' : ''}`} onClick={() => { setFilterParticipated('yes'); setActiveHeaderDropdown(null); }}>
-                          <span>참여 (Y)</span>
-                          {filterParticipated === 'yes' && <Check size={13} />}
-                        </div>
-                        <div className={`popover-item ${filterParticipated === 'no' ? 'active' : ''}`} onClick={() => { setFilterParticipated('no'); setActiveHeaderDropdown(null); }}>
-                          <span>미참여 (N)</span>
-                          {filterParticipated === 'no' && <Check size={13} />}
-                        </div>
-                      </div>
-                    )}
-                  </th>
-
-                  {/* 3. 연구 (클릭 시 건수 정렬) */}
-                  <th 
-                    className="col-studies"
-                    onClick={() => handleSort('bible_studies')}
-                    style={{ textAlign: 'center', cursor: 'pointer', userSelect: 'none', background: monthlySortField === 'bible_studies' ? 'var(--primary-light, #eff6ff)' : undefined }}
-                    title="클릭하여 성서연구 건수로 정렬"
-                  >
-                    <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
-                      <span style={{ color: monthlySortField === 'bible_studies' ? 'var(--primary)' : undefined, fontWeight: 700 }}>연구</span>
-                      {monthlySortField === 'bible_studies' && (
-                        monthlySortOrder === 'asc' ? <ArrowUp size={13} color="var(--primary)" /> : <ArrowDown size={13} color="var(--primary)" />
-                      )}
-                    </div>
-                  </th>
-
-                  {/* 4. 시간 (클릭 시 봉사시간 정렬) */}
-                  <th 
-                    className="col-hours"
-                    onClick={() => handleSort('hours')}
-                    style={{ textAlign: 'center', cursor: 'pointer', userSelect: 'none', background: monthlySortField === 'hours' ? 'var(--primary-light, #eff6ff)' : undefined }}
-                    title="클릭하여 봉사시간으로 정렬"
-                  >
-                    <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
-                      <span style={{ color: monthlySortField === 'hours' ? 'var(--primary)' : undefined, fontWeight: 700 }}>시간</span>
-                      {monthlySortField === 'hours' && (
-                        monthlySortOrder === 'asc' ? <ArrowUp size={13} color="var(--primary)" /> : <ArrowDown size={13} color="var(--primary)" />
-                      )}
-                    </div>
-                  </th>
-
-                  {/* 5. 비고 (클릭 시 비고 유무 필터 및 정렬 팝오버) */}
-                  <th 
-                    style={{
-                      textAlign: 'center',
-                      cursor: 'pointer',
-                      userSelect: 'none',
-                      background: filterRemarks !== 'all' || monthlySortField === 'remarks' ? 'var(--primary-light, #eff6ff)' : undefined
-                    }}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setActiveHeaderDropdown(activeHeaderDropdown === 'remarks' ? null : 'remarks');
-                    }}
-                    title="클릭하여 비고/인정시간 필터 및 정렬"
-                  >
-                    <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
-                      <span style={{ fontWeight: 700, color: filterRemarks !== 'all' ? 'var(--primary)' : undefined }}>비고</span>
-                      {monthlySortField === 'remarks' && (
-                        monthlySortOrder === 'asc' ? <ArrowUp size={12} color="var(--primary)" /> : <ArrowDown size={12} color="var(--primary)" />
-                      )}
-                      {filterRemarks !== 'all' && (
-                        <span style={{ fontSize: '0.68rem', padding: '1px 5px', borderRadius: 4, background: 'var(--primary)', color: '#fff', fontWeight: 800 }}>
-                          {filterRemarks === 'has_remarks' ? '있음' : '없음'}
-                        </span>
-                      )}
-                      <ChevronDown size={12} style={{ opacity: filterRemarks !== 'all' ? 1 : 0.45 }} />
-                    </div>
-
-                    {activeHeaderDropdown === 'remarks' && (
-                      <div className="header-filter-popover" onClick={e => e.stopPropagation()}>
-                        <div className="popover-header">
-                          <span>비고 정렬 & 필터</span>
-                        </div>
-                        <div className={`popover-item ${monthlySortField === 'remarks' && monthlySortOrder === 'desc' ? 'active' : ''}`} onClick={() => { handleSort('remarks'); setActiveHeaderDropdown(null); }}>
-                          <span>인정시간 많은 순 정렬</span>
-                          {monthlySortField === 'remarks' && monthlySortOrder === 'desc' && <Check size={13} />}
-                        </div>
-                        <div className="popover-divider" />
-                        <div className={`popover-item ${filterRemarks === 'all' ? 'active' : ''}`} onClick={() => { setFilterRemarks('all'); setActiveHeaderDropdown(null); }}>
-                          <span>비고 전체</span>
-                          {filterRemarks === 'all' && <Check size={13} />}
-                        </div>
-                        <div className={`popover-item ${filterRemarks === 'has_remarks' ? 'active' : ''}`} onClick={() => { setFilterRemarks('has_remarks'); setActiveHeaderDropdown(null); }}>
-                          <span>비고 있음 (인정시간)</span>
-                          {filterRemarks === 'has_remarks' && <Check size={13} />}
-                        </div>
-                        <div className={`popover-item ${filterRemarks === 'no_remarks' ? 'active' : ''}`} onClick={() => { setFilterRemarks('no_remarks'); setActiveHeaderDropdown(null); }}>
-                          <span>비고 없음</span>
-                          {filterRemarks === 'no_remarks' && <Check size={13} />}
-                        </div>
-                      </div>
-                    )}
-                  </th>
-
-                  {/* 6. 구분 (클릭 시 RP/AP/일반/자녀 선택 팝오버) */}
-                  <th 
-                    style={{
-                      textAlign: 'center',
-                      cursor: 'pointer',
-                      userSelect: 'none',
-                      background: filterPioneerStatus !== 'all' || monthlySortField === 'pioneer_status' ? 'var(--primary-light, #eff6ff)' : undefined
-                    }}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setActiveHeaderDropdown(activeHeaderDropdown === 'pioneer_status' ? null : 'pioneer_status');
-                    }}
-                    title="클릭하여 구분(RP/AP/일반/자녀) 필터 선택"
-                  >
-                    <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
-                      <span style={{ fontWeight: 700, color: filterPioneerStatus !== 'all' ? 'var(--primary)' : undefined }}>구분</span>
-                      {monthlySortField === 'pioneer_status' && (
-                        monthlySortOrder === 'asc' ? <ArrowUp size={12} color="var(--primary)" /> : <ArrowDown size={12} color="var(--primary)" />
-                      )}
-                      {filterPioneerStatus !== 'all' && (
-                        <span style={{ fontSize: '0.68rem', padding: '1px 5px', borderRadius: 4, background: 'var(--primary)', color: '#fff', fontWeight: 800 }}>
-                          {filterPioneerStatus}
-                        </span>
-                      )}
-                      <ChevronDown size={12} style={{ opacity: filterPioneerStatus !== 'all' ? 1 : 0.45 }} />
-                    </div>
-
-                    {activeHeaderDropdown === 'pioneer_status' && (
-                      <div className="header-filter-popover" onClick={e => e.stopPropagation()}>
-                        <div className="popover-header">
-                          <span>구분 선택 필터</span>
-                        </div>
-                        <div className={`popover-item ${filterPioneerStatus === 'all' ? 'active' : ''}`} onClick={() => { setFilterPioneerStatus('all'); setActiveHeaderDropdown(null); }}>
-                          <span>전체 구분</span>
-                          {filterPioneerStatus === 'all' && <Check size={13} />}
-                        </div>
-                        <div className={`popover-item ${filterPioneerStatus === 'RP' ? 'active' : ''}`} onClick={() => { setFilterPioneerStatus('RP'); setActiveHeaderDropdown(null); }}>
-                          <span>정규 (RP)</span>
-                          {filterPioneerStatus === 'RP' && <Check size={13} />}
-                        </div>
-                        <div className={`popover-item ${filterPioneerStatus === 'AP' ? 'active' : ''}`} onClick={() => { setFilterPioneerStatus('AP'); setActiveHeaderDropdown(null); }}>
-                          <span>보조 (AP)</span>
-                          {filterPioneerStatus === 'AP' && <Check size={13} />}
-                        </div>
-                        <div className={`popover-item ${filterPioneerStatus === '일반' ? 'active' : ''}`} onClick={() => { setFilterPioneerStatus('일반'); setActiveHeaderDropdown(null); }}>
-                          <span>일반 전도인</span>
-                          {filterPioneerStatus === '일반' && <Check size={13} />}
-                        </div>
-                        <div className={`popover-item ${filterPioneerStatus === '자녀' ? 'active' : ''}`} onClick={() => { setFilterPioneerStatus('자녀'); setActiveHeaderDropdown(null); }}>
-                          <span>자녀</span>
-                          {filterPioneerStatus === '자녀' && <Check size={13} />}
-                        </div>
-                      </div>
-                    )}
-                  </th>
-
-                  {/* 7. 직책 (클릭 시 장로/봉종/일반 선택 팝오버) */}
-                  <th 
-                    style={{
-                      textAlign: 'center',
-                      cursor: 'pointer',
-                      userSelect: 'none',
-                      background: filterPosition !== 'all' || monthlySortField === 'position' ? 'var(--primary-light, #eff6ff)' : undefined
-                    }}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setActiveHeaderDropdown(activeHeaderDropdown === 'position' ? null : 'position');
-                    }}
-                    title="클릭하여 직책(장로/봉종/일반) 필터 선택"
-                  >
-                    <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
-                      <span style={{ fontWeight: 700, color: filterPosition !== 'all' ? 'var(--primary)' : undefined }}>직책</span>
-                      {monthlySortField === 'position' && (
-                        monthlySortOrder === 'asc' ? <ArrowUp size={12} color="var(--primary)" /> : <ArrowDown size={12} color="var(--primary)" />
-                      )}
-                      {filterPosition !== 'all' && (
-                        <span style={{ fontSize: '0.68rem', padding: '1px 5px', borderRadius: 4, background: 'var(--primary)', color: '#fff', fontWeight: 800 }}>
-                          {filterPosition}
-                        </span>
-                      )}
-                      <ChevronDown size={12} style={{ opacity: filterPosition !== 'all' ? 1 : 0.45 }} />
-                    </div>
-
-                    {activeHeaderDropdown === 'position' && (
-                      <div className="header-filter-popover" onClick={e => e.stopPropagation()}>
-                        <div className="popover-header">
-                          <span>직책 선택 필터</span>
-                        </div>
-                        <div className={`popover-item ${filterPosition === 'all' ? 'active' : ''}`} onClick={() => { setFilterPosition('all'); setActiveHeaderDropdown(null); }}>
-                          <span>전체 직책</span>
-                          {filterPosition === 'all' && <Check size={13} />}
-                        </div>
-                        <div className={`popover-item ${filterPosition === '장로' ? 'active' : ''}`} onClick={() => { setFilterPosition('장로'); setActiveHeaderDropdown(null); }}>
-                          <span>장로</span>
-                          {filterPosition === '장로' && <Check size={13} />}
-                        </div>
-                        <div className={`popover-item ${filterPosition === '봉종' ? 'active' : ''}`} onClick={() => { setFilterPosition('봉종'); setActiveHeaderDropdown(null); }}>
-                          <span>봉종</span>
-                          {filterPosition === '봉종' && <Check size={13} />}
-                        </div>
-                        <div className={`popover-item ${filterPosition === '일반' ? 'active' : ''}`} onClick={() => { setFilterPosition('일반'); setActiveHeaderDropdown(null); }}>
-                          <span>일반</span>
-                          {filterPosition === '일반' && <Check size={13} />}
-                        </div>
-                      </div>
-                    )}
-                  </th>
-
-                  {/* 8. 집단 (클릭 시 집단 선택 팝오버 - 사용자 요청 핵심) */}
-                  <th 
-                    style={{
-                      textAlign: 'center',
-                      cursor: 'pointer',
-                      userSelect: 'none',
-                      background: filterGroup !== 'all' || monthlySortField === 'group_name' ? 'var(--primary-light, #eff6ff)' : undefined
-                    }}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setActiveHeaderDropdown(activeHeaderDropdown === 'group_name' ? null : 'group_name');
-                    }}
-                    title="클릭하여 집단 선택 필터"
-                  >
-                    <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
-                      <span style={{ fontWeight: 700, color: filterGroup !== 'all' ? 'var(--primary)' : undefined }}>집단</span>
-                      {monthlySortField === 'group_name' && (
-                        monthlySortOrder === 'asc' ? <ArrowUp size={12} color="var(--primary)" /> : <ArrowDown size={12} color="var(--primary)" />
-                      )}
-                      {filterGroup !== 'all' && (
-                        <span style={{ fontSize: '0.68rem', padding: '1px 5px', borderRadius: 4, background: 'var(--primary)', color: '#fff', fontWeight: 800 }}>
-                          {filterGroup}
-                        </span>
-                      )}
-                      <ChevronDown size={12} style={{ opacity: filterGroup !== 'all' ? 1 : 0.45 }} />
-                    </div>
-
-                    {activeHeaderDropdown === 'group_name' && (
-                      <div className="header-filter-popover align-right" onClick={e => e.stopPropagation()}>
-                        <div className="popover-header">
-                          <span>집단 선택 필터</span>
-                        </div>
-                        <div className={`popover-item ${monthlySortField === 'group_name' && monthlySortOrder === 'asc' ? 'active' : ''}`} onClick={() => { handleSort('group_name'); setActiveHeaderDropdown(null); }}>
-                          <span>집단순 정렬</span>
-                          {monthlySortField === 'group_name' && monthlySortOrder === 'asc' && <Check size={13} />}
-                        </div>
-                        <div className="popover-divider" />
-                        <div className={`popover-item ${filterGroup === 'all' ? 'active' : ''}`} onClick={() => { setFilterGroup('all'); setActiveHeaderDropdown(null); }}>
-                          <span>전체 집단</span>
-                          {filterGroup === 'all' && <Check size={13} />}
-                        </div>
-                        <div className="popover-divider" />
-                        {groups.map(g => (
-                          <div key={g.id} className={`popover-item ${filterGroup === g.name ? 'active' : ''}`} onClick={() => { setFilterGroup(g.name); setActiveHeaderDropdown(null); }}>
-                            <span>{g.name} 집단</span>
-                            {filterGroup === g.name && <Check size={13} />}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </th>
-
-                  <th style={{ textAlign: 'center', width: 68 }} className="no-print">수정</th>
-                </tr>
-              </thead>
-              <tbody>
-                {displayReports.length === 0 ? (
-                  <tr>
-                    <td colSpan={9} style={{ textAlign: 'center', padding: '36px', color: 'var(--text-muted)' }}>
-                      해당 조건의 보고서가 없습니다.
-                    </td>
-                  </tr>
-                ) : (
-                  displayReports.map((r) => (
-                    <tr key={r.id}>
-                      {/* 성명: 클릭 시 S-21 전도인 기록 카드 모달 실행 */}
-                      <td className="col-publisher-name" style={{ textAlign: 'center' }}>
-                        <button
-                          onClick={() => setCardModalData({ id: r.publisher_id, name: r.publisher_name || '' })}
-                          style={{
-                            background: 'none',
-                            border: 'none',
-                            padding: 0,
-                            margin: 0,
-                            cursor: 'pointer',
-                            fontWeight: 700,
-                            color: 'var(--primary)',
-                            fontSize: '0.92rem',
-                            textAlign: 'center'
-                          }}
-                          className="name-link-btn"
-                          title={`${r.publisher_name} 전도인 기록 카드 (S-21) 열기`}
-                        >
-                          {r.publisher_name}
-                        </button>
-                      </td>
-
-                      {/* 참여: Y / N */}
-                      <td className="col-participated" style={{ textAlign: 'center' }}>
-                        {r.participated ? (
-                          <span style={{ color: 'var(--accent-emerald)', fontWeight: 700 }}>Y</span>
-                        ) : (
-                          <span style={{ color: 'var(--accent-rose)', fontWeight: 800 }}>N</span>
-                        )}
-                      </td>
-
-                      {/* 연구: '건' 글자 없이 숫자만 표시 */}
-                      <td className="col-studies" style={{ textAlign: 'center' }}>
-                        {r.bible_studies > 0 ? r.bible_studies : '-'}
-                      </td>
-
-                      {/* 시간: '시간' 글자 없이 숫자만 표시 */}
-                      <td className="col-hours" style={{ textAlign: 'center', fontWeight: r.hours > 0 ? 700 : 400 }}>
-                        {r.hours > 0 ? r.hours : '-'}
-                      </td>
-
-                      {/* 비고: 특기사항 및 인정시간 */}
-                      <td style={{ fontSize: '0.8rem', color: 'var(--text-muted)', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', textAlign: 'center' }}>
-                        {(r.remarks || []).map(rm => `${rm.type}: ${rm.hours}시간`).join(', ') || '-'}
-                      </td>
-
-                      {/* 구분: RP가 아닌데 시간 보고가 되어 있다면 AP로 표시 */}
-                      <td style={{ textAlign: 'center' }}>
-                        {isChildStatus(r.pioneer_status) ? (
-                          <span className="badge badge-child">자녀</span>
-                        ) : r.pioneer_status === 'RP' ? (
-                          <span className="badge badge-rp">RP</span>
-                        ) : Number(r.hours || 0) > 0 ? (
-                          <span className="badge badge-ap">AP</span>
-                        ) : r.pioneer_status && r.pioneer_status !== '일반' && r.pioneer_status !== 'AP' ? (
-                          <span className={`badge badge-${r.pioneer_status?.toLowerCase()}`}>
-                            {r.pioneer_status}
-                          </span>
-                        ) : (
-                          <span style={{ color: 'var(--text-faint)' }}>-</span>
-                        )}
-                      </td>
-
-                      {/* 직책: '일반' 구분은 없앰 (오직 장로, 봉종만 표시) */}
-                      <td style={{ textAlign: 'center' }}>
-                        {r.position === '장로' ? (
-                          <span className="badge badge-elder">장로</span>
-                        ) : (r.position === '봉종' || r.position === '봉사의 종') ? (
-                          <span className="badge badge-servant">봉종</span>
-                        ) : r.position && r.position !== '일반' ? (
-                          <span className="badge badge-publisher">{r.position}</span>
-                        ) : (
-                          ''
-                        )}
-                      </td>
-
-                      {/* 집단 */}
-                      <td style={{ textAlign: 'center' }}>
-                        <span className="badge badge-group">
-                          {r.group_name}
-                        </span>
-                      </td>
-
-                      {/* 수정 버튼 */}
-                      <td style={{ textAlign: 'center' }} className="no-print">
-                        <button
-                          onClick={() => setEditModalData({
-                            publisher: {
-                              id: r.publisher_id,
-                              name: r.publisher_name || '',
-                              group_name: r.group_name,
-                              position: r.position,
-                              pioneer_status: r.pioneer_status
-                            },
-                            month: selectedMonth,
-                            existingReport: r
-                          })}
-                          className="btn-secondary"
-                          style={{ padding: '4px 8px', fontSize: '0.76rem', gap: 4 }}
-                          title={`${r.publisher_name} 보고서 내용 수정`}
-                        >
-                          <Edit2 size={12} />
-                          <span>수정</span>
-                        </button>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
         </div>
-
-      </div>
       )}
 
       {/* 5. 회중 분석 보고 (1년에 한 번 지부 보고용) */}
@@ -3118,8 +3197,8 @@ ${submitUrl}
       {/* 보고 완료/마감 시 미보고자 조치 선택 모달 */}
       {/* ------------------------------------------------------------- */}
       {closeModalOpen && (
-        <div 
-          className="modal-overlay" 
+        <div
+          className="modal-overlay"
           onClick={() => !closing && setCloseModalOpen(false)}
         >
           <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: 500, padding: '28px' }}>

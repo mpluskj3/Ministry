@@ -165,5 +165,79 @@ export function downloadPdfBlob(bytes: Uint8Array, fileName: string) {
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
 }
+
+/**
+ * 여러 전도인의 S-21 기록 카드를 단일 다중 페이지 PDF 문서로 병합 생성
+ */
+export async function generateMergedPublisherCardsPdf(
+  records: YearlyPublisherRecord[],
+  serviceYearName: string,
+  onProgress?: (current: number, total: number) => void
+): Promise<Uint8Array> {
+  const mergedPdf = await PDFDocument.create();
+
+  for (let i = 0; i < records.length; i++) {
+    const record = records[i];
+    if (onProgress) {
+      onProgress(i + 1, records.length);
+    }
+    const singlePdfBytes = await generatePublisherCardPdf(record, serviceYearName);
+    const singleDoc = await PDFDocument.load(singlePdfBytes);
+    const copiedPages = await mergedPdf.copyPages(singleDoc, singleDoc.getPageIndices());
+    copiedPages.forEach(page => mergedPdf.addPage(page));
+  }
+
+  return await mergedPdf.save();
+}
+
+/**
+ * 브라우저 시스템 인쇄 대화상자를 호출하여 PDF를 직접 인쇄
+ */
+export async function printPdfBlob(bytes: Uint8Array): Promise<void> {
+  const blob = new Blob([bytes], { type: 'application/pdf' });
+  const blobUrl = URL.createObjectURL(blob);
+
+  // iframe을 통한 직접 인쇄 시도
+  let iframe: HTMLIFrameElement | null = document.createElement('iframe');
+  iframe.style.position = 'fixed';
+  iframe.style.right = '0';
+  iframe.style.bottom = '0';
+  iframe.style.width = '0';
+  iframe.style.height = '0';
+  iframe.style.border = '0';
+  iframe.src = blobUrl;
+
+  document.body.appendChild(iframe);
+
+  return new Promise<void>((resolve) => {
+    const cleanup = () => {
+      setTimeout(() => {
+        if (iframe && iframe.parentNode) {
+          iframe.parentNode.removeChild(iframe);
+          iframe = null;
+        }
+        URL.revokeObjectURL(blobUrl);
+        resolve();
+      }, 3000);
+    };
+
+    iframe!.onload = () => {
+      try {
+        iframe?.contentWindow?.focus();
+        iframe?.contentWindow?.print();
+        cleanup();
+      } catch (e) {
+        console.warn('iframe 인쇄 실패, 새 탭 인쇄로 폴백:', e);
+        // iframe 인쇄 실패 시 새 창 폴백
+        const printWindow = window.open(blobUrl, '_blank');
+        if (printWindow) {
+          printWindow.focus();
+        }
+        cleanup();
+      }
+    };
+  });
+}
+

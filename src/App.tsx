@@ -10,7 +10,7 @@ import { SettingsModal } from './components/SettingsModal';
 import { AdminAuthGate } from './components/AdminAuthGate';
 import { AccessDenied } from './components/AccessDenied';
 import { Manager, ServiceYear, Group, getCurrentDateServiceMonth } from './types/database';
-import { getCurrentServiceYear, getGroups, getUnreportedMembers, authenticateManager } from './services/ministryService';
+import { getCurrentServiceYear, getServiceYears, setCurrentServiceYear, getGroups, getUnreportedMembers, authenticateManager } from './services/ministryService';
 import { getSupabaseClient } from './services/supabase';
 import { CalendarClock, Sun, Moon, LogIn, ShieldCheck, Menu, PanelLeftOpen } from 'lucide-react';
 
@@ -64,6 +64,8 @@ export function App() {
   };
 
   const [currentYear, setCurrentYear] = useState<ServiceYear | null>(null);
+  const [systemDefaultYear, setSystemDefaultYear] = useState<ServiceYear | null>(null);
+  const [serviceYears, setServiceYears] = useState<ServiceYear[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
   const [selectedGroupId, setSelectedGroupId] = useState<string>(() => {
     const saved = localStorage.getItem('ministry_manager_session');
@@ -275,9 +277,9 @@ export function App() {
   // Update Page Title
   useEffect(() => {
     if (!isManagerMode) {
-      document.title = congregationName ? `${congregationName} 야외 봉사 보고` : '야외 봉사 보고';
+      document.title = congregationName ? `${congregationName} - 봉사보고` : '봉사보고';
     } else {
-      document.title = congregationName ? `${congregationName} - 봉사 보고 관리 시스템` : 'Ministry Hub 관리자';
+      document.title = congregationName ? `${congregationName} - 봉사보고 관리` : '봉사보고 관리';
     }
   }, [congregationName, isManagerMode]);
 
@@ -286,11 +288,14 @@ export function App() {
     async function init() {
       try {
         setLoading(true);
-        const [sy, grps] = await Promise.all([
+        const [sy, allYears, grps] = await Promise.all([
           getCurrentServiceYear(),
+          getServiceYears(),
           getGroups()
         ]);
         setCurrentYear(sy);
+        setSystemDefaultYear(sy);
+        setServiceYears(allYears);
         setGroups(grps);
 
         // 이달의 미보고자 수 조회 (보고 대상 월 기준, 예: 9월 16일 -> 8월)
@@ -351,9 +356,45 @@ export function App() {
     setIsManagerMode(false);
   };
 
-  const handleServiceYearChanged = async (newYear: ServiceYear) => {
+  // 모든 관리자(집단감독자, 보조자 등)가 봉사연도를 변경하여 내용을 조회할 수 있는 핸들러
+  const handleSelectViewYear = async (newYear: ServiceYear) => {
     setCurrentYear(newYear);
     try {
+      const currentServiceMonth = getCurrentDateServiceMonth(newYear.year_name);
+      const unrep = await getUnreportedMembers(newYear.id, currentServiceMonth);
+      setUnreportedCount(unrep.length);
+    } catch (e) {
+      console.error('Failed to update service year stats for view:', e);
+    }
+  };
+
+  // 최고관리자만 수행 가능한 시스템 기본 봉사연도 영구 고정 핸들러
+  const handleFixCurrentYearAsDefault = async (yearId: string) => {
+    if (manager?.role !== 'super') {
+      alert('봉사연도 설정 고정은 최고관리자만 변경할 수 있습니다.');
+      return;
+    }
+    try {
+      await setCurrentServiceYear(yearId);
+      const updatedYears = await getServiceYears();
+      setServiceYears(updatedYears);
+      const matched = updatedYears.find(y => y.id === yearId);
+      if (matched) {
+        setSystemDefaultYear(matched);
+        setCurrentYear(matched);
+        alert(`공식 기본 봉사연도가 '${matched.year_name} 봉사연도'로 고정 설정되었습니다.`);
+      }
+    } catch (err: any) {
+      alert('기본 봉사연도 고정 실패: ' + (err.message || '오류'));
+    }
+  };
+
+  const handleServiceYearChanged = async (newYear: ServiceYear) => {
+    setCurrentYear(newYear);
+    setSystemDefaultYear(newYear);
+    try {
+      const updatedYears = await getServiceYears();
+      setServiceYears(updatedYears);
       const currentServiceMonth = getCurrentDateServiceMonth(newYear.year_name);
       const unrep = await getUnreportedMembers(newYear.id, currentServiceMonth);
       setUnreportedCount(unrep.length);
@@ -447,7 +488,7 @@ export function App() {
               </div>
               <div>
                 <div style={{ fontWeight: 800, fontSize: '1.05rem', color: 'var(--text-main)' }}>
-                  {congregationName ? `${congregationName} 야외 봉사 보고` : '야외 봉사 보고'}
+                  {congregationName ? `${congregationName} - 봉사보고` : '봉사보고'}
                 </div>
               </div>
             </div>
@@ -551,6 +592,10 @@ export function App() {
         groups={groups}
         congregationName={congregationName}
         onGoToReportPage={goToReport}
+        serviceYears={serviceYears}
+        systemDefaultYear={systemDefaultYear}
+        onSelectViewYear={handleSelectViewYear}
+        onFixDefaultYear={handleFixCurrentYearAsDefault}
       />
 
       {/* Main Content Viewport */}

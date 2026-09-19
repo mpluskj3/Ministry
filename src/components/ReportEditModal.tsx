@@ -225,16 +225,7 @@ export const ReportEditModal: React.FC<ReportEditModalProps> = ({
                   placeholder="예: 15"
                   value={hours}
                   onChange={(e) => {
-                    const val = e.target.value;
-                    setHours(val);
-                    if (publisher?.pioneer_status !== 'RP') {
-                      const num = parseFloat(val);
-                      if (!isNaN(num) && num > 0) {
-                        setIsAuxiliaryPioneer(true);
-                      } else if (val === '' || num === 0) {
-                        setIsAuxiliaryPioneer(false);
-                      }
-                    }
+                    setHours(e.target.value);
                   }}
                   className="form-input"
                   style={{ paddingRight: 32, fontWeight: 700 }}

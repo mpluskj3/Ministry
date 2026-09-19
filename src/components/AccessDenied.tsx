@@ -214,7 +214,7 @@ export const AccessDenied: React.FC<AccessDeniedProps> = ({
           </div>
 
           <div style={{ marginTop: 24, fontSize: '0.76rem', color: 'var(--text-muted)' }}>
-            {congregationName} 봉사 관리 시스템
+            {congregationName ? `${congregationName} - 봉사보고 관리` : '봉사보고 관리'}
           </div>
         </div>
       </div>

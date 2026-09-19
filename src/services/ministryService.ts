@@ -1609,6 +1609,118 @@ export async function getYearlyPublisherRecord(serviceYearId: string, publisherI
   };
 }
 
+/**
+ * 여러 전도인의 연간 봉사 기록 카드(S-21 데이터)를 일괄 고속 집계
+ */
+export async function getYearlyPublisherRecordsBatch(
+  serviceYearId: string,
+  publisherIds: string[]
+): Promise<YearlyPublisherRecord[]> {
+  if (!publisherIds || publisherIds.length === 0) return [];
+
+  const allPublishers = await getPublishers(true);
+  const publisherMap = new Map(allPublishers.map(p => [p.id, p]));
+
+  const supabase = getSupabaseClient();
+  let reports: MonthlyReport[] = [];
+
+  if (supabase) {
+    // 50개씩 나눠서 쿼리 (URL 길이 제한 및 대용량 대응)
+    const chunkSize = 50;
+    for (let i = 0; i < publisherIds.length; i += chunkSize) {
+      const chunk = publisherIds.slice(i, i + chunkSize);
+      const { data } = await supabase
+        .from('monthly_reports')
+        .select('*')
+        .eq('service_year_id', serviceYearId)
+        .in('publisher_id', chunk);
+      if (data) reports.push(...(data as MonthlyReport[]));
+    }
+  } else {
+    const localReports = getLocalData<MonthlyReport[]>('monthly_reports', INITIAL_REPORTS);
+    const idSet = new Set(publisherIds);
+    reports = localReports.filter(r => r.service_year_id === serviceYearId && idSet.has(r.publisher_id));
+  }
+
+  // 전도인별 월별 보고서 매핑: Map<publisherId, Map<ServiceMonth, MonthlyReport>>
+  const reportsByPublisher = new Map<string, Map<ServiceMonth, MonthlyReport>>();
+  reports.forEach(r => {
+    if (!reportsByPublisher.has(r.publisher_id)) {
+      reportsByPublisher.set(r.publisher_id, new Map());
+    }
+    reportsByPublisher.get(r.publisher_id)!.set(r.month, r);
+  });
+
+  const results: YearlyPublisherRecord[] = [];
+
+  for (const pid of publisherIds) {
+    const publisher = publisherMap.get(pid);
+    if (!publisher) continue;
+
+    const pReportMap = reportsByPublisher.get(pid) || new Map();
+    let totalHours = 0;
+    let totalStudies = 0;
+    let activeMonths = 0;
+
+    const monthlyRecords = SERVICE_MONTHS.map(month => {
+      const rep = pReportMap.get(month);
+      const participated = !!rep?.participated;
+      const hours = Number(rep?.hours || 0);
+      const bibleStudies = Number(rep?.bible_studies || 0);
+
+      if (participated) {
+        activeMonths++;
+        totalHours += hours;
+        totalStudies += bibleStudies;
+      }
+
+      const remarksStr = (rep?.remarks || [])
+        .map((rm: any) => rm.type ? `${rm.type}: ${rm.hours}시간` : '')
+        .filter(Boolean)
+        .join(', ');
+
+      return {
+        month,
+        participated,
+        bibleStudies,
+        hours,
+        remarks: remarksStr,
+        division: publisher.pioneer_status === '일반' ? '' : publisher.pioneer_status,
+      };
+    });
+
+    const averageHours = activeMonths > 0 ? Number((totalHours / activeMonths).toFixed(1)) : 0;
+    const averageStudies = activeMonths > 0 ? Number((totalStudies / activeMonths).toFixed(1)) : 0;
+
+    results.push({
+      userInfo: {
+        name: publisher.name,
+        birthDate: publisher.birth_date || '',
+        gender: publisher.gender || '',
+        baptismDate: publisher.baptism_date || '',
+        hope: publisher.hope || '다른 양',
+        isElder: publisher.position === '장로',
+        isMinisterialServant: publisher.position === '봉사의 종' || publisher.position === '봉종',
+        isRegularPioneer: publisher.pioneer_status === 'RP',
+        isSpecialPioneer: publisher.pioneer_status === 'SP',
+        isMissionary: publisher.pioneer_status === 'FM',
+        isChild: isChildStatus(publisher.pioneer_status),
+        groupName: publisher.group_name,
+      },
+      monthlyRecords,
+      totals: {
+        totalHours,
+        totalStudies,
+        activeMonths,
+        averageHours,
+        averageStudies,
+      },
+    });
+  }
+
+  return results;
+}
+
 // -------------------------------------------------------------
 // 9. 관리자 목록 및 계정 관리 (Managers CRUD)
 // -------------------------------------------------------------

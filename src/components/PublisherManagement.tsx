@@ -1,14 +1,14 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { 
-  Users, 
-  UserPlus, 
-  Edit3, 
-  Trash2, 
-  FileText, 
-  Search, 
-  Check, 
-  X, 
-  Phone, 
+import {
+  Users,
+  UserPlus,
+  Edit3,
+  Trash2,
+  FileText,
+  Search,
+  Check,
+  X,
+  Phone,
   Calendar,
   UserX,
   RotateCcw,
@@ -22,13 +22,14 @@ import {
   Upload,
   AlertCircle,
   ExternalLink,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Printer
 } from 'lucide-react';
 import { Publisher, Group, ServiceYear, Position, PioneerStatus, Hope, Gender, isChildStatus, Manager } from '../types/database';
-import { 
-  getPublishers, 
-  getGroups, 
-  savePublisher, 
+import {
+  getPublishers,
+  getGroups,
+  savePublisher,
   deactivatePublisher,
   restorePublisher,
   deletePublisher,
@@ -58,6 +59,7 @@ export const calculateAge = (birthDate?: string | null): string => {
   return age >= 0 ? `만${age}세` : '-';
 };
 import { PublisherCardModal } from './PublisherCardModal';
+import { BatchPublisherCardModal } from './BatchPublisherCardModal';
 import { EmergencyContacts } from './EmergencyContacts';
 
 interface PublisherManagementProps {
@@ -72,7 +74,7 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedGroupFilter, setSelectedGroupFilter] = useState('all');
-  const isSuperAdmin = manager?.role === 'super' || (!manager && import.meta.env.DEV);
+  const isSuperAdmin = manager?.role === 'super';
 
   // 활성 전도인 vs 전출/무활동 보관함 vs 비상연락망 탭
   const [activeSubTab, setActiveSubTab] = useState<'active' | 'inactive' | 'emergency'>(initialSubTab);
@@ -88,6 +90,15 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
 
   // 전도인 기록 카드(S-21) 모달
   const [cardModalData, setCardModalData] = useState<{ id: string; name: string } | null>(null);
+
+  // 다중 선택된 전도인 IDs 및 일괄 인쇄 모달 상태
+  const [selectedPublisherIds, setSelectedPublisherIds] = useState<Set<string>>(new Set());
+  const [batchPrintModalData, setBatchPrintModalData] = useState<Array<{ id: string; name: string }> | null>(null);
+
+  // 탭 또는 집단 필터 변경 시 선택 초기화
+  useEffect(() => {
+    setSelectedPublisherIds(new Set());
+  }, [activeSubTab, selectedGroupFilter]);
 
   // 최근 봉사 보고서 기반 AP/RP 상태 맵
   const [latestStatusMap, setLatestStatusMap] = useState<Map<string, string>>(new Map());
@@ -364,9 +375,9 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
 
   // 실제 미침례 어린 자녀(이지온 등)는 전도인이 아니므로 전도인 명단에서 제외 (비상연락망에만 등록 및 표시)
   // 비상연락처의 관계(relationship: '자녀')는 가족 대표자 기준 호칭일 뿐이므로 활동 전도인 판단 기준으로 사용하지 않음
-  const isChild = (p: Publisher) => 
-    isChildStatus(p.pioneer_status) || 
-    isChildStatus(p.position) || 
+  const isChild = (p: Publisher) =>
+    isChildStatus(p.pioneer_status) ||
+    isChildStatus(p.position) ||
     (p.special_notes && p.special_notes.includes('[자녀]'));
   const activePublishers = allPublishers.filter(p => p.is_active && !isChild(p));
   const inactivePublishers = allPublishers.filter(p => !p.is_active && !isChild(p));
@@ -601,19 +612,73 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
   const currentList = activeSubTab === 'active' ? activePublishers : inactivePublishers;
   const targetFilterGroup = groups.find(g => g.id === selectedGroupFilter);
   const filteredPublishers = currentList.filter(p => {
-    const matchesSearch = 
+    const matchesSearch =
       p.name.toLowerCase().includes(searchQuery.trim().toLowerCase()) ||
       (p.phone && p.phone.includes(searchQuery.trim())) ||
       (p.address && p.address.toLowerCase().includes(searchQuery.trim().toLowerCase()));
-    const matchesGroup = 
-      selectedGroupFilter === 'all' || 
-      p.group_id === selectedGroupFilter || 
+    const matchesGroup =
+      selectedGroupFilter === 'all' ||
+      p.group_id === selectedGroupFilter ||
       (targetFilterGroup && p.group_name === targetFilterGroup.name);
     return matchesSearch && matchesGroup;
   });
 
+  // 개별 전도인 체크박스 토글
+  const handleToggleSelectOne = (id: string) => {
+    setSelectedPublisherIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  // 현재 필터된 전도인 전체 선택 / 전체 해제 토글
+  const handleToggleSelectAll = () => {
+    if (filteredPublishers.length === 0) return;
+    const allSelected = filteredPublishers.every(p => selectedPublisherIds.has(p.id));
+    if (allSelected) {
+      setSelectedPublisherIds(prev => {
+        const next = new Set(prev);
+        filteredPublishers.forEach(p => next.delete(p.id));
+        return next;
+      });
+    } else {
+      setSelectedPublisherIds(prev => {
+        const next = new Set(prev);
+        filteredPublishers.forEach(p => next.add(p.id));
+        return next;
+      });
+    }
+  };
+
+  // 선택한 전도인 카드 일괄 인쇄 실행
+  const handlePrintSelectedCards = () => {
+    const selected = filteredPublishers.filter(p => selectedPublisherIds.has(p.id));
+    if (selected.length === 0) {
+      alert('인쇄할 전도인을 먼저 선택해주세요.');
+      return;
+    }
+    setBatchPrintModalData(selected.map(p => ({ id: p.id, name: p.name })));
+  };
+
+  // 현재 필터된 전체 전도인 카드 일괄 인쇄 실행
+  const handlePrintAllCards = () => {
+    if (filteredPublishers.length === 0) {
+      alert('인쇄할 전도인이 없습니다.');
+      return;
+    }
+    const confirmMsg = `현재 목록의 전도인 총 ${filteredPublishers.length}명의 S-21 기록 카드를 일괄 인쇄하시겠습니까?`;
+    if (!window.confirm(confirmMsg)) return;
+    setBatchPrintModalData(filteredPublishers.map(p => ({ id: p.id, name: p.name })));
+  };
+
   // CSV 내보내기: 이름, 직책, RP, 생년월일, 침례일자, 집단, 성별, 구별, 나이, 비고
   const handleExportCsv = () => {
+    if (!isSuperAdmin) {
+      alert('엑셀/CSV 다운로드는 최고관리자만 가능합니다.');
+      return;
+    }
     if (filteredPublishers.length === 0) {
       alert('내보낼 전도인 데이터가 없습니다.');
       return;
@@ -645,22 +710,22 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
   };
 
   return (
-    <div className="publisher-management-container" style={{ maxWidth: 1400, margin: '0 auto', padding: '24px 28px' }}>
+    <div className="publisher-management-container" style={{ maxWidth: 1400, margin: '0 auto', padding: '16px clamp(12px, 3vw, 24px)' }}>
       {/* Header */}
-      <div 
+      <div
         className={activeSubTab === 'emergency' ? 'no-print' : 'publisher-mgmt-header'}
         style={{
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
           flexWrap: 'wrap',
-          gap: 16,
-          marginBottom: 24
+          gap: 12,
+          marginBottom: 20
         }}
       >
-        <div>
-          <h2 style={{ fontSize: '1.45rem', fontWeight: 800, margin: '0 0 4px 0' }}>전도인 명단 관리</h2>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', margin: 0 }}>
+        <div style={{ minWidth: 0, flex: '1 1 240px' }}>
+          <h2 style={{ fontSize: '1.35rem', fontWeight: 800, margin: '0 0 4px 0' }}>전도인 명단 관리</h2>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.82rem', margin: 0, lineHeight: 1.4 }}>
             {activeSubTab === 'emergency'
               ? '비상사태 및 재해 시 신속한 확인을 위한 전도인 비상연락망, 가족 대표자 및 주소 관리'
               : '활동 전도인 인적사항 관리 및 전출/이사 전도인 보관함 (과거 보고 기록 및 통계 영구 연동)'}
@@ -668,7 +733,7 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
         </div>
 
         {activeSubTab === 'active' && isSuperAdmin && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             <button
               type="button"
               onClick={() => {
@@ -677,15 +742,35 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
                 setSheetSyncModalOpen(true);
               }}
               className="btn-secondary"
-              style={{ gap: 6 }}
+              style={{
+                gap: 6,
+                padding: '8px 12px',
+                fontSize: '0.84rem',
+                whiteSpace: 'nowrap',
+                flexShrink: 0,
+                flex: '1 1 auto',
+                justifyContent: 'center'
+              }}
               title="구글 시트나 엑셀 표 데이터를 복사하여 붙여넣으면 전도인 명단을 자동으로 동기화합니다."
             >
-              <FileSpreadsheet size={16} />
-              <span>시트 명단 복사·가져오기</span>
+              <FileSpreadsheet size={15} />
+              <span>시트 명단 가져오기</span>
             </button>
-            <button onClick={handleOpenAdd} className="btn-primary" style={{ gap: 6 }}>
-              <UserPlus size={16} />
-              <span>신규 전도인 등록</span>
+            <button
+              onClick={handleOpenAdd}
+              className="btn-primary"
+              style={{
+                gap: 6,
+                padding: '8px 14px',
+                fontSize: '0.84rem',
+                whiteSpace: 'nowrap',
+                flexShrink: 0,
+                flex: '1 1 auto',
+                justifyContent: 'center'
+              }}
+            >
+              <UserPlus size={15} />
+              <span>전도인 등록</span>
             </button>
           </div>
         )}
@@ -693,38 +778,42 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
       </div>
 
       {/* 3 Sub-Tabs Switcher: 활동 전도인 vs 전출/무활동 보관함 vs 비상연락망 */}
-      <div 
+      <div
         className="no-print publisher-subtabs-bar"
         style={{
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          flexWrap: 'wrap',
-          gap: 12,
-          marginBottom: 20,
+          flexWrap: 'nowrap',
+          overflowX: 'auto',
+          WebkitOverflowScrolling: 'touch',
+          gap: 6,
+          marginBottom: 16,
           borderBottom: '1px solid var(--border-color)',
           paddingBottom: 2
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
           <button
             onClick={() => setActiveSubTab('active')}
             style={{
               display: 'inline-flex',
               alignItems: 'center',
-              gap: 8,
-              padding: '10px 18px',
+              gap: 6,
+              padding: '8px 12px',
               border: 'none',
               background: 'none',
               borderBottom: activeSubTab === 'active' ? '2px solid var(--primary)' : '2px solid transparent',
               color: activeSubTab === 'active' ? 'var(--primary)' : 'var(--text-muted)',
               fontWeight: activeSubTab === 'active' ? 700 : 500,
-              fontSize: '0.92rem',
+              fontSize: '0.86rem',
               cursor: 'pointer',
+              whiteSpace: 'nowrap',
+              flexShrink: 0,
               transition: 'all 0.15s ease'
             }}
           >
-            <Users size={16} />
+            <Users size={15} />
             <span>활동 전도인 ({activePublishers.length}명)</span>
           </button>
 
@@ -733,19 +822,21 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
             style={{
               display: 'inline-flex',
               alignItems: 'center',
-              gap: 8,
-              padding: '10px 18px',
+              gap: 6,
+              padding: '8px 12px',
               border: 'none',
               background: 'none',
               borderBottom: activeSubTab === 'inactive' ? '2px solid var(--accent-rose)' : '2px solid transparent',
               color: activeSubTab === 'inactive' ? 'var(--accent-rose)' : 'var(--text-muted)',
               fontWeight: activeSubTab === 'inactive' ? 700 : 500,
-              fontSize: '0.92rem',
+              fontSize: '0.86rem',
               cursor: 'pointer',
+              whiteSpace: 'nowrap',
+              flexShrink: 0,
               transition: 'all 0.15s ease'
             }}
           >
-            <Archive size={16} />
+            <Archive size={15} />
             <span>전출 / 무활동 보관함 ({inactivePublishers.length}명)</span>
           </button>
 
@@ -754,31 +845,33 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
             style={{
               display: 'inline-flex',
               alignItems: 'center',
-              gap: 8,
-              padding: '10px 18px',
+              gap: 6,
+              padding: '8px 12px',
               border: 'none',
               background: 'none',
               borderBottom: activeSubTab === 'emergency' ? '2px solid #f43f5e' : '2px solid transparent',
               color: activeSubTab === 'emergency' ? '#f43f5e' : 'var(--text-muted)',
               fontWeight: activeSubTab === 'emergency' ? 700 : 500,
-              fontSize: '0.92rem',
+              fontSize: '0.86rem',
               cursor: 'pointer',
+              whiteSpace: 'nowrap',
+              flexShrink: 0,
               transition: 'all 0.15s ease'
             }}
           >
-            <Phone size={16} />
+            <Phone size={15} />
             <span>비상연락망</span>
           </button>
         </div>
 
         {/* 비상연락망 탭 선택 시 우측 상단 액션 메뉴 (가족 묶음 지정, CSV 저장, 인쇄) 컨테이너 */}
         {activeSubTab === 'emergency' && (
-          <div id="emergency-header-actions" style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', paddingBottom: 4 }} />
+          <div id="emergency-header-actions" style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', paddingBottom: 4, flexShrink: 0 }} />
         )}
       </div>
 
       {activeSubTab === 'emergency' ? (
-        <EmergencyContacts 
+        <EmergencyContacts
           currentYear={currentYear}
           manager={manager}
           isEmbedded={true}
@@ -786,317 +879,406 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
         />
       ) : (
         <>
-      {/* Filter and Search Bar */}
-      <div className="nfox-card" style={{
-        padding: '16px 20px',
-        marginBottom: 16,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        flexWrap: 'wrap',
-        gap: 16
-      }}>
-        {/* Group Filter Chips: 전체 및 각 집단 필터링 (집단 관리자는 본인 집단 기본 선택 및 '내 집단' 표시) */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-muted)' }}>
-            집단 필터:
-          </span>
-          <button
-            onClick={() => setSelectedGroupFilter('all')}
-            style={{
-              padding: '6px 14px',
-              borderRadius: 'var(--radius-full)',
-              fontSize: '0.82rem',
-              fontWeight: 600,
-              cursor: 'pointer',
-              border: selectedGroupFilter === 'all' ? '1px solid var(--primary)' : '1px solid var(--border-color)',
-              background: selectedGroupFilter === 'all' ? 'var(--primary)' : 'var(--bg-card)',
-              color: selectedGroupFilter === 'all' ? '#fff' : 'var(--text-secondary)',
-              transition: 'all 0.15s ease'
-            }}
-          >
-            전체 ({currentList.length})
-          </button>
-          {groups.map(g => {
-            const isMyGroup = manager?.role === 'group' && (g.id === manager.group_id || g.name === manager.group_name);
-            const countInGroup = currentList.filter(p => p.group_id === g.id || p.group_name === g.name).length;
-            return (
+          {/* Filter and Search Bar */}
+          <div className="nfox-card" style={{
+            padding: '14px 16px',
+            marginBottom: 16,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 12
+          }}>
+            {/* Group Filter Chips: 전체 및 각 집단 필터링 */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+              <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-muted)', marginRight: 2, whiteSpace: 'nowrap' }}>
+              </span>
               <button
-                key={g.id}
-                onClick={() => setSelectedGroupFilter(g.id)}
+                type="button"
+                onClick={() => setSelectedGroupFilter('all')}
                 style={{
-                  padding: '6px 14px',
+                  padding: '5px 12px',
                   borderRadius: 'var(--radius-full)',
-                  fontSize: '0.82rem',
+                  fontSize: '0.8rem',
                   fontWeight: 600,
                   cursor: 'pointer',
-                  border: selectedGroupFilter === g.id ? '1px solid var(--primary)' : '1px solid var(--border-color)',
-                  background: selectedGroupFilter === g.id ? 'var(--primary)' : 'var(--bg-card)',
-                  color: selectedGroupFilter === g.id ? '#fff' : 'var(--text-secondary)',
-                  transition: 'all 0.15s ease',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 5
+                  whiteSpace: 'nowrap',
+                  border: selectedGroupFilter === 'all' ? '1px solid var(--primary)' : '1px solid var(--border-color)',
+                  background: selectedGroupFilter === 'all' ? 'var(--primary)' : 'var(--bg-card)',
+                  color: selectedGroupFilter === 'all' ? '#fff' : 'var(--text-secondary)',
+                  transition: 'all 0.15s ease'
                 }}
               >
-                <span>{g.name}</span>
-                {isMyGroup && (
-                  <span style={{
-                    fontSize: '0.7rem',
-                    padding: '1px 5px',
-                    borderRadius: 4,
-                    background: selectedGroupFilter === g.id ? 'rgba(255,255,255,0.25)' : 'var(--primary-light)',
-                    color: selectedGroupFilter === g.id ? '#fff' : 'var(--primary)',
-                    fontWeight: 700
-                  }}>
-                    내 집단
-                  </span>
-                )}
-                <span style={{ opacity: 0.75, fontSize: '0.76rem' }}>({countInGroup})</span>
+                전체 ({currentList.length})
               </button>
-            );
-          })}
-        </div>
+              {groups.map(g => {
+                const isMyGroup = manager?.role === 'group' && (g.id === manager.group_id || g.name === manager.group_name);
+                const countInGroup = currentList.filter(p => p.group_id === g.id || p.group_name === g.name).length;
+                return (
+                  <button
+                    type="button"
+                    key={g.id}
+                    onClick={() => setSelectedGroupFilter(g.id)}
+                    style={{
+                      padding: '5px 12px',
+                      borderRadius: 'var(--radius-full)',
+                      fontSize: '0.8rem',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap',
+                      border: selectedGroupFilter === g.id ? '1px solid var(--primary)' : '1px solid var(--border-color)',
+                      background: selectedGroupFilter === g.id ? 'var(--primary)' : 'var(--bg-card)',
+                      color: selectedGroupFilter === g.id ? '#fff' : 'var(--text-secondary)',
+                      transition: 'all 0.15s ease',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 4
+                    }}
+                  >
+                    <span>{g.name}</span>
+                    {isMyGroup && (
+                      <span style={{
+                        fontSize: '0.68rem',
+                        padding: '1px 5px',
+                        borderRadius: 4,
+                        background: selectedGroupFilter === g.id ? 'rgba(255,255,255,0.25)' : 'var(--primary-light)',
+                        color: selectedGroupFilter === g.id ? '#fff' : 'var(--primary)',
+                        fontWeight: 700
+                      }}>
+                        내 집단
+                      </span>
+                    )}
+                    <span style={{ opacity: 0.75, fontSize: '0.74rem' }}>({countInGroup})</span>
+                  </button>
+                );
+              })}
+            </div>
 
-        {/* Search & Export */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ position: 'relative' }}>
-            <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-faint)' }} />
-            <input
-              type="text"
-              placeholder="전도인 검색..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="form-input"
-              style={{ paddingLeft: 34, paddingRight: 12, paddingTop: 6, paddingBottom: 6, fontSize: '0.84rem', width: 200, borderRadius: 'var(--radius-full)' }}
-            />
+            {/* Search & Actions (검색창, 카드 인쇄, 엑셀/CSV) */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexWrap: 'wrap',
+              gap: 8,
+              paddingTop: 10,
+              borderTop: '1px solid var(--border-color)'
+            }}>
+              <div style={{ position: 'relative', flex: '1 1 180px', minWidth: 140 }}>
+                <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-faint)' }} />
+                <input
+                  type="text"
+                  placeholder="전도인 검색..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="form-input"
+                  style={{
+                    paddingLeft: 34,
+                    paddingRight: 12,
+                    paddingTop: 7,
+                    paddingBottom: 7,
+                    fontSize: '0.84rem',
+                    width: '100%',
+                    borderRadius: 'var(--radius-full)'
+                  }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                {/* 선택 인쇄 버튼 (선택 항목이 있을 때 강조 노출) */}
+                {selectedPublisherIds.size > 0 && (
+                  <button
+                    type="button"
+                    onClick={handlePrintSelectedCards}
+                    className="btn-primary"
+                    style={{
+                      padding: '7px 12px',
+                      fontSize: '0.8rem',
+                      gap: 5,
+                      whiteSpace: 'nowrap',
+                      flexShrink: 0,
+                      background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
+                      boxShadow: '0 2px 6px rgba(79, 70, 229, 0.3)'
+                    }}
+                    title="선택한 전도인들의 S-21 기록 카드를 단일 통합 PDF로 연속 인쇄합니다"
+                  >
+                    <Printer size={13} />
+                    <span>선택 카드 인쇄 ({selectedPublisherIds.size}명)</span>
+                  </button>
+                )}
+
+                {/* 전체 카드 인쇄 버튼 */}
+                <button
+                  type="button"
+                  onClick={handlePrintAllCards}
+                  className="btn-secondary"
+                  style={{
+                    padding: '7px 12px',
+                    fontSize: '0.8rem',
+                    gap: 5,
+                    whiteSpace: 'nowrap',
+                    flexShrink: 0
+                  }}
+                  title="현재 목록의 모든 전도인 S-21 기록 카드를 일괄 연속 인쇄합니다"
+                >
+                  <Printer size={13} />
+                  <span>전체 카드 인쇄 ({filteredPublishers.length}명)</span>
+                </button>
+
+                {isSuperAdmin && (
+                  <button
+                    type="button"
+                    onClick={handleExportCsv}
+                    className="btn-secondary"
+                    style={{
+                      padding: '7px 12px',
+                      fontSize: '0.8rem',
+                      gap: 5,
+                      whiteSpace: 'nowrap',
+                      flexShrink: 0
+                    }}
+                  >
+                    <Download size={13} />
+                    <span>엑셀/CSV</span>
+                  </button>
+                )}
+              </div>
+            </div>
           </div>
 
-          <button
-            onClick={handleExportCsv}
-            className="btn-secondary"
-            style={{ padding: '6px 12px', fontSize: '0.8rem', gap: 6 }}
-          >
-            <Download size={13} />
-            <span>엑셀/CSV</span>
-          </button>
-        </div>
-      </div>
+          {/* Table Card: 선택, 이름, 직책, RP, 생년월일, 침례일자, 집단, 성별, 구별, 나이, 비고, 작업 */}
+          <div className="nfox-card" style={{ padding: 0, overflow: 'hidden' }}>
+            <div className="data-table-container sticky-container">
+              <table className="data-table data-table-sticky" style={{ minWidth: 1100 }}>
+                <thead>
+                  <tr>
+                    {/* 다중 선택 체크박스 열 */}
+                    <th style={{ width: 44, minWidth: 44, textAlign: 'center' }}>
+                      <input
+                        type="checkbox"
+                        checked={filteredPublishers.length > 0 && filteredPublishers.every(p => selectedPublisherIds.has(p.id))}
+                        onChange={handleToggleSelectAll}
+                        style={{ cursor: 'pointer', width: 16, height: 16 }}
+                        title={filteredPublishers.every(p => selectedPublisherIds.has(p.id)) ? '전체 선택 해제' : '현재 목록 전체 선택'}
+                      />
+                    </th>
+                    <th style={{ width: 110, minWidth: 110 }}>이름</th>
+                    <th style={{ width: 85, minWidth: 85, textAlign: 'center' }}>직책</th>
+                    <th style={{ width: 65, minWidth: 65, textAlign: 'center' }}>RP</th>
+                    <th style={{ width: 105, minWidth: 105 }}>생년월일</th>
+                    <th style={{ width: 105, minWidth: 105 }}>침례일자</th>
+                    <th style={{ width: 90, minWidth: 90 }}>집단</th>
+                    <th style={{ width: 65, minWidth: 65, textAlign: 'center' }}>성별</th>
+                    <th style={{ width: 95, minWidth: 95 }}>구별</th>
+                    <th style={{ width: 70, minWidth: 70, textAlign: 'center' }}>나이</th>
+                    <th style={{ minWidth: 180 }}>비고</th>
+                    <th style={{ width: 110, minWidth: 110, textAlign: 'center' }}>작업</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredPublishers.length === 0 ? (
+                    <tr>
+                      <td colSpan={12} style={{ textAlign: 'center', padding: '36px', color: 'var(--text-muted)' }}>
+                        {activeSubTab === 'active' ? '등록된 활동 전도인이 없습니다.' : '전출/삭제된 전도인이 없습니다.'}
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredPublishers.map((p) => (
+                      <tr key={p.id} style={{ background: selectedPublisherIds.has(p.id) ? 'rgba(99, 102, 241, 0.05)' : undefined }}>
+                        {/* 선택 체크박스 */}
+                        <td style={{ width: 44, minWidth: 44, textAlign: 'center' }}>
+                          <input
+                            type="checkbox"
+                            checked={selectedPublisherIds.has(p.id)}
+                            onChange={() => handleToggleSelectOne(p.id)}
+                            style={{ cursor: 'pointer', width: 16, height: 16 }}
+                            title={`${p.name} 선택`}
+                          />
+                        </td>
 
-      {/* Table Card: 이름, 직책, RP, 생년월일, 침례일자, 집단, 성별, 구별, 나이, 비고 */}
-      <div className="nfox-card" style={{ padding: 0, overflow: 'hidden' }}>
-        <div className="data-table-container sticky-container">
-          <table className="data-table data-table-sticky" style={{ minWidth: 1060 }}>
-            <thead>
-              <tr>
-                <th style={{ width: 110, minWidth: 110 }}>이름</th>
-                <th style={{ width: 85, minWidth: 85, textAlign: 'center' }}>직책</th>
-                <th style={{ width: 65, minWidth: 65, textAlign: 'center' }}>RP</th>
-                <th style={{ width: 105, minWidth: 105 }}>생년월일</th>
-                <th style={{ width: 105, minWidth: 105 }}>침례일자</th>
-                <th style={{ width: 90, minWidth: 90 }}>집단</th>
-                <th style={{ width: 65, minWidth: 65, textAlign: 'center' }}>성별</th>
-                <th style={{ width: 95, minWidth: 95 }}>구별</th>
-                <th style={{ width: 70, minWidth: 70, textAlign: 'center' }}>나이</th>
-                <th style={{ minWidth: 180 }}>비고</th>
-                <th style={{ width: 110, minWidth: 110, textAlign: 'center' }}>작업</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredPublishers.length === 0 ? (
-                <tr>
-                  <td colSpan={11} style={{ textAlign: 'center', padding: '36px', color: 'var(--text-muted)' }}>
-                    {activeSubTab === 'active' ? '등록된 활동 전도인이 없습니다.' : '전출/삭제된 전도인이 없습니다.'}
-                  </td>
-                </tr>
-              ) : (
-                filteredPublishers.map((p) => (
-                  <tr key={p.id}>
-                    {/* 1. 이름: 클릭 시 S-21 전도인 기록 카드 모달 실행 */}
-                    <td style={{ width: 110, minWidth: 110 }}>
-                      <button
-                        onClick={() => setCardModalData({ id: p.id, name: p.name })}
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          padding: 0,
-                          margin: 0,
-                          cursor: 'pointer',
-                          fontWeight: 700,
-                          color: 'var(--primary)',
-                          fontSize: '0.92rem',
-                          textAlign: 'left'
-                        }}
-                        className="name-link-btn"
-                        title={`${p.name} 전도인 기록 카드(S-21) 열기`}
-                      >
-                        {p.name}
-                      </button>
-                    </td>
+                        {/* 1. 이름: 클릭 시 S-21 전도인 기록 카드 모달 실행 */}
+                        <td style={{ width: 110, minWidth: 110 }}>
+                          <button
+                            onClick={() => setCardModalData({ id: p.id, name: p.name })}
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              padding: 0,
+                              margin: 0,
+                              cursor: 'pointer',
+                              fontWeight: 700,
+                              color: 'var(--primary)',
+                              fontSize: '0.92rem',
+                              textAlign: 'left'
+                            }}
+                            className="name-link-btn"
+                            title={`${p.name} 전도인 기록 카드(S-21) 열기`}
+                          >
+                            {p.name}
+                          </button>
+                        </td>
 
-                    {/* 2. 직책 */}
-                    <td style={{ textAlign: 'center' }}>
-                      {p.position === '장로' ? (
-                        <span className="badge badge-elder">장로</span>
-                      ) : (p.position === '봉종' || p.position === '봉사의 종') ? (
-                        <span className="badge badge-servant">봉종</span>
-                      ) : p.position && p.position !== '일반' ? (
-                        <span className="badge badge-publisher">{p.position}</span>
-                      ) : (
-                        <span style={{ color: 'var(--text-faint)' }}>-</span>
-                      )}
-                    </td>
+                        {/* 2. 직책 */}
+                        <td style={{ textAlign: 'center' }}>
+                          {p.position === '장로' ? (
+                            <span className="badge badge-elder">장로</span>
+                          ) : (p.position === '봉종' || p.position === '봉사의 종') ? (
+                            <span className="badge badge-servant">봉종</span>
+                          ) : p.position && p.position !== '일반' ? (
+                            <span className="badge badge-publisher">{p.position}</span>
+                          ) : (
+                            <span style={{ color: 'var(--text-faint)' }}>-</span>
+                          )}
+                        </td>
 
-                    {/* 3. RP */}
-                    <td style={{ textAlign: 'center' }}>
-                      {(() => {
-                        const status = p.pioneer_status;
-                        if (status === 'RP') return <span className="badge badge-rp">RP</span>;
-                        if (status === 'SP') return <span className="badge badge-rp">SP</span>;
-                        if (status === 'FM') return <span className="badge badge-rp">FM</span>;
-                        if (isChildStatus(status)) return <span className="badge badge-child">자녀</span>;
-                        if (status && status !== '일반' && status !== 'AP') return <span className="badge badge-rp">{status}</span>;
-                        return <span style={{ color: 'var(--text-faint)' }}>-</span>;
-                      })()}
-                    </td>
+                        {/* 3. RP */}
+                        <td style={{ textAlign: 'center' }}>
+                          {(() => {
+                            const status = p.pioneer_status;
+                            if (status === 'RP') return <span className="badge badge-rp">RP</span>;
+                            if (status === 'SP') return <span className="badge badge-rp">SP</span>;
+                            if (status === 'FM') return <span className="badge badge-rp">FM</span>;
+                            if (isChildStatus(status)) return <span className="badge badge-child">자녀</span>;
+                            if (status && status !== '일반' && status !== 'AP') return <span className="badge badge-rp">{status}</span>;
+                            return <span style={{ color: 'var(--text-faint)' }}>-</span>;
+                          })()}
+                        </td>
 
-                    {/* 4. 생년월일 */}
-                    <td>
-                      <span style={{ fontSize: '0.84rem' }}>{p.birth_date || '-'}</span>
-                    </td>
+                        {/* 4. 생년월일 */}
+                        <td>
+                          <span style={{ fontSize: '0.84rem' }}>{p.birth_date || '-'}</span>
+                        </td>
 
-                    {/* 5. 침례일자 */}
-                    <td>
-                      <span style={{ fontSize: '0.84rem' }}>{p.baptism_date || '-'}</span>
-                    </td>
+                        {/* 5. 침례일자 */}
+                        <td>
+                          <span style={{ fontSize: '0.84rem' }}>{p.baptism_date || '-'}</span>
+                        </td>
 
-                    {/* 6. 집단 */}
-                    <td>
-                      <span className="badge badge-group">
-                        {p.group_name || '미배정'}
-                      </span>
-                    </td>
-
-                    {/* 7. 성별 */}
-                    <td style={{ textAlign: 'center' }}>
-                      {p.gender ? (
-                        <span style={{ fontWeight: 600, color: p.gender === '남' ? 'var(--primary)' : 'var(--accent-rose)' }}>
-                          {p.gender}
-                        </span>
-                      ) : (
-                        '-'
-                      )}
-                    </td>
-
-                    {/* 8. 구별 */}
-                    <td>
-                      <span style={{ fontSize: '0.84rem' }}>{p.hope || '다른 양'}</span>
-                    </td>
-
-                    {/* 9. 나이 */}
-                    <td style={{ textAlign: 'center' }}>
-                      <span style={{ fontWeight: 600 }}>{calculateAge(p.birth_date)}</span>
-                    </td>
-
-                    {/* 10. 비고 */}
-                    <td>
-                      {activeSubTab === 'inactive' ? (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                          <span className="badge" style={{ background: 'rgba(244, 63, 94, 0.12)', color: 'var(--accent-rose)', width: 'fit-content' }}>
-                            {p.deactivated_reason || '이사/전출'}
+                        {/* 6. 집단 */}
+                        <td>
+                          <span className="badge badge-group">
+                            {p.group_name || '미배정'}
                           </span>
-                          {p.deactivated_at && (
-                            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                              {new Date(p.deactivated_at).toLocaleDateString('ko-KR')}
+                        </td>
+
+                        {/* 7. 성별 */}
+                        <td style={{ textAlign: 'center' }}>
+                          {p.gender ? (
+                            <span style={{ fontWeight: 600, color: p.gender === '남' ? 'var(--primary)' : 'var(--accent-rose)' }}>
+                              {p.gender}
+                            </span>
+                          ) : (
+                            '-'
+                          )}
+                        </td>
+
+                        {/* 8. 구별 */}
+                        <td>
+                          <span style={{ fontSize: '0.84rem' }}>{p.hope || '다른 양'}</span>
+                        </td>
+
+                        {/* 9. 나이 */}
+                        <td style={{ textAlign: 'center' }}>
+                          <span style={{ fontWeight: 600 }}>{calculateAge(p.birth_date)}</span>
+                        </td>
+
+                        {/* 10. 비고 */}
+                        <td>
+                          {activeSubTab === 'inactive' ? (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                              <span className="badge" style={{ background: 'rgba(244, 63, 94, 0.12)', color: 'var(--accent-rose)', width: 'fit-content' }}>
+                                {p.deactivated_reason || '이사/전출'}
+                              </span>
+                              {p.deactivated_at && (
+                                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                                  {new Date(p.deactivated_at).toLocaleDateString('ko-KR')}
+                                </span>
+                              )}
+                            </div>
+                          ) : (
+                            <span style={{ fontSize: '0.84rem', color: 'var(--text-muted)' }}>
+                              {p.special_notes || '-'}
                             </span>
                           )}
-                        </div>
-                      ) : (
-                        <span style={{ fontSize: '0.84rem', color: 'var(--text-muted)' }}>
-                          {p.special_notes || '-'}
-                        </span>
-                      )}
-                    </td>
+                        </td>
 
-                    {/* 작업 버튼들 */}
-                    <td style={{ textAlign: 'center' }}>
-                      <div style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
-                        {canEditPublisher(p) ? (
-                          <button
-                            onClick={() => handleOpenEdit(p)}
-                            className="btn-secondary"
-                            style={{ padding: '4px 8px', fontSize: '0.78rem', gap: 4 }}
-                            title="정보 수정"
-                          >
-                            <Edit3 size={13} /> 수정
-                          </button>
-                        ) : null}
-
-                        {p.is_active ? (
-                          isSuperAdmin && (
-                            <button
-                              onClick={() => handleOpenDeactivate(p)}
-                              className="btn-secondary"
-                              style={{ 
-                                padding: '4px 8px', 
-                                fontSize: '0.78rem', 
-                                color: 'var(--accent-rose)',
-                                borderColor: 'rgba(244, 63, 94, 0.25)',
-                                background: 'rgba(244, 63, 94, 0.05)'
-                              }}
-                              title="전출 / 무활동 처리 (보고 기록 보존)"
-                            >
-                              <UserX size={13} /> 전출
-                            </button>
-                          )
-                        ) : (
-                          <>
-                            {isSuperAdmin && (
+                        {/* 작업 버튼들 */}
+                        <td style={{ textAlign: 'center' }}>
+                          <div style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
+                            {canEditPublisher(p) ? (
                               <button
-                                onClick={() => handleRestore(p)}
-                                className="btn-primary"
-                                style={{ 
-                                  padding: '4px 8px', 
-                                  fontSize: '0.78rem',
-                                  background: 'var(--accent-emerald)',
-                                  gap: 4
-                                }}
-                                title="활동 전도인으로 복귀"
-                              >
-                                <RotateCcw size={13} /> 복원
-                              </button>
-                            )}
-                            {isSuperAdmin && (
-                              <button
-                                onClick={() => handlePermanentDelete(p.id, p.name)}
+                                onClick={() => handleOpenEdit(p)}
                                 className="btn-secondary"
-                                style={{
-                                  padding: '4px 8px',
-                                  fontSize: '0.78rem',
-                                  color: 'var(--accent-rose)',
-                                  borderColor: 'rgba(244, 63, 94, 0.25)',
-                                  background: 'rgba(244, 63, 94, 0.05)'
-                                }}
-                                title="완전 삭제 (복구 불가)"
+                                style={{ padding: '4px 8px', fontSize: '0.78rem', gap: 4 }}
+                                title="정보 수정"
                               >
-                                <Trash2 size={13} /> 삭제
+                                <Edit3 size={13} /> 수정
                               </button>
+                            ) : null}
+
+                            {p.is_active ? (
+                              isSuperAdmin && (
+                                <button
+                                  onClick={() => handleOpenDeactivate(p)}
+                                  className="btn-secondary"
+                                  style={{
+                                    padding: '4px 8px',
+                                    fontSize: '0.78rem',
+                                    color: 'var(--accent-rose)',
+                                    borderColor: 'rgba(244, 63, 94, 0.25)',
+                                    background: 'rgba(244, 63, 94, 0.05)'
+                                  }}
+                                  title="전출 / 무활동 처리 (보고 기록 보존)"
+                                >
+                                  <UserX size={13} /> 전출
+                                </button>
+                              )
+                            ) : (
+                              <>
+                                {isSuperAdmin && (
+                                  <button
+                                    onClick={() => handleRestore(p)}
+                                    className="btn-primary"
+                                    style={{
+                                      padding: '4px 8px',
+                                      fontSize: '0.78rem',
+                                      background: 'var(--accent-emerald)',
+                                      gap: 4
+                                    }}
+                                    title="활동 전도인으로 복귀"
+                                  >
+                                    <RotateCcw size={13} /> 복원
+                                  </button>
+                                )}
+                                {isSuperAdmin && (
+                                  <button
+                                    onClick={() => handlePermanentDelete(p.id, p.name)}
+                                    className="btn-secondary"
+                                    style={{
+                                      padding: '4px 8px',
+                                      fontSize: '0.78rem',
+                                      color: 'var(--accent-rose)',
+                                      borderColor: 'rgba(244, 63, 94, 0.25)',
+                                      background: 'rgba(244, 63, 94, 0.05)'
+                                    }}
+                                    title="완전 삭제 (복구 불가)"
+                                  >
+                                    <Trash2 size={13} /> 삭제
+                                  </button>
+                                )}
+                              </>
                             )}
-                          </>
-                        )}
-                      </div>
-                      {!canEditPublisher(p) && !isSuperAdmin && (
-                        <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>-</span>
-                      )}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-      </>
+                          </div>
+                          {!canEditPublisher(p) && !isSuperAdmin && (
+                            <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>-</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
       )}
 
       {/* ------------------------------------------------------------- */}
@@ -1125,298 +1307,298 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
               </button>
             </div>
             <form
-            onSubmit={handleSave}
-            onKeyDown={(e) => {
-            // 한글 조합 및 input 엔터 시 자동 submit으로 팝업 닫힌 방지
-            if (e.key === 'Enter' && (e.target as HTMLElement).tagName !== 'TEXTAREA') {
-            e.preventDefault();
-            }
-            }}
+              onSubmit={handleSave}
+              onKeyDown={(e) => {
+                // 한글 조합 및 input 엔터 시 자동 submit으로 팝업 닫힌 방지
+                if (e.key === 'Enter' && (e.target as HTMLElement).tagName !== 'TEXTAREA') {
+                  e.preventDefault();
+                }
+              }}
             >
-            {/* === 상단: 기본 인적사항 === */}
-            <div style={{
-              background: 'var(--bg-app)',
-              border: '1px solid var(--border-color)',
-              borderRadius: 'var(--radius-md)',
-              padding: '14px 16px',
-              marginBottom: 12
-            }}>
-              <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
-                기본 인적사항
+              {/* === 상단: 기본 인적사항 === */}
+              <div style={{
+                background: 'var(--bg-app)',
+                border: '1px solid var(--border-color)',
+                borderRadius: 'var(--radius-md)',
+                padding: '14px 16px',
+                marginBottom: 12
+              }}>
+                <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  기본 인적사항
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <div className="form-group">
+                    <label className="form-label">
+                      이름 <span style={{ color: 'var(--accent-rose)' }}>*</span>
+                    </label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      placeholder="이름을 입력해 주세요"
+                      value={editingPublisher.name || ''}
+                      onChange={(e) => setEditingPublisher({ ...editingPublisher, name: e.target.value })}
+                      required
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">소속 집단</label>
+                    <select
+                      className="form-select"
+                      value={editingPublisher.group_id || ''}
+                      disabled={manager?.role === 'group'}
+                      onChange={(e) => setEditingPublisher({ ...editingPublisher, group_id: e.target.value })}
+                    >
+                      {groups.map(g => (
+                        <option key={g.id} value={g.id}>{g.name} 집단</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+                  <div className="form-group">
+                    <label className="form-label">성별</label>
+                    <select
+                      className="form-select"
+                      value={editingPublisher.gender || '남'}
+                      onChange={(e) => setEditingPublisher({ ...editingPublisher, gender: e.target.value as Gender })}
+                    >
+                      <option value="남">남</option>
+                      <option value="여">여</option>
+                    </select>
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">직책</label>
+                    <select
+                      className="form-select"
+                      disabled={isChildStatus(editingPublisher.pioneer_status)}
+                      value={isChildStatus(editingPublisher.pioneer_status) ? '' : (editingPublisher.position === '장로' || editingPublisher.position === '봉종' ? editingPublisher.position : (editingPublisher.position === '봉사의 종' ? '봉종' : ''))}
+                      onChange={(e) => setEditingPublisher({ ...editingPublisher, position: (e.target.value || '일반') as Position })}
+                    >
+                      <option value="">(선택 안 함)</option>
+                      <option value="장로">장로</option>
+                      <option value="봉종">봉종</option>
+                    </select>
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">구분</label>
+                    <select
+                      className="form-select"
+                      value={
+                        isChildStatus(editingPublisher.pioneer_status)
+                          ? '자녀 (집계 제외)'
+                          : (['RP', 'SP', 'FM'].includes(editingPublisher.pioneer_status || '') ? editingPublisher.pioneer_status : '')
+                      }
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val === '자녀 (집계 제외)') {
+                          setEditingPublisher({
+                            ...editingPublisher,
+                            pioneer_status: '자녀 (집계 제외)',
+                            position: '일반',
+                            special_notes: ((editingPublisher.special_notes || '') + ' [자녀]').trim()
+                          });
+                        } else {
+                          const cleanNotes = (editingPublisher.special_notes || '').replace(/\[자녀\]/g, '').trim();
+                          setEditingPublisher({
+                            ...editingPublisher,
+                            pioneer_status: (val || '일반') as PioneerStatus,
+                            special_notes: cleanNotes
+                          });
+                        }
+                      }}
+                    >
+                      <option value="">(선택 안 함)</option>
+                      <option value="RP">RP (정규 파이오니아)</option>
+                      <option value="SP">SP (특별 파이오니아)</option>
+                      <option value="FM">FM (선교인)</option>
+                      <option value="자녀 (집계 제외)">자녀</option>
+                    </select>
+                  </div>
+                </div>
+
+                {isChildStatus(editingPublisher.pioneer_status) && (
+                  <div style={{
+                    marginTop: -4,
+                    marginBottom: 10,
+                    padding: '7px 12px',
+                    borderRadius: 'var(--radius-sm)',
+                    background: 'rgba(245, 158, 11, 0.1)',
+                    border: '1px solid rgba(245, 158, 11, 0.25)',
+                    color: '#d97706',
+                    fontSize: '0.78rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6
+                  }}>
+                    <Info size={14} style={{ flexShrink: 0 }} />
+                    <span><strong>미침례 어린 자녀(활동 전도인 아님):</strong> 활동 전도인 명단과 봉사 통계에서 제외되며, <strong>비상연락망</strong>에만 등록되어 표시됩니다.</span>
+                  </div>
+                )}
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <div className="form-group">
+                    <label className="form-label">생년월일</label>
+                    <input
+                      type="date"
+                      className="form-input"
+                      value={editingPublisher.birth_date || ''}
+                      onChange={(e) => setEditingPublisher({ ...editingPublisher, birth_date: e.target.value })}
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">
+                      침례일자 <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 'normal' }}>(미침례 시 비워둠)</span>
+                    </label>
+                    <input
+                      type="date"
+                      className="form-input"
+                      value={editingPublisher.baptism_date || ''}
+                      onChange={(e) => setEditingPublisher({ ...editingPublisher, baptism_date: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <div className="form-group">
+                    <label className="form-label">구별</label>
+                    <select
+                      className="form-select"
+                      value={editingPublisher.hope || '다른 양'}
+                      onChange={(e) => setEditingPublisher({ ...editingPublisher, hope: e.target.value as Hope })}
+                    >
+                      <option value="다른 양">다른 양</option>
+                      <option value="기름부음받은 자">기름부음받은 자</option>
+                    </select>
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">비고</label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      placeholder="예: 농아인, 맹인 등"
+                      value={editingPublisher.special_notes || ''}
+                      onChange={(e) => setEditingPublisher({ ...editingPublisher, special_notes: e.target.value })}
+                    />
+                  </div>
+                </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <div className="form-group">
-                  <label className="form-label">
-                    이름 <span style={{ color: 'var(--accent-rose)' }}>*</span>
-                  </label>
+              {/* === 하단: 비상연락망 정보 (전화번호, 주소, 비상연락처, 관계, 가족 대표자) === */}
+              <div style={{
+                background: 'rgba(244, 63, 94, 0.03)',
+                border: '1px solid rgba(244, 63, 94, 0.18)',
+                borderRadius: 'var(--radius-md)',
+                padding: '14px 16px',
+                marginBottom: 12
+              }}>
+                <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#f43f5e', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  비상연락망 정보
+                  <span style={{ fontSize: '0.72rem', fontWeight: 400, color: 'var(--text-muted)' }}>(비상연락망 항목)</span>
+                </div>
+
+                {/* 전화번호 & 가족 대표자 */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+                  <div className="form-group">
+                    <label className="form-label">전화번호</label>
+                    <input
+                      type="tel"
+                      className="form-input"
+                      placeholder="010-0000-0000"
+                      value={editingPublisher.phone || ''}
+                      onChange={(e) => setEditingPublisher({ ...editingPublisher, phone: e.target.value })}
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">가족 대표자</label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      placeholder="가족 대표자 성명"
+                      value={editingPublisher.family_head || ''}
+                      onChange={(e) => setEditingPublisher({ ...editingPublisher, family_head: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                {/* 주소 */}
+                <div className="form-group" style={{ marginBottom: 12 }}>
+                  <label className="form-label">주소</label>
                   <input
                     type="text"
                     className="form-input"
-                    placeholder="이름을 입력해 주세요"
-                    value={editingPublisher.name || ''}
-                    onChange={(e) => setEditingPublisher({ ...editingPublisher, name: e.target.value })}
-                    required
+                    placeholder="예: 강원도 춘천시 ..."
+                    value={editingPublisher.address || ''}
+                    onChange={(e) => setEditingPublisher({ ...editingPublisher, address: e.target.value })}
                   />
                 </div>
 
-                <div className="form-group">
-                  <label className="form-label">소속 집단</label>
-                  <select
-                    className="form-select"
-                    value={editingPublisher.group_id || ''}
-                    disabled={manager?.role === 'group'}
-                    onChange={(e) => setEditingPublisher({ ...editingPublisher, group_id: e.target.value })}
-                  >
-                    {groups.map(g => (
-                      <option key={g.id} value={g.id}>{g.name} 집단</option>
-                    ))}
-                  </select>
+                {/* 비상연락처 & 관계 */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <div className="form-group">
+                    <label className="form-label">비상연락처 (가족/보호자)</label>
+                    <input
+                      type="tel"
+                      className="form-input"
+                      placeholder="010-0000-0000"
+                      value={editingPublisher.emergency_phone || ''}
+                      onChange={(e) => setEditingPublisher({ ...editingPublisher, emergency_phone: e.target.value })}
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">이름, 관계</label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      placeholder="예: 홍길동(배우자), 본인 등"
+                      value={editingPublisher.relationship || ''}
+                      onChange={(e) => setEditingPublisher({ ...editingPublisher, relationship: e.target.value })}
+                    />
+                  </div>
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
-                <div className="form-group">
-                  <label className="form-label">성별</label>
-                  <select
-                    className="form-select"
-                    value={editingPublisher.gender || '남'}
-                    onChange={(e) => setEditingPublisher({ ...editingPublisher, gender: e.target.value as Gender })}
-                  >
-                    <option value="남">남</option>
-                    <option value="여">여</option>
-                  </select>
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">직책</label>
-                  <select
-                    className="form-select"
-                    disabled={isChildStatus(editingPublisher.pioneer_status)}
-                    value={isChildStatus(editingPublisher.pioneer_status) ? '' : (editingPublisher.position === '장로' || editingPublisher.position === '봉종' ? editingPublisher.position : (editingPublisher.position === '봉사의 종' ? '봉종' : ''))}
-                    onChange={(e) => setEditingPublisher({ ...editingPublisher, position: (e.target.value || '일반') as Position })}
-                  >
-                    <option value="">(선택 안 함)</option>
-                    <option value="장로">장로</option>
-                    <option value="봉종">봉종</option>
-                  </select>
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">구분</label>
-                  <select
-                    className="form-select"
-                    value={
-                      isChildStatus(editingPublisher.pioneer_status)
-                        ? '자녀 (집계 제외)'
-                        : (['RP', 'SP', 'FM'].includes(editingPublisher.pioneer_status || '') ? editingPublisher.pioneer_status : '')
-                    }
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      if (val === '자녀 (집계 제외)') {
-                        setEditingPublisher({
-                          ...editingPublisher,
-                          pioneer_status: '자녀 (집계 제외)',
-                          position: '일반',
-                          special_notes: ((editingPublisher.special_notes || '') + ' [자녀]').trim()
-                        });
-                      } else {
-                        const cleanNotes = (editingPublisher.special_notes || '').replace(/\[자녀\]/g, '').trim();
-                        setEditingPublisher({
-                          ...editingPublisher,
-                          pioneer_status: (val || '일반') as PioneerStatus,
-                          special_notes: cleanNotes
-                        });
-                      }
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 16 }}>
+                {editingPublisher?.id && isSuperAdmin && (
+                  <button
+                    type="button"
+                    onClick={handleDeleteFromEdit}
+                    style={{
+                      background: 'rgba(244, 63, 94, 0.1)',
+                      color: 'var(--accent-rose)',
+                      border: '1px solid rgba(244, 63, 94, 0.25)',
+                      padding: '8px 14px',
+                      borderRadius: 'var(--radius-md)',
+                      fontSize: '0.84rem',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      transition: 'all 0.15s ease'
                     }}
                   >
-                    <option value="">(선택 안 함)</option>
-                    <option value="RP">RP (정규 파이오니아)</option>
-                    <option value="SP">SP (특별 파이오니아)</option>
-                    <option value="FM">FM (선교인)</option>
-                    <option value="자녀 (집계 제외)">자녀</option>
-                  </select>
+                    <Trash2 size={15} /> 전도인 삭제
+                  </button>
+                )}
+                <div style={{ display: 'flex', gap: 10, marginLeft: 'auto' }}>
+                  <button type="button" onClick={() => setEditModalOpen(false)} className="btn-secondary">
+                    취소
+                  </button>
+                  <button type="submit" className="btn-primary" style={{ gap: 6 }}>
+                    <Check size={16} /> 저장
+                  </button>
                 </div>
               </div>
-
-              {isChildStatus(editingPublisher.pioneer_status) && (
-                <div style={{
-                  marginTop: -4,
-                  marginBottom: 10,
-                  padding: '7px 12px',
-                  borderRadius: 'var(--radius-sm)',
-                  background: 'rgba(245, 158, 11, 0.1)',
-                  border: '1px solid rgba(245, 158, 11, 0.25)',
-                  color: '#d97706',
-                  fontSize: '0.78rem',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 6
-                }}>
-                  <Info size={14} style={{ flexShrink: 0 }} />
-                  <span><strong>미침례 어린 자녀(활동 전도인 아님):</strong> 활동 전도인 명단과 봉사 통계에서 제외되며, <strong>비상연락망</strong>에만 등록되어 표시됩니다.</span>
-                </div>
-              )}
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <div className="form-group">
-                  <label className="form-label">생년월일</label>
-                  <input
-                    type="date"
-                    className="form-input"
-                    value={editingPublisher.birth_date || ''}
-                    onChange={(e) => setEditingPublisher({ ...editingPublisher, birth_date: e.target.value })}
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">
-                    침례일자 <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 'normal' }}>(미침례 시 비워둠)</span>
-                  </label>
-                  <input
-                    type="date"
-                    className="form-input"
-                    value={editingPublisher.baptism_date || ''}
-                    onChange={(e) => setEditingPublisher({ ...editingPublisher, baptism_date: e.target.value })}
-                  />
-                </div>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <div className="form-group">
-                  <label className="form-label">구별</label>
-                  <select
-                    className="form-select"
-                    value={editingPublisher.hope || '다른 양'}
-                    onChange={(e) => setEditingPublisher({ ...editingPublisher, hope: e.target.value as Hope })}
-                  >
-                    <option value="다른 양">다른 양</option>
-                    <option value="기름부음받은 자">기름부음받은 자</option>
-                  </select>
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">비고</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    placeholder="예: 농아인, 맹인 등"
-                    value={editingPublisher.special_notes || ''}
-                    onChange={(e) => setEditingPublisher({ ...editingPublisher, special_notes: e.target.value })}
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* === 하단: 비상연락망 정보 (전화번호, 주소, 비상연락처, 관계, 가족 대표자) === */}
-            <div style={{
-              background: 'rgba(244, 63, 94, 0.03)',
-              border: '1px solid rgba(244, 63, 94, 0.18)',
-              borderRadius: 'var(--radius-md)',
-              padding: '14px 16px',
-              marginBottom: 12
-            }}>
-              <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#f43f5e', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
-                비상연락망 정보
-                <span style={{ fontSize: '0.72rem', fontWeight: 400, color: 'var(--text-muted)' }}>(비상연락망 항목)</span>
-              </div>
-
-              {/* 전화번호 & 가족 대표자 */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
-                <div className="form-group">
-                  <label className="form-label">전화번호</label>
-                  <input
-                    type="tel"
-                    className="form-input"
-                    placeholder="010-0000-0000"
-                    value={editingPublisher.phone || ''}
-                    onChange={(e) => setEditingPublisher({ ...editingPublisher, phone: e.target.value })}
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">가족 대표자</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    placeholder="가족 대표자 성명"
-                    value={editingPublisher.family_head || ''}
-                    onChange={(e) => setEditingPublisher({ ...editingPublisher, family_head: e.target.value })}
-                  />
-                </div>
-              </div>
-
-              {/* 주소 */}
-              <div className="form-group" style={{ marginBottom: 12 }}>
-                <label className="form-label">주소</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  placeholder="예: 강원도 춘천시 ..."
-                  value={editingPublisher.address || ''}
-                  onChange={(e) => setEditingPublisher({ ...editingPublisher, address: e.target.value })}
-                />
-              </div>
-
-              {/* 비상연락처 & 관계 */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <div className="form-group">
-                  <label className="form-label">비상연락처 (가족/보호자)</label>
-                  <input
-                    type="tel"
-                    className="form-input"
-                    placeholder="010-0000-0000"
-                    value={editingPublisher.emergency_phone || ''}
-                    onChange={(e) => setEditingPublisher({ ...editingPublisher, emergency_phone: e.target.value })}
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">이름, 관계</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    placeholder="예: 홍길동(배우자), 본인 등"
-                    value={editingPublisher.relationship || ''}
-                    onChange={(e) => setEditingPublisher({ ...editingPublisher, relationship: e.target.value })}
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 16 }}>
-              {editingPublisher?.id && isSuperAdmin && (
-                <button
-                  type="button"
-                  onClick={handleDeleteFromEdit}
-                  style={{
-                    background: 'rgba(244, 63, 94, 0.1)',
-                    color: 'var(--accent-rose)',
-                    border: '1px solid rgba(244, 63, 94, 0.25)',
-                    padding: '8px 14px',
-                    borderRadius: 'var(--radius-md)',
-                    fontSize: '0.84rem',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 6,
-                    transition: 'all 0.15s ease'
-                  }}
-                >
-                  <Trash2 size={15} /> 전도인 삭제
-                </button>
-              )}
-              <div style={{ display: 'flex', gap: 10, marginLeft: 'auto' }}>
-                <button type="button" onClick={() => setEditModalOpen(false)} className="btn-secondary">
-                  취소
-                </button>
-                <button type="submit" className="btn-primary" style={{ gap: 6 }}>
-                  <Check size={16} /> 저장
-                </button>
-              </div>
-            </div>
-          </form>
+            </form>
           </div>
         </div>
       )}
@@ -1424,8 +1606,8 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
       {/* 전출 / 무활동 처리 모달 */}
       {/* ------------------------------------------------------------- */}
       {deactivateModalOpen && targetPublisher && (
-        <div 
-          className="modal-overlay" 
+        <div
+          className="modal-overlay"
           onMouseDown={(e) => {
             overlayMouseDownRef.current = e.target === e.currentTarget;
           }}
@@ -1504,9 +1686,9 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
                 type="button"
                 onClick={handleConfirmDeactivate}
                 className="btn-primary"
-                style={{ 
-                  flex: 1, 
-                  padding: 10, 
+                style={{
+                  flex: 1,
+                  padding: 10,
                   justifyContent: 'center',
                   background: 'var(--accent-rose)'
                 }}
@@ -1518,7 +1700,7 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
         </div>
       )}
 
-      {/* S-21 전도인 기록 카드 모달 */}
+      {/* S-21 전도인 기록 카드 단일 조회 모달 */}
       {cardModalData && (
         <PublisherCardModal
           serviceYear={currentYear}
@@ -1528,10 +1710,19 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
         />
       )}
 
+      {/* S-21 전도인 기록 카드 선택/전체 일괄 인쇄 모달 */}
+      {batchPrintModalData && (
+        <BatchPublisherCardModal
+          serviceYear={currentYear}
+          publishers={batchPrintModalData}
+          onClose={() => setBatchPrintModalData(null)}
+        />
+      )}
+
       {/* 구글 시트 / 엑셀 표 명단 복사·가져오기 동기화 모달 */}
       {sheetSyncModalOpen && isSuperAdmin && (
-        <div 
-          className="modal-overlay" 
+        <div
+          className="modal-overlay"
           onMouseDown={(e) => {
             overlayMouseDownRef.current = e.target === e.currentTarget;
           }}
@@ -1566,7 +1757,7 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
                   </p>
                 </div>
               </div>
-              <button 
+              <button
                 onClick={() => setSheetSyncModalOpen(false)}
                 style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}
               >

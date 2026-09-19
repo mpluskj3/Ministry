@@ -1,15 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X, Database, CheckCircle2, AlertCircle, Copy, Check, RefreshCw, Layers, Building2, Plus, Calendar, FolderArchive, Download, Upload } from 'lucide-react';
-import { 
-  getStoredSupabaseConfig, 
-  saveStoredSupabaseConfig, 
-  testSupabaseConnection 
+import {
+  getStoredSupabaseConfig,
+  saveStoredSupabaseConfig,
+  testSupabaseConnection
 } from '../services/supabase';
 import { ServiceYear } from '../types/database';
-import { 
-  getServiceYears, 
-  setCurrentServiceYear, 
-  createServiceYear, 
+import {
+  getServiceYears,
+  setCurrentServiceYear,
+  createServiceYear,
   normalizeServiceYearName,
   getAllServiceYearReports,
   importMonthlyReports
@@ -170,7 +170,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = allYears 
+      link.download = allYears
         ? `봉사보고서_전체연도_백업_${new Date().toISOString().slice(0, 10)}.json`
         : `봉사보고서_${currentYear.year_name}봉사연도_백업_${new Date().toISOString().slice(0, 10)}.json`;
       document.body.appendChild(link);
@@ -263,10 +263,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
           <div className="form-group" style={{ marginBottom: 0 }}>
             <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-              <span>회중명</span>
-              <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)', fontWeight: 400 }}>
-                야외 봉사 보고 상단 제목에 표기됩니다.
-              </span>
             </label>
             <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
               <input
@@ -299,7 +295,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         }}>
           <h4 style={{ fontSize: '1rem', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
             <Database size={16} color="var(--primary-600)" />
-            Supabase 데이터베이스 연결 정보
+            데이터베이스 연결 정보
           </h4>
 
           <div className="form-group">
@@ -351,8 +347,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               className="btn-secondary"
               style={{ fontSize: '0.85rem' }}
             >
-              <RefreshCw size={14} className={testing ? 'animate-spin' : ''} />
-              <span>{testing ? '연결 확인 중...' : '연결 테스트'}</span>
+              <RefreshCw size={13} className={testing ? 'animate-spin' : ''} />
+              <span>{testing ? '연결 확인 중...' : '테스트'}</span>
             </button>
 
             <button
@@ -380,10 +376,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         }}>
           <div>
             <div style={{ fontWeight: 600, fontSize: '0.88rem', color: 'var(--primary-700)' }}>
-              Supabase SQL Editor 초기 설정 스크립트
+              Supabase SQL
             </div>
             <div style={{ fontSize: '0.78rem', color: 'var(--primary-600)' }}>
-              프로젝트 내 `supabase/schema.sql` 파일을 복사하여 Supabase 대시보드 SQL Editor에 실행하세요.
+              `supabase/schema.sql` 파일을 복사하여 Supabase 대시보드 SQL Editor에 실행하세요.
             </div>
           </div>
           <button
@@ -411,7 +407,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 봉사연도 선택
               </h4>
               <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', margin: '4px 0 0 0' }}>
-                매년 봉사연도는 9월부터 이듬해 8월까지의 보고서 데이터를 집계합니다.
               </p>
             </div>
             <button
@@ -421,7 +416,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               style={{ fontSize: '0.8rem', padding: '6px 12px', gap: 4 }}
             >
               <Plus size={14} />
-              <span>신규 연도 생성</span>
+              <span>신규 생성</span>
             </button>
           </div>
 
@@ -498,24 +493,20 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               onChange={(e) => setSelectedYearId(e.target.value)}
               style={{ flex: 1, fontWeight: 600 }}
             >
-              {serviceYears.map(y => {
-                const endY = parseInt(y.year_name, 10);
-                const startY = !isNaN(endY) ? endY - 1 : 2025;
-                return (
-                  <option key={y.id} value={y.id}>
-                    {y.year_name} 봉사연도 ({startY}년 9월 ~ {endY}년 8월) {y.is_current ? '★ 현재 활성' : ''}
-                  </option>
-                );
-              })}
+              {serviceYears.map(y => (
+                <option key={y.id} value={y.id}>
+                  {y.year_name} 봉사연도 {y.is_current ? '(활성)' : ''}
+                </option>
+              ))}
             </select>
             <button
               type="button"
               onClick={handleChangeServiceYear}
               disabled={selectedYearId === currentYear.id}
               className="btn-primary"
-              style={{ flexShrink: 0, fontSize: '0.85rem' }}
+              style={{ flexShrink: 0, fontSize: '0.85rem', whiteSpace: 'nowrap' }}
             >
-              봉사연도 변경
+              변경
             </button>
           </div>
         </div>
@@ -530,10 +521,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         }}>
           <h4 style={{ fontSize: '1rem', margin: '0 0 4px 0', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 700 }}>
             <FolderArchive size={16} color="var(--primary-600)" />
-            봉사 보고서 데이터 백업 및 복원
+            데이터 백업 및 복원
           </h4>
           <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', margin: '0 0 14px 0' }}>
-            월별 봉사보고 데이터를 JSON 파일로 내보내어 안전하게 보관하거나, 백업 파일을 업로드하여 복원할 수 있습니다.
+            월별 봉사보고 데이터를 JSON 파일로 백업하거나, 백업한 파일로 복원할 수 있습니다.
           </p>
 
           {/* Status Alert */}
@@ -564,8 +555,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             marginBottom: 12
           }}>
             <div style={{ fontSize: '0.82rem', fontWeight: 700, marginBottom: 8, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: 6 }}>
-              <Download size={14} color="var(--primary)" />
-              보고서 데이터 파일 다운로드 (백업)
             </div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               <button
@@ -597,8 +586,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             padding: '12px 14px'
           }}>
             <div style={{ fontSize: '0.82rem', fontWeight: 700, marginBottom: 8, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: 6 }}>
-              <Upload size={14} color="var(--primary)" />
-              백업 파일 업로드하여 복원 (JSON 가져오기)
             </div>
             <input
               type="file"
@@ -618,7 +605,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               style={{ fontSize: '0.82rem', padding: '6px 14px', gap: 6 }}
             >
               <Upload size={14} />
-              <span>{importingReports ? '복원 처리 중...' : '백업 파일(.json) 선택하여 복원'}</span>
+              <span>{importingReports ? '복원 처리 중...' : '백업 파일 선택하여 복원'}</span>
             </button>
           </div>
         </div>

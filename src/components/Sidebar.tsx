@@ -15,6 +15,8 @@ import {
   Building2,
   Phone,
   ExternalLink,
+  Pin,
+  RotateCcw,
   X
 } from 'lucide-react';
 import { Manager, ServiceYear } from '../types/database';
@@ -38,6 +40,10 @@ interface SidebarProps {
   groups: Array<{ id: string; name: string }>;
   congregationName?: string;
   onGoToReportPage?: () => void;
+  serviceYears?: ServiceYear[];
+  systemDefaultYear?: ServiceYear | null;
+  onSelectViewYear?: (year: ServiceYear) => void;
+  onFixDefaultYear?: (yearId: string) => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -59,6 +65,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
   groups,
   congregationName,
   onGoToReportPage,
+  serviceYears = [],
+  systemDefaultYear,
+  onSelectViewYear,
+  onFixDefaultYear,
 }) => {
   const isSuperAdmin = manager?.role === 'super';
 
@@ -111,12 +121,93 @@ export const Sidebar: React.FC<SidebarProps> = ({
             }}>
               <CalendarClock size={15} style={{ opacity: 0.85 }} />
             </div>
-            <div style={{ minWidth: 0 }}>
-              <div style={{ fontWeight: 800, fontSize: '0.95rem', letterSpacing: '-0.02em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {congregationName || 'Ministry Hub'}
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <div 
+                style={{ fontWeight: 800, fontSize: '0.92rem', letterSpacing: '-0.02em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+                title={congregationName ? `${congregationName} - 봉사보고 관리` : '봉사보고 관리'}
+              >
+                {congregationName ? `${congregationName} - 봉사보고 관리` : '봉사보고 관리'}
               </div>
-              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                {currentYear.year_name} 봉사연도
+              
+              {/* 봉사연도 전환기: 집단감독자/보조자/최고관리자 누구나 연도를 변경하여 조회 가능 */}
+              <div style={{ marginTop: 3, display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
+                <select
+                  value={currentYear.id}
+                  onChange={(e) => {
+                    const found = serviceYears.find(y => y.id === e.target.value);
+                    if (found && onSelectViewYear) {
+                      onSelectViewYear(found);
+                    }
+                  }}
+                  style={{
+                    fontSize: '0.74rem',
+                    fontWeight: 700,
+                    padding: '2px 5px',
+                    borderRadius: 'var(--radius-sm)',
+                    border: (systemDefaultYear && currentYear.id !== systemDefaultYear.id) ? '1px solid #f97316' : '1px solid var(--border-color)',
+                    background: (systemDefaultYear && currentYear.id !== systemDefaultYear.id) ? 'rgba(249, 115, 22, 0.12)' : 'rgba(0,0,0,0.03)',
+                    color: (systemDefaultYear && currentYear.id !== systemDefaultYear.id) ? '#ea580c' : 'var(--text-main)',
+                    cursor: 'pointer',
+                    outline: 'none',
+                    maxWidth: 120
+                  }}
+                  title="조회할 봉사연도를 선택하세요 (과거 및 다른 연도 보고서/전도인 카드 열람)"
+                >
+                  {(serviceYears.length > 0 ? serviceYears : [currentYear]).map(y => (
+                    <option key={y.id} value={y.id}>
+                      {y.year_name}연도 {systemDefaultYear?.id === y.id ? '★(기본)' : ''}
+                    </option>
+                  ))}
+                </select>
+
+                {/* 현재 연도가 시스템 기본 연도와 다를 때 액션 버튼 */}
+                {systemDefaultYear && currentYear.id !== systemDefaultYear.id && (
+                  isSuperAdmin ? (
+                    <button
+                      type="button"
+                      onClick={() => onFixDefaultYear?.(currentYear.id)}
+                      style={{
+                        padding: '2px 6px',
+                        fontSize: '0.68rem',
+                        fontWeight: 700,
+                        background: '#6366f1',
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: 4,
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 2,
+                        lineHeight: 1.2
+                      }}
+                      title="이 봉사연도를 전체 시스템의 공식 기본 활성 연도로 고정 저장합니다 (최고관리자 전용)"
+                    >
+                      <Pin size={10} /> 기본고정
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => systemDefaultYear && onSelectViewYear?.(systemDefaultYear)}
+                      style={{
+                        padding: '2px 5px',
+                        fontSize: '0.66rem',
+                        fontWeight: 600,
+                        background: 'rgba(0,0,0,0.05)',
+                        color: 'var(--text-muted)',
+                        border: '1px solid var(--border-color)',
+                        borderRadius: 4,
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 2,
+                        lineHeight: 1.2
+                      }}
+                      title="시스템 기본 봉사연도로 돌아가기"
+                    >
+                      <RotateCcw size={9} /> 복귀
+                    </button>
+                  )
+                )}
               </div>
             </div>
           </div>

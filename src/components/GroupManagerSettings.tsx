@@ -465,21 +465,33 @@ export const GroupManagerSettings: React.FC<GroupManagerSettingsProps> = ({
       {/* 1. 집단명 관리 뷰 */}
       {/* ------------------------------------------------------------- */}
       {activeSubTab === 'groups' && (
-        <div className="nfox-card" style={{ padding: '24px 28px' }}>
+        <div className="nfox-card" style={{ padding: '20px clamp(14px, 3vw, 24px)' }}>
           <div style={{
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: 12,
             marginBottom: 20
           }}>
-            <div>
+            <div style={{ minWidth: 0, flex: '1 1 200px' }}>
               <h3 style={{ fontSize: '1.15rem', fontWeight: 800, margin: 0 }}>봉사 집단 목록</h3>
               <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', margin: '4px 0 0 0' }}>
                 봉사 보고서 제출 및 대시보드 집계에 사용되는 회중 정규 봉사 집단입니다.
               </p>
             </div>
-            <button onClick={handleOpenAddGroup} className="btn-primary" style={{ gap: 6, fontSize: '0.88rem' }}>
-              <Plus size={16} /> 집단 추가
+            <button
+              onClick={handleOpenAddGroup}
+              className="btn-primary"
+              style={{
+                gap: 6,
+                fontSize: '0.88rem',
+                padding: '8px 16px',
+                whiteSpace: 'nowrap',
+                flexShrink: 0
+              }}
+            >
+              <Plus size={16} /> 추가
             </button>
           </div>
 
@@ -638,18 +650,30 @@ export const GroupManagerSettings: React.FC<GroupManagerSettingsProps> = ({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: 12,
             marginBottom: 20
           }}>
-            <div>
+            <div style={{ minWidth: 0, flex: '1 1 220px' }}>
               <h3 style={{ fontSize: '1.15rem', fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
                 <GoogleIcon size={18} />
                 <span>관리자 계정 및 구글 로그인 권한 목록</span>
               </h3>
-              <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', margin: '4px 0 0 0' }}>
+              <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', margin: '4px 0 0 0', lineHeight: 1.4 }}>
                 등록된 구글 이메일 주소로 로그인 시 관리자 권한(최고관리자 / 집단관리자)이 부여됩니다.
               </p>
             </div>
-            <button onClick={handleOpenAddManager} className="btn-primary" style={{ gap: 6, fontSize: '0.88rem' }}>
+            <button
+              onClick={handleOpenAddManager}
+              className="btn-primary"
+              style={{
+                gap: 6,
+                fontSize: '0.88rem',
+                padding: '8px 16px',
+                whiteSpace: 'nowrap',
+                flexShrink: 0
+              }}
+            >
               <UserPlus size={16} /> 관리자 등록
             </button>
           </div>
@@ -679,39 +703,24 @@ export const GroupManagerSettings: React.FC<GroupManagerSettingsProps> = ({
                     return (
                       <tr key={m.id}>
                         <td>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                            <div style={{
-                              width: 34,
-                              height: 34,
-                              borderRadius: '50%',
-                              background: m.role === 'super' ? 'var(--primary-gradient)' : 'var(--accent-emerald)',
-                              color: '#fff',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              fontWeight: 800,
-                              fontSize: '0.88rem',
-                              flexShrink: 0
-                            }}>
-                              {m.name.slice(0, 1)}
-                            </div>
-                            <div>
-                              <span style={{ fontWeight: 700, fontSize: '0.95rem' }}>{m.name}</span>
-                              {currentManager && currentManager.id === m.id && (
-                                <span style={{
-                                  display: 'inline-block',
-                                  fontSize: '0.68rem',
-                                  padding: '1px 5px',
-                                  borderRadius: 4,
-                                  background: 'var(--primary-light)',
-                                  color: 'var(--primary)',
-                                  fontWeight: 700,
-                                  marginLeft: 6
-                                }}>
-                                  현재 접속 계정
-                                </span>
-                              )}
-                            </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <span style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-main)', whiteSpace: 'nowrap' }}>
+                              {m.name}
+                            </span>
+                            {currentManager && currentManager.id === m.id && (
+                              <span style={{
+                                display: 'inline-block',
+                                fontSize: '0.68rem',
+                                padding: '1px 6px',
+                                borderRadius: 4,
+                                background: 'var(--primary-light)',
+                                color: 'var(--primary)',
+                                fontWeight: 700,
+                                whiteSpace: 'nowrap'
+                              }}>
+                                현재 접속
+                              </span>
+                            )}
                           </div>
                         </td>
                         <td>
