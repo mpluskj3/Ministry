@@ -54,18 +54,9 @@ export const PublisherCardModal: React.FC<PublisherCardModalProps> = ({
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 840 }}>
         {/* Header */}
-        <div style={{ position: 'relative', marginBottom: 20 }}>
-          {/* 닫기 버튼 - 항상 우측 상단 고정 */}
-          <button
-            onClick={onClose}
-            className="btn-secondary"
-            style={{ position: 'absolute', top: 0, right: 0, padding: 6 }}
-          >
-            <X size={18} />
-          </button>
-
-          {/* 아이콘 + 제목 */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, paddingRight: 44 }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: 20 }}>
+          {/* 아이콘 + 제목 + 다운로드 */}
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, minWidth: 0, flex: 1 }}>
             <div style={{
               width: 42,
               height: 42,
@@ -80,27 +71,28 @@ export const PublisherCardModal: React.FC<PublisherCardModalProps> = ({
               <FileText size={22} />
             </div>
             <div style={{ minWidth: 0 }}>
-              <h3 style={{ fontSize: '1.1rem', margin: 0, wordBreak: 'keep-all' }}>
+              <h3 style={{ fontSize: '1.05rem', margin: 0, lineHeight: 1.3 }}>
                 {publisherName} 전도인 기록 카드 (S-21)
               </h3>
-              <p style={{ fontSize: '0.825rem', color: 'var(--text-muted)', margin: 0 }}>
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '2px 0 10px' }}>
                 {serviceYear.year_name} 봉사연도 12개월 봉사 기록 집계
               </p>
+              <button
+                onClick={handleDownloadPdf}
+                disabled={pdfGenerating || loading}
+                className="btn-primary"
+                style={{ padding: '7px 13px', fontSize: '0.83rem' }}
+              >
+                <Download size={14} />
+                <span>{pdfGenerating ? 'PDF 생성 중...' : 'S-21 PDF 다운로드'}</span>
+              </button>
             </div>
           </div>
 
-          {/* 다운로드 버튼 - 제목 아래 */}
-          <div style={{ marginTop: 12, paddingLeft: 52 }}>
-            <button
-              onClick={handleDownloadPdf}
-              disabled={pdfGenerating || loading}
-              className="btn-primary"
-              style={{ padding: '8px 14px', fontSize: '0.85rem' }}
-            >
-              <Download size={15} />
-              <span>{pdfGenerating ? 'PDF 생성 중...' : 'S-21 PDF 다운로드'}</span>
-            </button>
-          </div>
+          {/* 닫기 버튼 */}
+          <button onClick={onClose} className="btn-secondary" style={{ padding: 6, flexShrink: 0 }}>
+            <X size={18} />
+          </button>
         </div>
 
         {loading ? (
