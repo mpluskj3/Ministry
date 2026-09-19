@@ -1011,36 +1011,47 @@ body {
     font-size: 1.35rem !important;
   }
 
-  /* 뷰모드 탭 전환 바 (모바일 가로 스크롤 및 글자 수직 줄바꿈 차단) */
+  /* 뷰모드 탭 전환 바 (모바일에서 잘림 없이 2열 그리드로 전 버튼 균등 노출) */
   .view-mode-switcher-container {
-    flex-direction: column !important;
-    align-items: stretch !important;
-    gap: 10px !important;
+    width: 100% !important;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
   }
 
   .view-mode-pill-bar {
-    display: flex !important;
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
     width: 100% !important;
-    overflow-x: auto !important;
-    overflow-y: hidden !important;
-    -webkit-overflow-scrolling: touch !important;
-    scrollbar-width: none !important;
+    max-width: 480px !important;
+    margin: 0 auto !important;
+    gap: 6px !important;
+    padding: 5px !important;
     border-radius: var(--radius-lg) !important;
-    padding: 3px !important;
-    gap: 3px !important;
-    justify-content: flex-start !important;
+    box-sizing: border-box !important;
   }
 
-  .view-mode-pill-bar::-webkit-scrollbar {
-    display: none !important;
+  /* 3개 버튼(일반 관리자)일 때 홀수 마지막 버튼 중앙 확장 */
+  .view-mode-pill-bar > button:last-child:nth-child(odd) {
+    grid-column: span 2 !important;
+  }
+
+  /* 4번째 버튼이 없는(3개 탭인) 경우 3열 그리드 */
+  .view-mode-pill-bar:not(:has(> button:nth-child(4))) {
+    grid-template-columns: repeat(3, 1fr) !important;
   }
 
   .view-mode-pill-btn {
-    padding: 7px 12px !important;
-    font-size: 0.82rem !important;
-    flex: 1 0 auto !important;
+    width: 100% !important;
+    display: inline-flex !important;
+    align-items: center !important;
     justify-content: center !important;
+    padding: 8px 6px !important;
+    font-size: 0.82rem !important;
+    font-weight: 700 !important;
     white-space: nowrap !important;
+    box-sizing: border-box !important;
+    border-radius: var(--radius-md) !important;
   }
 
   /* 세부 목록 카드 모바일 여백 */
