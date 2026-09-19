@@ -54,8 +54,18 @@ export const PublisherCardModal: React.FC<PublisherCardModalProps> = ({
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 840 }}>
         {/* Header */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '12px 8px', marginBottom: 20 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flex: '1 1 auto' }}>
+        <div style={{ position: 'relative', marginBottom: 20 }}>
+          {/* 닫기 버튼 - 항상 우측 상단 고정 */}
+          <button
+            onClick={onClose}
+            className="btn-secondary"
+            style={{ position: 'absolute', top: 0, right: 0, padding: 6 }}
+          >
+            <X size={18} />
+          </button>
+
+          {/* 아이콘 + 제목 */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, paddingRight: 44 }}>
             <div style={{
               width: 42,
               height: 42,
@@ -78,7 +88,9 @@ export const PublisherCardModal: React.FC<PublisherCardModalProps> = ({
               </p>
             </div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+
+          {/* 다운로드 버튼 - 제목 아래 */}
+          <div style={{ marginTop: 12, paddingLeft: 52 }}>
             <button
               onClick={handleDownloadPdf}
               disabled={pdfGenerating || loading}
@@ -87,9 +99,6 @@ export const PublisherCardModal: React.FC<PublisherCardModalProps> = ({
             >
               <Download size={15} />
               <span>{pdfGenerating ? 'PDF 생성 중...' : 'S-21 PDF 다운로드'}</span>
-            </button>
-            <button onClick={onClose} className="btn-secondary" style={{ padding: 6 }}>
-              <X size={18} />
             </button>
           </div>
         </div>
