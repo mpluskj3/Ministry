@@ -1312,10 +1312,10 @@ ${submitUrl}
                   padding: '6px 14px',
                   borderRadius: 'var(--radius-full)'
                 }}
-                title="1년 통계 인쇄"
+                title="인쇄"
               >
                 <Printer size={14} />
-                <span>1년 통계 인쇄</span>
+                <span>인쇄</span>
               </button>
             </div>
 
