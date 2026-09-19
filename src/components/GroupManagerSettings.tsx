@@ -255,7 +255,7 @@ export const GroupManagerSettings: React.FC<GroupManagerSettingsProps> = ({
   const groupAdminCount = managers.filter(m => m.role === 'group').length;
 
   return (
-    <div style={{ padding: '24px 20px', maxWidth: 1180, margin: '0 auto', width: '100%' }}>
+    <div className="group-manager-container" style={{ padding: '24px 20px', maxWidth: 1180, margin: '0 auto', width: '100%' }}>
       {/* Alert Notifications */}
       {successMsg && (
         <div style={{
@@ -298,18 +298,19 @@ export const GroupManagerSettings: React.FC<GroupManagerSettingsProps> = ({
       {/* Page Header */}
       <div style={{
         display: 'flex',
+        flexDirection: 'column',
         alignItems: 'center',
-        justifyContent: 'space-between',
-        flexWrap: 'wrap',
-        gap: 16,
-        marginBottom: 24
+        textAlign: 'center',
+        gap: 14,
+        marginBottom: 24,
+        padding: '0 44px',
       }}>
-        <div>
+        <div style={{ textAlign: 'center' }}>
           <h2 style={{ fontSize: '1.4rem', fontWeight: 800, margin: 0, letterSpacing: '-0.02em' }}>
             집단 및 관리자 설정
           </h2>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.86rem', margin: '4px 0 0 0' }}>
-            회중 봉사 집단(구역) 및 집단/최고 관리자 계정과 권한을 설정합니다.
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.86rem', margin: '6px 0 0 0' }}>
+            회중 봉사 집단 및 관리자 계정을 설정합니다.
           </p>
         </div>
 
@@ -320,7 +321,10 @@ export const GroupManagerSettings: React.FC<GroupManagerSettingsProps> = ({
           padding: 4,
           borderRadius: 'var(--radius-md)',
           border: '1px solid var(--border-color)',
-          boxShadow: 'var(--shadow-sm)'
+          boxShadow: 'var(--shadow-sm)',
+          maxWidth: '100%',
+          overflowX: 'auto',
+          justifyContent: 'center'
         }}>
           <button
             onClick={() => setActiveSubTab('groups')}

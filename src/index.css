@@ -941,7 +941,8 @@ body {
 @media (max-width: 768px) {
   /* 전반적인 레이아웃 여백 최적화 */
   .dashboard-content-container,
-  .publisher-management-container {
+  .publisher-management-container,
+  .group-manager-container {
     padding: 12px 10px !important;
   }
 

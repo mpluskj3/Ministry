@@ -716,14 +716,15 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
         className={activeSubTab === 'emergency' ? 'no-print' : 'publisher-mgmt-header'}
         style={{
           display: 'flex',
+          flexDirection: 'column',
           alignItems: 'center',
-          justifyContent: 'space-between',
-          flexWrap: 'wrap',
-          gap: 12,
-          marginBottom: 20
+          textAlign: 'center',
+          gap: 14,
+          marginBottom: 20,
+          padding: '0 44px',
         }}
       >
-        <div style={{ minWidth: 0, flex: '1 1 240px' }}>
+        <div style={{ textAlign: 'center' }}>
           <h2 style={{ fontSize: '1.35rem', fontWeight: 800, margin: '0 0 4px 0' }}>전도인 명단 관리</h2>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.82rem', margin: 0, lineHeight: 1.4 }}>
             {activeSubTab === 'emergency'
@@ -733,7 +734,7 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
         </div>
 
         {activeSubTab === 'active' && isSuperAdmin && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, flexWrap: 'wrap' }}>
             <button
               type="button"
               onClick={() => {
@@ -744,11 +745,10 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
               className="btn-secondary"
               style={{
                 gap: 6,
-                padding: '8px 12px',
+                padding: '8px 14px',
                 fontSize: '0.84rem',
                 whiteSpace: 'nowrap',
                 flexShrink: 0,
-                flex: '1 1 auto',
                 justifyContent: 'center'
               }}
               title="구글 시트나 엑셀 표 데이터를 복사하여 붙여넣으면 전도인 명단을 자동으로 동기화합니다."
@@ -761,11 +761,10 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
               className="btn-primary"
               style={{
                 gap: 6,
-                padding: '8px 14px',
+                padding: '8px 16px',
                 fontSize: '0.84rem',
                 whiteSpace: 'nowrap',
                 flexShrink: 0,
-                flex: '1 1 auto',
                 justifyContent: 'center'
               }}
             >
@@ -774,7 +773,6 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
             </button>
           </div>
         )}
-
       </div>
 
       {/* 3 Sub-Tabs Switcher: 활동 전도인 vs 전출/무활동 보관함 vs 비상연락망 */}
