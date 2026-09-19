@@ -1045,7 +1045,7 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
           {/* Table Card: 선택, 이름, 직책, RP, 생년월일, 침례일자, 집단, 성별, 구별, 나이, 비고, 작업 */}
           <div className="nfox-card" style={{ padding: 0, overflow: 'hidden' }}>
             <div className="data-table-container sticky-container">
-              <table className="data-table data-table-sticky" style={{ minWidth: 1100 }}>
+              <table className="data-table data-table-sticky publisher-data-table" style={{ minWidth: 1100 }}>
                 <thead>
                   <tr>
                     {/* 다중 선택 체크박스 열 */}
@@ -1080,7 +1080,7 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
                     </tr>
                   ) : (
                     filteredPublishers.map((p) => (
-                      <tr key={p.id} style={{ background: selectedPublisherIds.has(p.id) ? 'rgba(99, 102, 241, 0.05)' : undefined }}>
+                      <tr key={p.id} className={selectedPublisherIds.has(p.id) ? 'row-selected' : undefined} style={{ background: selectedPublisherIds.has(p.id) ? 'rgba(99, 102, 241, 0.05)' : undefined }}>
                         {/* 선택 체크박스 */}
                         <td style={{ width: 44, minWidth: 44, textAlign: 'center' }}>
                           <input
