@@ -143,9 +143,8 @@ export const ReportForm: React.FC<ReportFormProps> = ({
 
   // 전도인 또는 월 변경 시 기존 제출 내역 확인
   const checkForExistingReport = useCallback(async (pubId: string, targetMonth: ServiceMonth) => {
-    // 마감된 월이면 기존 보고 알림을 띄우지 않음
-    const closedForUser = !(!isStandalone && (manager?.role === 'super' || manager?.role === 'group')) && !!monthStatuses[targetMonth];
-    if (closedForUser) {
+    // 마감된 월이면 누구든 기존 보고 알림을 띄우지 않음
+    if (!!monthStatuses[targetMonth]) {
       setExistingReport(null);
       setShowExistingAlert(false);
       setIsEditMode(false);
@@ -164,7 +163,7 @@ export const ReportForm: React.FC<ReportFormProps> = ({
     } catch (err) {
       console.error('Failed to check existing report:', err);
     }
-  }, [currentYear.id, monthStatuses, isStandalone, manager]);
+  }, [currentYear.id, monthStatuses]);
 
   useEffect(() => {
     if (selectedPublisher) {
@@ -176,9 +175,9 @@ export const ReportForm: React.FC<ReportFormProps> = ({
     }
   }, [selectedPublisher, month, checkForExistingReport]);
 
-  // 관리자(서기/주임감독자/집단감독자)는 마감된 월이라도 보고를 대리 입력/수정할 수 있도록 허용
+  // 야외 봉사 보고 제출 페이지에서는 관리자도 마감된 월에는 제출/수정 불가 (마감 월은 잠김)
   const isManager = !isStandalone && (manager?.role === 'super' || manager?.role === 'group');
-  const isClosed = !isManager && !!monthStatuses[month];
+  const isClosed = !!monthStatuses[month];
 
   // 기존 보고 불러와서 수정 모드로 전환
   const handleLoadExistingReport = () => {
@@ -722,7 +721,7 @@ export const ReportForm: React.FC<ReportFormProps> = ({
               marginBottom: 16
             }}>
               <Lock size={14} />
-              <span>{month} 보고는 마감되어 잠겨 있습니다. 추가 입력 및 수정이 불가능합니다.</span>
+              <span>{month} 봉사 보고는 마감되었습니다.</span>
             </div>
           )}
 
@@ -815,7 +814,7 @@ export const ReportForm: React.FC<ReportFormProps> = ({
                   <strong>봉사 미참여(N) 확인 안내:</strong><br />
                   이번 달에 야외 봉사에 실제로 전혀 참여하지 못하셨습니까?<br />
                   <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-                    ※ 15분 이상 전도에 참여하셨거나 어떤 형태로든 증거하셨다면 '예 (참여함)'으로 보고하실 수 있습니다.
+                    ※ 어떤 형태로든 증거하셨다면 '예 (참여함)'으로 보고하실 수 있습니다.
                   </span>
                 </div>
               </div>
@@ -1012,7 +1011,7 @@ export const ReportForm: React.FC<ReportFormProps> = ({
           <div style={{ marginTop: errorMsg ? 16 : 28 }}>
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || isClosed}
               className="btn-primary"
               style={{
                 width: '100%',
@@ -1022,13 +1021,18 @@ export const ReportForm: React.FC<ReportFormProps> = ({
                 justifyContent: 'center',
                 borderRadius: 'var(--radius-md)',
                 boxShadow: 'var(--shadow-md)',
-                opacity: loading ? 0.7 : 1,
-                cursor: loading ? 'not-allowed' : 'pointer',
+                opacity: (loading || isClosed) ? 0.6 : 1,
+                cursor: (loading || isClosed) ? 'not-allowed' : 'pointer',
                 transition: 'var(--transition-fast)'
               }}
             >
               {loading ? (
                 <span>보고를 저장하는 중...</span>
+              ) : isClosed ? (
+                <>
+                  <Lock size={18} />
+                  <span>{month} 보고는 마감되었습니다</span>
+                </>
               ) : isEditMode ? (
                 <>
                   <RotateCcw size={18} />
