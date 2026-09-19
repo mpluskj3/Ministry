@@ -841,11 +841,6 @@ body {
   color: #ffffff !important;
 }
 
-.view-mode-print-btn-wrapper {
-  position: absolute;
-  right: 0;
-}
-
 /* ==============================================================================
    Monthly View Responsive Components
    ============================================================================== */
@@ -1046,20 +1041,6 @@ body {
     flex: 1 0 auto !important;
     justify-content: center !important;
     white-space: nowrap !important;
-  }
-
-  /* 모바일에서 인쇄 버튼이 탭을 가리지 않고 하단에 정갈하게 정렬 */
-  .view-mode-print-btn-wrapper {
-    position: static !important;
-    display: flex !important;
-    justify-content: flex-end !important;
-    width: 100% !important;
-  }
-
-  .view-mode-print-btn-wrapper button {
-    width: 100% !important;
-    justify-content: center !important;
-    padding: 8px 16px !important;
   }
 
   /* 세부 목록 카드 모바일 여백 */

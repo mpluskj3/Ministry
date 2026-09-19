@@ -1263,26 +1263,6 @@ ${submitUrl}
               </button>
             )}
           </div>
-
-          <div className="view-mode-print-btn-wrapper no-print">
-            <button
-              type="button"
-              onClick={handlePrint}
-              className="btn-secondary"
-              style={{
-                gap: 6,
-                fontSize: '0.82rem',
-                padding: '7px 15px',
-                borderRadius: 'var(--radius-full)'
-              }}
-              title={`${viewMode === 'yearly' ? '1년 통계' : viewMode === 'monthly' ? `${selectedMonth} 상세 내역` : viewMode === 'pioneers' ? 'RP 통계' : '회중 분석 보고'} 인쇄`}
-            >
-              <Printer size={15} />
-              <span>
-                {viewMode === 'yearly' ? '1년 통계 인쇄' : viewMode === 'monthly' ? `${selectedMonth} 인쇄` : viewMode === 'pioneers' ? 'RP 통계 인쇄' : '분석 보고 인쇄'}
-              </span>
-            </button>
-          </div>
         </div>
       </div>
 
@@ -1294,7 +1274,7 @@ ${submitUrl}
           {/* 1-Year Summary: 1년 각 항목의 합계/평균 통계표 */}
           <div className="nfox-card" style={{ padding: 0, overflow: 'hidden' }}>
             <div style={{
-              padding: '12px 18px',
+              padding: '10px 18px',
               background: 'var(--bg-card-subtle, #f8fafc)',
               borderBottom: '1px solid var(--border-color)',
               display: 'flex',
@@ -1320,6 +1300,23 @@ ${submitUrl}
                   {currentYear.year_name} 봉사연도 월평균 통계표
                 </span>
               </div>
+
+              {/* 1년 통계 인쇄 버튼 (우측 정렬) */}
+              <button
+                type="button"
+                onClick={handlePrint}
+                className="btn-secondary no-print"
+                style={{
+                  gap: 6,
+                  fontSize: '0.82rem',
+                  padding: '6px 14px',
+                  borderRadius: 'var(--radius-full)'
+                }}
+                title="1년 통계 인쇄"
+              >
+                <Printer size={14} />
+                <span>1년 통계 인쇄</span>
+              </button>
             </div>
 
             <div className="data-table-container" style={{ border: 'none', borderRadius: 0 }}>
@@ -2991,7 +2988,24 @@ ${submitUrl}
               </div>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                onClick={handlePrint}
+                className="btn-secondary no-print"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  fontSize: '0.84rem',
+                  padding: '7px 14px',
+                  borderRadius: 'var(--radius-md)'
+                }}
+                title="회중 분석 보고 인쇄"
+              >
+                <Printer size={15} />
+                <span>분석 보고 인쇄</span>
+              </button>
               {Object.keys(analysisOverrides).length > 0 && (
                 <button
                   type="button"
