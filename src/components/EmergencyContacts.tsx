@@ -1065,31 +1065,31 @@ export const EmergencyContacts: React.FC<EmergencyContactsProps> = ({ currentYea
                 background: 'var(--bg-app)',
                 border: '1px solid var(--border-color)',
                 borderRadius: 'var(--radius-md)',
-                padding: '14px 16px',
+                padding: '14px 14px',
                 marginBottom: 12
               }}>
                 <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
                   기본 인적사항
                 </div>
 
-                {/* 이름 & 소속 집단 */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
-                  <div className="form-group" style={{ margin: 0 }}>
-                    <label className="form-label">
+                {/* 1. 이름 & 소속 집단 */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+                  <div className="form-group" style={{ margin: 0, minWidth: 0 }}>
+                    <label className="form-label" style={{ whiteSpace: 'nowrap' }}>
                       이름 <span style={{ color: 'var(--accent-rose)' }}>*</span>
                     </label>
                     <input
                       type="text"
                       className="form-input"
-                      placeholder="이름을 입력해 주세요"
+                      placeholder="성명 입력"
                       value={editingContact.name || ''}
                       onChange={e => setEditingContact({ ...editingContact, name: e.target.value })}
                       required
                     />
                   </div>
 
-                  <div className="form-group" style={{ margin: 0 }}>
-                    <label className="form-label">소속 집단</label>
+                  <div className="form-group" style={{ margin: 0, minWidth: 0 }}>
+                    <label className="form-label" style={{ whiteSpace: 'nowrap' }}>소속 집단</label>
                     <select
                       className="form-select"
                       value={editingContact.group_id || ''}
@@ -1103,10 +1103,10 @@ export const EmergencyContacts: React.FC<EmergencyContactsProps> = ({ currentYea
                   </div>
                 </div>
 
-                {/* 성별 & 직책 & 구분 */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 12 }}>
-                  <div className="form-group" style={{ margin: 0 }}>
-                    <label className="form-label">성별</label>
+                {/* 2. 성별 & 직책 */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+                  <div className="form-group" style={{ margin: 0, minWidth: 0 }}>
+                    <label className="form-label" style={{ whiteSpace: 'nowrap' }}>성별</label>
                     <select
                       className="form-select"
                       value={editingContact.gender || '남'}
@@ -1117,8 +1117,8 @@ export const EmergencyContacts: React.FC<EmergencyContactsProps> = ({ currentYea
                     </select>
                   </div>
 
-                  <div className="form-group" style={{ margin: 0 }}>
-                    <label className="form-label">직책</label>
+                  <div className="form-group" style={{ margin: 0, minWidth: 0 }}>
+                    <label className="form-label" style={{ whiteSpace: 'nowrap' }}>직책</label>
                     <select
                       className="form-select"
                       disabled={editingContact.is_child || isChildStatus(editingContact.rp)}
@@ -1130,9 +1130,12 @@ export const EmergencyContacts: React.FC<EmergencyContactsProps> = ({ currentYea
                       <option value="봉종">봉종</option>
                     </select>
                   </div>
+                </div>
 
-                  <div className="form-group" style={{ margin: 0 }}>
-                    <label className="form-label">구분</label>
+                {/* 3. 구분 & 구별 */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+                  <div className="form-group" style={{ margin: 0, minWidth: 0 }}>
+                    <label className="form-label" style={{ whiteSpace: 'nowrap' }}>구분</label>
                     <select
                       className="form-select"
                       value={
@@ -1168,12 +1171,24 @@ export const EmergencyContacts: React.FC<EmergencyContactsProps> = ({ currentYea
                       <option value="자녀">자녀</option>
                     </select>
                   </div>
+
+                  <div className="form-group" style={{ margin: 0, minWidth: 0 }}>
+                    <label className="form-label" style={{ whiteSpace: 'nowrap' }}>구별</label>
+                    <select
+                      className="form-select"
+                      value={editingContact.hope || '다른 양'}
+                      onChange={e => setEditingContact({ ...editingContact, hope: e.target.value as Hope })}
+                    >
+                      <option value="다른 양">다른 양</option>
+                      <option value="기름부음받은 자">기름부음받은 자</option>
+                    </select>
+                  </div>
                 </div>
 
                 {(editingContact.is_child || isChildStatus(editingContact.rp)) && (
                   <div style={{
-                    marginTop: -4,
-                    marginBottom: 12,
+                    marginTop: -2,
+                    marginBottom: 10,
                     padding: '7px 12px',
                     borderRadius: 'var(--radius-sm)',
                     background: 'rgba(245, 158, 11, 0.1)',
@@ -1185,14 +1200,14 @@ export const EmergencyContacts: React.FC<EmergencyContactsProps> = ({ currentYea
                     gap: 6
                   }}>
                     <Info size={14} style={{ flexShrink: 0 }} />
-                    <span><strong>미침례 어린 자녀(활동 전도인 아님):</strong> 활동 전도인 명단과 봉사 통계에서 제외되며, <strong>비상연락망</strong>에만 보호자와 함께 등록되어 표시됩니다.</span>
+                    <span><strong>미침례 어린 자녀:</strong> 활동 전도인 명단과 봉사 통계에서 제외되며, <strong>비상연락망</strong>에만 보호자와 함께 등록되어 표시됩니다.</span>
                   </div>
                 )}
 
-                {/* 생년월일 & 침례일자 */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
-                  <div className="form-group" style={{ margin: 0 }}>
-                    <label className="form-label">생년월일</label>
+                {/* 4. 생년월일 & 침례일자 */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+                  <div className="form-group" style={{ margin: 0, minWidth: 0 }}>
+                    <label className="form-label" style={{ whiteSpace: 'nowrap' }}>생년월일</label>
                     <input
                       type="date"
                       className="form-input"
@@ -1201,9 +1216,9 @@ export const EmergencyContacts: React.FC<EmergencyContactsProps> = ({ currentYea
                     />
                   </div>
 
-                  <div className="form-group" style={{ margin: 0 }}>
-                    <label className="form-label">
-                      침례일자 <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 'normal' }}>(미침례 시 비워둠)</span>
+                  <div className="form-group" style={{ margin: 0, minWidth: 0 }}>
+                    <label className="form-label" style={{ whiteSpace: 'nowrap' }}>
+                      침례일자 <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 'normal' }}>(선택)</span>
                     </label>
                     <input
                       type="date"
@@ -1214,30 +1229,16 @@ export const EmergencyContacts: React.FC<EmergencyContactsProps> = ({ currentYea
                   </div>
                 </div>
 
-                {/* 구별 & 비고 */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                  <div className="form-group" style={{ margin: 0 }}>
-                    <label className="form-label">구별</label>
-                    <select
-                      className="form-select"
-                      value={editingContact.hope || '다른 양'}
-                      onChange={e => setEditingContact({ ...editingContact, hope: e.target.value as Hope })}
-                    >
-                      <option value="다른 양">다른 양</option>
-                      <option value="기름부음받은 자">기름부음받은 자</option>
-                    </select>
-                  </div>
-
-                  <div className="form-group" style={{ margin: 0 }}>
-                    <label className="form-label">비고</label>
-                    <input
-                      type="text"
-                      className="form-input"
-                      placeholder="예: 농아인, 맹인 등"
-                      value={editingContact.special_notes || ''}
-                      onChange={e => setEditingContact({ ...editingContact, special_notes: e.target.value })}
-                    />
-                  </div>
+                {/* 5. 비고 */}
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label className="form-label">비고</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder="예: 농아인, 맹인 등"
+                    value={editingContact.special_notes || ''}
+                    onChange={e => setEditingContact({ ...editingContact, special_notes: e.target.value })}
+                  />
                 </div>
               </div>
 
@@ -1246,7 +1247,7 @@ export const EmergencyContacts: React.FC<EmergencyContactsProps> = ({ currentYea
                 background: 'rgba(244, 63, 94, 0.03)',
                 border: '1px solid rgba(244, 63, 94, 0.18)',
                 borderRadius: 'var(--radius-md)',
-                padding: '14px 16px',
+                padding: '14px 14px',
                 marginBottom: 12
               }}>
                 <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#f43f5e', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -1254,10 +1255,10 @@ export const EmergencyContacts: React.FC<EmergencyContactsProps> = ({ currentYea
                   <span style={{ fontSize: '0.72rem', fontWeight: 400, color: 'var(--text-muted)' }}>(비상연락망 항목)</span>
                 </div>
 
-                {/* 전화번호 & 가족 대표자 */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
-                  <div className="form-group" style={{ margin: 0 }}>
-                    <label className="form-label">전화번호 (본인 휴대전화)</label>
+                {/* 1. 전화번호 & 가족 대표자 */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+                  <div className="form-group" style={{ margin: 0, minWidth: 0 }}>
+                    <label className="form-label" style={{ whiteSpace: 'nowrap' }}>전화번호</label>
                     <input
                       type="tel"
                       className="form-input"
@@ -1267,61 +1268,61 @@ export const EmergencyContacts: React.FC<EmergencyContactsProps> = ({ currentYea
                     />
                   </div>
 
-                  <div className="form-group" style={{ margin: 0 }}>
+                  <div className="form-group" style={{ margin: 0, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                      <label className="form-label" style={{ margin: 0 }}>가족 대표자 (가족 묶음)</label>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (editingContact.name) {
-                            setEditingContact({
-                              ...editingContact,
-                              family_head: editingContact.name.trim()
-                            });
-                          }
-                        }}
-                        style={{
-                          background: 'var(--primary)',
-                          color: '#fff',
-                          border: 'none',
-                          padding: '1px 6px',
-                          borderRadius: 3,
-                          fontSize: '0.7rem',
-                          fontWeight: 700,
-                          cursor: 'pointer',
-                          whiteSpace: 'nowrap'
-                        }}
-                      >
-                        본인 지정
-                      </button>
-                    </div>
-                    <div style={{ display: 'flex', gap: 6 }}>
-                      <input
-                        type="text"
-                        list="family-head-options"
-                        className="form-input"
-                        placeholder="가족 대표자 성명"
-                        value={editingContact.family_head || ''}
-                        onChange={e => setEditingContact({ ...editingContact, family_head: e.target.value })}
-                      />
-                      {editingContact.family_head && (
+                      <label className="form-label" style={{ margin: 0, whiteSpace: 'nowrap' }}>가족 대표자</label>
+                      {editingContact.family_head ? (
                         <button
                           type="button"
                           onClick={() => setEditingContact({ ...editingContact, family_head: '' })}
                           style={{
-                            padding: '4px 8px',
-                            fontSize: '0.74rem',
-                            border: '1px solid var(--border-color)',
-                            background: 'var(--bg-main)',
-                            borderRadius: 'var(--radius-sm)',
+                            background: 'none',
+                            color: 'var(--accent-rose)',
+                            border: 'none',
+                            padding: 0,
+                            fontSize: '0.72rem',
+                            fontWeight: 600,
                             cursor: 'pointer',
-                            whiteSpace: 'nowrap'
+                            textDecoration: 'underline'
                           }}
                         >
                           해제
                         </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (editingContact.name) {
+                              setEditingContact({
+                                ...editingContact,
+                                family_head: editingContact.name.trim()
+                              });
+                            }
+                          }}
+                          style={{
+                            background: 'var(--primary)',
+                            color: '#fff',
+                            border: 'none',
+                            padding: '1px 6px',
+                            borderRadius: 3,
+                            fontSize: '0.68rem',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            whiteSpace: 'nowrap'
+                          }}
+                        >
+                          본인 지정
+                        </button>
                       )}
                     </div>
+                    <input
+                      type="text"
+                      list="family-head-options"
+                      className="form-input"
+                      placeholder="가족 대표자 성명"
+                      value={editingContact.family_head || ''}
+                      onChange={e => setEditingContact({ ...editingContact, family_head: e.target.value })}
+                    />
                     <datalist id="family-head-options">
                       {contacts
                         .filter(c => c.group_id === editingContact.group_id && c.name)
@@ -1332,8 +1333,8 @@ export const EmergencyContacts: React.FC<EmergencyContactsProps> = ({ currentYea
                   </div>
                 </div>
 
-                {/* 주소 */}
-                <div className="form-group" style={{ marginBottom: 12 }}>
+                {/* 2. 주소 */}
+                <div className="form-group" style={{ marginBottom: 10 }}>
                   <label className="form-label">주소</label>
                   <input
                     type="text"
@@ -1344,10 +1345,10 @@ export const EmergencyContacts: React.FC<EmergencyContactsProps> = ({ currentYea
                   />
                 </div>
 
-                {/* 비상연락처 & 관계 */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                  <div className="form-group" style={{ margin: 0 }}>
-                    <label className="form-label">비상연락처 (가족/보호자)</label>
+                {/* 3. 비상연락처 & 관계 */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  <div className="form-group" style={{ margin: 0, minWidth: 0 }}>
+                    <label className="form-label" style={{ whiteSpace: 'nowrap' }}>비상연락처 (보호자)</label>
                     <input
                       type="tel"
                       className="form-input"
@@ -1357,12 +1358,12 @@ export const EmergencyContacts: React.FC<EmergencyContactsProps> = ({ currentYea
                     />
                   </div>
 
-                  <div className="form-group" style={{ margin: 0 }}>
-                    <label className="form-label">이름, 관계</label>
+                  <div className="form-group" style={{ margin: 0, minWidth: 0 }}>
+                    <label className="form-label" style={{ whiteSpace: 'nowrap' }}>이름, 관계</label>
                     <input
                       type="text"
                       className="form-input"
-                      placeholder="예: 홍길동(배우자), 본인 등"
+                      placeholder="예: 홍길동, 부친"
                       value={editingContact.relationship || ''}
                       onChange={e => setEditingContact({ ...editingContact, relationship: e.target.value })}
                     />
@@ -1370,8 +1371,15 @@ export const EmergencyContacts: React.FC<EmergencyContactsProps> = ({ currentYea
                 </div>
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 20 }}>
-                {editingContact?.publisher_id && isSuperAdmin && (
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: 8,
+                marginTop: 18
+              }}>
+                {editingContact?.publisher_id && isSuperAdmin ? (
                   <button
                     type="button"
                     onClick={handleDeleteContact}
@@ -1379,26 +1387,36 @@ export const EmergencyContacts: React.FC<EmergencyContactsProps> = ({ currentYea
                       background: 'rgba(244, 63, 94, 0.1)',
                       color: 'var(--accent-rose)',
                       border: '1px solid rgba(244, 63, 94, 0.25)',
-                      padding: '8px 14px',
+                      padding: '8px 12px',
                       borderRadius: 'var(--radius-md)',
-                      fontSize: '0.84rem',
+                      fontSize: '0.82rem',
                       fontWeight: 600,
                       cursor: 'pointer',
                       display: 'inline-flex',
                       alignItems: 'center',
-                      gap: 6,
-                      transition: 'all 0.15s ease'
+                      gap: 5,
+                      whiteSpace: 'nowrap',
+                      flexShrink: 0
                     }}
                   >
-                    <Trash2 size={15} /> 연락처/전도인 삭제
+                    <Trash2 size={14} /> <span>전도인 삭제</span>
                   </button>
-                )}
-                <div style={{ display: 'flex', gap: 10, marginLeft: 'auto' }}>
-                  <button type="button" onClick={() => setModalOpen(false)} className="btn-secondary">
+                ) : <div />}
+                <div style={{ display: 'flex', gap: 8, marginLeft: 'auto', flexWrap: 'nowrap' }}>
+                  <button
+                    type="button"
+                    onClick={() => setModalOpen(false)}
+                    className="btn-secondary"
+                    style={{ padding: '8px 16px', fontSize: '0.84rem', whiteSpace: 'nowrap' }}
+                  >
                     취소
                   </button>
-                  <button type="submit" className="btn-primary" style={{ gap: 6 }}>
-                    <Check size={16} /> 저장
+                  <button
+                    type="submit"
+                    className="btn-primary"
+                    style={{ padding: '8px 18px', fontSize: '0.84rem', gap: 5, whiteSpace: 'nowrap' }}
+                  >
+                    <Check size={16} /> <span>저장</span>
                   </button>
                 </div>
               </div>

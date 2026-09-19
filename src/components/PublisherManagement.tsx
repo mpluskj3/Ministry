@@ -1318,30 +1318,31 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
                 background: 'var(--bg-app)',
                 border: '1px solid var(--border-color)',
                 borderRadius: 'var(--radius-md)',
-                padding: '14px 16px',
+                padding: '14px 14px',
                 marginBottom: 12
               }}>
                 <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
                   기본 인적사항
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                  <div className="form-group">
-                    <label className="form-label">
+                {/* 1. 이름 & 소속 집단 */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+                  <div className="form-group" style={{ margin: 0, minWidth: 0 }}>
+                    <label className="form-label" style={{ whiteSpace: 'nowrap' }}>
                       이름 <span style={{ color: 'var(--accent-rose)' }}>*</span>
                     </label>
                     <input
                       type="text"
                       className="form-input"
-                      placeholder="이름을 입력해 주세요"
+                      placeholder="성명 입력"
                       value={editingPublisher.name || ''}
                       onChange={(e) => setEditingPublisher({ ...editingPublisher, name: e.target.value })}
                       required
                     />
                   </div>
 
-                  <div className="form-group">
-                    <label className="form-label">소속 집단</label>
+                  <div className="form-group" style={{ margin: 0, minWidth: 0 }}>
+                    <label className="form-label" style={{ whiteSpace: 'nowrap' }}>소속 집단</label>
                     <select
                       className="form-select"
                       value={editingPublisher.group_id || ''}
@@ -1355,9 +1356,10 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
-                  <div className="form-group">
-                    <label className="form-label">성별</label>
+                {/* 2. 성별 & 직책 */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+                  <div className="form-group" style={{ margin: 0, minWidth: 0 }}>
+                    <label className="form-label" style={{ whiteSpace: 'nowrap' }}>성별</label>
                     <select
                       className="form-select"
                       value={editingPublisher.gender || '남'}
@@ -1368,8 +1370,8 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
                     </select>
                   </div>
 
-                  <div className="form-group">
-                    <label className="form-label">직책</label>
+                  <div className="form-group" style={{ margin: 0, minWidth: 0 }}>
+                    <label className="form-label" style={{ whiteSpace: 'nowrap' }}>직책</label>
                     <select
                       className="form-select"
                       disabled={isChildStatus(editingPublisher.pioneer_status)}
@@ -1381,9 +1383,12 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
                       <option value="봉종">봉종</option>
                     </select>
                   </div>
+                </div>
 
-                  <div className="form-group">
-                    <label className="form-label">구분</label>
+                {/* 3. 구분 & 구별 */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+                  <div className="form-group" style={{ margin: 0, minWidth: 0 }}>
+                    <label className="form-label" style={{ whiteSpace: 'nowrap' }}>구분</label>
                     <select
                       className="form-select"
                       value={
@@ -1417,11 +1422,23 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
                       <option value="자녀 (집계 제외)">자녀</option>
                     </select>
                   </div>
+
+                  <div className="form-group" style={{ margin: 0, minWidth: 0 }}>
+                    <label className="form-label" style={{ whiteSpace: 'nowrap' }}>구별</label>
+                    <select
+                      className="form-select"
+                      value={editingPublisher.hope || '다른 양'}
+                      onChange={(e) => setEditingPublisher({ ...editingPublisher, hope: e.target.value as Hope })}
+                    >
+                      <option value="다른 양">다른 양</option>
+                      <option value="기름부음받은 자">기름부음받은 자</option>
+                    </select>
+                  </div>
                 </div>
 
                 {isChildStatus(editingPublisher.pioneer_status) && (
                   <div style={{
-                    marginTop: -4,
+                    marginTop: -2,
                     marginBottom: 10,
                     padding: '7px 12px',
                     borderRadius: 'var(--radius-sm)',
@@ -1434,13 +1451,14 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
                     gap: 6
                   }}>
                     <Info size={14} style={{ flexShrink: 0 }} />
-                    <span><strong>미침례 어린 자녀(활동 전도인 아님):</strong> 활동 전도인 명단과 봉사 통계에서 제외되며, <strong>비상연락망</strong>에만 등록되어 표시됩니다.</span>
+                    <span><strong>미침례 어린 자녀:</strong> 활동 전도인 명단과 봉사 통계에서 제외되며, <strong>비상연락망</strong>에만 등록되어 표시됩니다.</span>
                   </div>
                 )}
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                  <div className="form-group">
-                    <label className="form-label">생년월일</label>
+                {/* 4. 생년월일 & 침례일자 */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+                  <div className="form-group" style={{ margin: 0, minWidth: 0 }}>
+                    <label className="form-label" style={{ whiteSpace: 'nowrap' }}>생년월일</label>
                     <input
                       type="date"
                       className="form-input"
@@ -1449,9 +1467,9 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
                     />
                   </div>
 
-                  <div className="form-group">
-                    <label className="form-label">
-                      침례일자 <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 'normal' }}>(미침례 시 비워둠)</span>
+                  <div className="form-group" style={{ margin: 0, minWidth: 0 }}>
+                    <label className="form-label" style={{ whiteSpace: 'nowrap' }}>
+                      침례일자 <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 'normal' }}>(선택)</span>
                     </label>
                     <input
                       type="date"
@@ -1462,29 +1480,16 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                  <div className="form-group">
-                    <label className="form-label">구별</label>
-                    <select
-                      className="form-select"
-                      value={editingPublisher.hope || '다른 양'}
-                      onChange={(e) => setEditingPublisher({ ...editingPublisher, hope: e.target.value as Hope })}
-                    >
-                      <option value="다른 양">다른 양</option>
-                      <option value="기름부음받은 자">기름부음받은 자</option>
-                    </select>
-                  </div>
-
-                  <div className="form-group">
-                    <label className="form-label">비고</label>
-                    <input
-                      type="text"
-                      className="form-input"
-                      placeholder="예: 농아인, 맹인 등"
-                      value={editingPublisher.special_notes || ''}
-                      onChange={(e) => setEditingPublisher({ ...editingPublisher, special_notes: e.target.value })}
-                    />
-                  </div>
+                {/* 5. 비고 */}
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label className="form-label">비고</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder="예: 농아인, 맹인 등"
+                    value={editingPublisher.special_notes || ''}
+                    onChange={(e) => setEditingPublisher({ ...editingPublisher, special_notes: e.target.value })}
+                  />
                 </div>
               </div>
 
@@ -1493,7 +1498,7 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
                 background: 'rgba(244, 63, 94, 0.03)',
                 border: '1px solid rgba(244, 63, 94, 0.18)',
                 borderRadius: 'var(--radius-md)',
-                padding: '14px 16px',
+                padding: '14px 14px',
                 marginBottom: 12
               }}>
                 <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#f43f5e', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -1501,10 +1506,10 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
                   <span style={{ fontSize: '0.72rem', fontWeight: 400, color: 'var(--text-muted)' }}>(비상연락망 항목)</span>
                 </div>
 
-                {/* 전화번호 & 가족 대표자 */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
-                  <div className="form-group">
-                    <label className="form-label">전화번호</label>
+                {/* 1. 전화번호 & 가족 대표자 */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+                  <div className="form-group" style={{ margin: 0, minWidth: 0 }}>
+                    <label className="form-label" style={{ whiteSpace: 'nowrap' }}>전화번호</label>
                     <input
                       type="tel"
                       className="form-input"
@@ -1514,8 +1519,8 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
                     />
                   </div>
 
-                  <div className="form-group">
-                    <label className="form-label">가족 대표자</label>
+                  <div className="form-group" style={{ margin: 0, minWidth: 0 }}>
+                    <label className="form-label" style={{ whiteSpace: 'nowrap' }}>가족 대표자</label>
                     <input
                       type="text"
                       className="form-input"
@@ -1526,8 +1531,8 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
                   </div>
                 </div>
 
-                {/* 주소 */}
-                <div className="form-group" style={{ marginBottom: 12 }}>
+                {/* 2. 주소 */}
+                <div className="form-group" style={{ marginBottom: 10 }}>
                   <label className="form-label">주소</label>
                   <input
                     type="text"
@@ -1538,10 +1543,10 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
                   />
                 </div>
 
-                {/* 비상연락처 & 관계 */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                  <div className="form-group">
-                    <label className="form-label">비상연락처 (가족/보호자)</label>
+                {/* 3. 비상연락처 & 관계 */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  <div className="form-group" style={{ margin: 0, minWidth: 0 }}>
+                    <label className="form-label" style={{ whiteSpace: 'nowrap' }}>비상연락처 (보호자)</label>
                     <input
                       type="tel"
                       className="form-input"
@@ -1551,12 +1556,12 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
                     />
                   </div>
 
-                  <div className="form-group">
-                    <label className="form-label">이름, 관계</label>
+                  <div className="form-group" style={{ margin: 0, minWidth: 0 }}>
+                    <label className="form-label" style={{ whiteSpace: 'nowrap' }}>이름, 관계</label>
                     <input
                       type="text"
                       className="form-input"
-                      placeholder="예: 홍길동(배우자), 본인 등"
+                      placeholder="예: 홍길동, 부친"
                       value={editingPublisher.relationship || ''}
                       onChange={(e) => setEditingPublisher({ ...editingPublisher, relationship: e.target.value })}
                     />
@@ -1564,8 +1569,15 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
                 </div>
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 16 }}>
-                {editingPublisher?.id && isSuperAdmin && (
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: 8,
+                marginTop: 18
+              }}>
+                {editingPublisher?.id && isSuperAdmin ? (
                   <button
                     type="button"
                     onClick={handleDeleteFromEdit}
@@ -1573,26 +1585,36 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
                       background: 'rgba(244, 63, 94, 0.1)',
                       color: 'var(--accent-rose)',
                       border: '1px solid rgba(244, 63, 94, 0.25)',
-                      padding: '8px 14px',
+                      padding: '8px 12px',
                       borderRadius: 'var(--radius-md)',
-                      fontSize: '0.84rem',
+                      fontSize: '0.82rem',
                       fontWeight: 600,
                       cursor: 'pointer',
                       display: 'inline-flex',
                       alignItems: 'center',
-                      gap: 6,
-                      transition: 'all 0.15s ease'
+                      gap: 5,
+                      whiteSpace: 'nowrap',
+                      flexShrink: 0
                     }}
                   >
-                    <Trash2 size={15} /> 전도인 삭제
+                    <Trash2 size={14} /> <span>전도인 삭제</span>
                   </button>
-                )}
-                <div style={{ display: 'flex', gap: 10, marginLeft: 'auto' }}>
-                  <button type="button" onClick={() => setEditModalOpen(false)} className="btn-secondary">
+                ) : <div />}
+                <div style={{ display: 'flex', gap: 8, marginLeft: 'auto', flexWrap: 'nowrap' }}>
+                  <button
+                    type="button"
+                    onClick={() => setEditModalOpen(false)}
+                    className="btn-secondary"
+                    style={{ padding: '8px 16px', fontSize: '0.84rem', whiteSpace: 'nowrap' }}
+                  >
                     취소
                   </button>
-                  <button type="submit" className="btn-primary" style={{ gap: 6 }}>
-                    <Check size={16} /> 저장
+                  <button
+                    type="submit"
+                    className="btn-primary"
+                    style={{ padding: '8px 18px', fontSize: '0.84rem', gap: 5, whiteSpace: 'nowrap' }}
+                  >
+                    <Check size={16} /> <span>저장</span>
                   </button>
                 </div>
               </div>

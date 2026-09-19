@@ -1071,6 +1071,32 @@ body {
     white-space: nowrap !important;
     box-sizing: border-box !important;
   }
+
+  /* 모바일 모달 팝업 내부 여백 및 폼 정렬 최적화 */
+  .modal-overlay {
+    padding: 10px !important;
+  }
+  .modal-content {
+    padding: 18px 14px !important;
+    border-radius: var(--radius-lg) !important;
+    max-height: 94vh !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+  .modal-content input[type="date"] {
+    min-width: 0 !important;
+    padding: 8px 6px !important;
+    font-size: 0.8rem !important;
+  }
+  .modal-content .form-label {
+    font-size: 0.78rem !important;
+    margin-bottom: 4px !important;
+  }
+  .modal-content .form-input,
+  .modal-content .form-select {
+    padding: 8px 10px !important;
+    font-size: 0.85rem !important;
+  }
 }
 
 /* ==============================================================================
