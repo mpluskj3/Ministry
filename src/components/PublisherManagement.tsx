@@ -727,7 +727,7 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
           <h2 style={{ fontSize: '1.35rem', fontWeight: 800, margin: '0 0 4px 0' }}>전도인 명단 관리</h2>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.82rem', margin: 0, lineHeight: 1.4 }}>
             {activeSubTab === 'emergency'
-              ? '비상사태 및 재해 시 신속한 확인을 위한 전도인 비상연락망, 가족 대표자 및 주소 관리'
+              ? '비상사태 및 재해 시 비상연락망, 가족 대표자 및 주소 관리'
               : '활동 전도인 카드 및 전출/무활동자 관리'}
           </p>
         </div>
@@ -881,23 +881,21 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
         <>
           {/* Filter and Search Bar */}
           <div className="nfox-card" style={{
-            padding: '14px 16px',
+            padding: '16px 18px',
             marginBottom: 16,
             display: 'flex',
             flexDirection: 'column',
             gap: 12
           }}>
-            {/* Group Filter Chips: 전체 및 각 집단 필터링 */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-              <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-muted)', marginRight: 2, whiteSpace: 'nowrap' }}>
-              </span>
+            {/* Group Filter Chips: 전체 및 각 집단 필터링 (모바일 3열 2줄 정렬) */}
+            <div className="group-filter-grid">
               <button
                 type="button"
                 onClick={() => setSelectedGroupFilter('all')}
                 style={{
-                  padding: '5px 12px',
+                  padding: '6px 12px',
                   borderRadius: 'var(--radius-full)',
-                  fontSize: '0.8rem',
+                  fontSize: '0.82rem',
                   fontWeight: 600,
                   cursor: 'pointer',
                   whiteSpace: 'nowrap',
@@ -918,9 +916,9 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
                     key={g.id}
                     onClick={() => setSelectedGroupFilter(g.id)}
                     style={{
-                      padding: '5px 12px',
+                      padding: '6px 12px',
                       borderRadius: 'var(--radius-full)',
-                      fontSize: '0.8rem',
+                      fontSize: '0.82rem',
                       fontWeight: 600,
                       cursor: 'pointer',
                       whiteSpace: 'nowrap',
@@ -936,9 +934,9 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
                     <span>{g.name}</span>
                     {isMyGroup && (
                       <span style={{
-                        fontSize: '0.68rem',
-                        padding: '1px 5px',
-                        borderRadius: 4,
+                        fontSize: '0.66rem',
+                        padding: '1px 4px',
+                        borderRadius: 3,
                         background: selectedGroupFilter === g.id ? 'rgba(255,255,255,0.25)' : 'var(--primary-light)',
                         color: selectedGroupFilter === g.id ? '#fff' : 'var(--primary)',
                         fontWeight: 700

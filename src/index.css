@@ -1042,6 +1042,38 @@ body {
 }
 
 /* ==============================================================================
+   Group Filter Chips Layout (전체 및 각 집단 버튼 정렬 - 모바일 3열 2줄)
+   ============================================================================== */
+.group-filter-grid {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 640px) {
+  .group-filter-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+    width: 100%;
+  }
+
+  .group-filter-grid > button {
+    width: 100% !important;
+    min-width: 0 !important;
+    padding: 6px 4px !important;
+    font-size: 0.76rem !important;
+    display: inline-flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    text-align: center !important;
+    white-space: nowrap !important;
+    box-sizing: border-box !important;
+  }
+}
+
+/* ==============================================================================
    Print Stylesheet
    ============================================================================== */
 @media print {

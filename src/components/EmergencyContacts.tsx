@@ -626,12 +626,12 @@ export const EmergencyContacts: React.FC<EmergencyContactsProps> = ({ currentYea
 
       {/* Group & Search Filter Card (인쇄 시 숨김) */}
       <div className="nfox-card no-print" style={{ padding: '16px 18px', marginBottom: 16 }}>
-        {/* 1. 집단 필터 버튼 목록 ('집단별:' 라벨 제거) */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
+        {/* 1. 집단 필터 버튼 목록 (모바일 3열 2줄 정렬) */}
+        <div className="group-filter-grid" style={{ marginBottom: 12 }}>
           <button
             onClick={() => setSelectedGroupFilter('all')}
             style={{
-              padding: '6px 14px',
+              padding: '6px 12px',
               borderRadius: 'var(--radius-full)',
               fontSize: '0.82rem',
               fontWeight: 600,
@@ -652,7 +652,7 @@ export const EmergencyContacts: React.FC<EmergencyContactsProps> = ({ currentYea
                 key={g.id}
                 onClick={() => setSelectedGroupFilter(g.id)}
                 style={{
-                  padding: '6px 14px',
+                  padding: '6px 12px',
                   borderRadius: 'var(--radius-full)',
                   fontSize: '0.82rem',
                   fontWeight: 600,
@@ -663,15 +663,15 @@ export const EmergencyContacts: React.FC<EmergencyContactsProps> = ({ currentYea
                   transition: 'all 0.15s ease',
                   display: 'inline-flex',
                   alignItems: 'center',
-                  gap: 5
+                  gap: 4
                 }}
               >
-                <span>{g.name} 집단</span>
+                <span>{g.name}</span>
                 {isMyGroup && (
                   <span style={{
-                    fontSize: '0.7rem',
-                    padding: '1px 5px',
-                    borderRadius: 4,
+                    fontSize: '0.66rem',
+                    padding: '1px 4px',
+                    borderRadius: 3,
                     background: selectedGroupFilter === g.id ? 'rgba(255,255,255,0.25)' : 'var(--primary-light)',
                     color: selectedGroupFilter === g.id ? '#fff' : 'var(--primary)',
                     fontWeight: 700
@@ -679,7 +679,7 @@ export const EmergencyContacts: React.FC<EmergencyContactsProps> = ({ currentYea
                     내 집단
                   </span>
                 )}
-                <span style={{ opacity: 0.75, fontSize: '0.76rem' }}>({countInGroup})</span>
+                <span style={{ opacity: 0.75, fontSize: '0.74rem' }}>({countInGroup})</span>
               </button>
             );
           })}
