@@ -1301,21 +1301,25 @@ ${submitUrl}
                 </span>
               </div>
 
-              {/* 1년 통계 인쇄 버튼 (우측 정렬) */}
+              {/* 1년 통계 인쇄 버튼 (우측 정렬, 아이콘만 표시) */}
               <button
                 type="button"
                 onClick={handlePrint}
                 className="btn-secondary no-print"
                 style={{
-                  gap: 6,
-                  fontSize: '0.82rem',
-                  padding: '6px 14px',
-                  borderRadius: 'var(--radius-full)'
+                  width: 32,
+                  height: 32,
+                  padding: 0,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderRadius: 'var(--radius-full)',
+                  cursor: 'pointer'
                 }}
-                title="인쇄"
+                title="1년 통계 인쇄"
+                aria-label="1년 통계 인쇄"
               >
-                <Printer size={14} />
-                <span>인쇄</span>
+                <Printer size={16} />
               </button>
             </div>
 
