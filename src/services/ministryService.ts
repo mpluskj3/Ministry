@@ -296,13 +296,30 @@ export async function createServiceYear(yearNameInput: string, makeCurrent: bool
     createdYear = newYear;
   }
 
-  // 신규 연도의 12개월 마감 상태 초기화 (전부 미마감 false)
+  // 신규 연도의 12개월 마감 상태 초기화
+  // 9월(첫 달)만 활성(미마감 false), 나머지 11개월은 모두 마감(true)으로 설정
   const initialStatuses: Record<ServiceMonth, boolean> = {
-    '9월': false, '10월': false, '11월': false, '12월': false,
-    '1월': false, '2월': false, '3월': false, '4월': false,
-    '5월': false, '6월': false, '7월': false, '8월': false,
+    '9월': false,  // 첫 번째 달 - 활성(미마감)
+    '10월': true, '11월': true, '12월': true,
+    '1월': true, '2월': true, '3월': true, '4월': true,
+    '5월': true, '6월': true, '7월': true, '8월': true,
   };
   setLocalData(`statuses_${createdYear.id}`, initialStatuses);
+
+  // Supabase 연동 시 초기 마감 상태 DB에 저장
+  const supabaseForStatus = getSupabaseClient();
+  if (supabaseForStatus) {
+    const months: ServiceMonth[] = ['9월', '10월', '11월', '12월', '1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월'];
+    const upsertRows = months.map(m => ({
+      service_year_id: createdYear.id,
+      month: m,
+      is_closed: initialStatuses[m],
+      closed_at: initialStatuses[m] ? new Date().toISOString() : null,
+    }));
+    await supabaseForStatus
+      .from('monthly_statuses')
+      .upsert(upsertRows, { onConflict: 'service_year_id,month' });
+  }
 
   return createdYear;
 }
