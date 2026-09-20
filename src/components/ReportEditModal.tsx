@@ -271,7 +271,7 @@ export const ReportEditModal: React.FC<ReportEditModalProps> = ({
                 style={{ width: 16, height: 16, cursor: 'pointer' }}
               />
               <span style={{ fontSize: '0.85rem', fontWeight: 700, color: isAuxiliaryPioneer ? 'var(--accent-amber)' : 'var(--text-main)' }}>
-                이달에 보조 파이오니아(AP) 봉사 참여
+                이달에 보조 파이오니아 봉사 참여
               </span>
             </label>
           </div>

@@ -140,6 +140,7 @@ export const ReportForm: React.FC<ReportFormProps> = ({
   }, [currentYear.id, currentYear.year_name, isStandalone, manager]);
 
   const nameInputRef = React.useRef<HTMLInputElement>(null);
+  const hoursInputRef = React.useRef<HTMLInputElement>(null);
 
   // 전도인 또는 월 변경 시 기존 제출 내역 확인
   const checkForExistingReport = useCallback(async (pubId: string, targetMonth: ServiceMonth) => {
@@ -282,7 +283,9 @@ export const ReportForm: React.FC<ReportFormProps> = ({
 
     // RP인 경우 봉사 시간 필수 입력 안내
     if (targetPublisher.pioneer_status === 'RP' && participated && numHours <= 0) {
+      alert('정규 파이오니아(RP)는 봉사 시간을 입력해야 합니다.\n봉사 시간을 입력하고 보고해주세요.');
       setErrorMsg('정규 파이오니아(RP)는 봉사 시간을 입력해주세요.');
+      hoursInputRef.current?.focus();
       return;
     }
 
@@ -548,20 +551,20 @@ export const ReportForm: React.FC<ReportFormProps> = ({
                   required
                 />
                 {selectedPublisher && (
-                  <div style={{
-                    position: 'absolute',
-                    right: 12,
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    color: 'var(--accent-emerald)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 4,
-                    fontSize: '0.78rem',
-                    fontWeight: 700
-                  }}>
-                    <UserCheck size={15} />
-                    <span>확인됨</span>
+                  <div
+                    title="확인됨"
+                    style={{
+                      position: 'absolute',
+                      right: 12,
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      color: 'var(--accent-emerald)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}
+                  >
+                    <UserCheck size={18} />
                   </div>
                 )}
               </div>
@@ -849,11 +852,9 @@ export const ReportForm: React.FC<ReportFormProps> = ({
                   <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <Clock size={16} color="var(--primary)" />
                     <span>봉사 시간</span>
-                    {selectedPublisher?.pioneer_status === 'RP' && (
-                      <span style={{ color: 'var(--accent-rose)' }}>* (RP 필수)</span>
-                    )}
                   </label>
                   <input
+                    ref={hoursInputRef}
                     type="number"
                     step="0.5"
                     min="0"
