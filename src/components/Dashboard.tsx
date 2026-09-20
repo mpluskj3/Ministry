@@ -184,15 +184,16 @@ export const Dashboard: React.FC<DashboardProps> = ({
     : selectedGroupId;
 
   const isClosed = !!statuses[selectedMonth];
-  const canManageClosing = manager?.role === 'super';
   const isSuperAdmin = manager?.role === 'super';
+  const canManageClosing = manager?.role === 'super' || manager?.role === 'congregation';
+  const canViewAnalysis = manager?.role === 'super' || manager?.role === 'congregation';
 
-  // 최고관리자가 아닌 경우 '회중 분석 보고' 뷰에 머무르지 못하도록 방어
+  // 최고관리자 또는 회중관리자가 아닌 경우 '회중 분석 보고' 뷰에 머무르지 못하도록 방어
   useEffect(() => {
-    if (viewMode === 'analysis' && !isSuperAdmin) {
+    if (viewMode === 'analysis' && !canViewAnalysis) {
       setViewMode('yearly');
     }
-  }, [viewMode, isSuperAdmin]);
+  }, [viewMode, canViewAnalysis]);
 
   // 월별 세부 보고서 정렬 및 필터 상태 (기본값: 성명 이름순 오름차순)
   type MonthlySortField = 'publisher_name' | 'participated' | 'bible_studies' | 'hours' | 'remarks' | 'pioneer_status' | 'position' | 'group_name';
@@ -1060,8 +1061,8 @@ ${submitUrl}
   };
 
   const handleEditWeekdayAttendance = () => {
-    if (!isSuperAdmin) {
-      alert('평일 집회 참석자 수 입력 및 수정은 최고관리자만 가능합니다.');
+    if (!canViewAnalysis) {
+      alert('평일 집회 참석자 수 입력 및 수정은 최고관리자 또는 회중관리자만 가능합니다.');
       return;
     }
     const input = prompt(`${selectedMonth} 평일 집회 평균 참석자 수를 입력하세요:`, weekdayMeetingAttendance);
@@ -1253,7 +1254,7 @@ ${submitUrl}
               <Award size={15} />
               <span>RP 통계</span>
             </button>
-            {isSuperAdmin && (
+            {canViewAnalysis && (
               <button
                 onClick={() => setViewMode('analysis')}
                 className={`view-mode-pill-btn ${viewMode === 'analysis' ? 'active' : ''}`}

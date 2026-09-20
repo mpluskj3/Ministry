@@ -177,7 +177,7 @@ export const ReportForm: React.FC<ReportFormProps> = ({
   }, [selectedPublisher, month, checkForExistingReport]);
 
   // 야외 봉사 보고 제출 페이지에서는 관리자도 마감된 월에는 제출/수정 불가 (마감 월은 잠김)
-  const isManager = !isStandalone && (manager?.role === 'super' || manager?.role === 'group');
+  const isManager = !isStandalone && (manager?.role === 'super' || manager?.role === 'congregation' || manager?.role === 'group');
   const isClosed = !!monthStatuses[month];
 
   // 기존 보고 불러와서 수정 모드로 전환

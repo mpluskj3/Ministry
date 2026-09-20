@@ -205,7 +205,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   {manager.name}
                 </span>
                 <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                  {manager.role === 'super' ? '최고관리자' : (manager.group_name || '집단관리자')}
+                  {manager.role === 'super' ? '최고관리자' : manager.role === 'congregation' ? '회중관리자 (서기)' : (manager.group_name || '집단관리자')}
                 </span>
               </div>
               <button

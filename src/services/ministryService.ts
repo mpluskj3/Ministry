@@ -6,6 +6,7 @@ import {
   MonthlyStatus,
   MonthlyReport,
   Manager,
+  ManagerRole,
   MonthlyKpiStats,
   YearlyPublisherRecord,
   ServiceMonth,
@@ -1772,7 +1773,7 @@ export async function getManagers(): Promise<Manager[]> {
           id: row.id,
           email: row.email,
           name: row.name === '최고관리자(서기)' ? '최고관리자' : row.name,
-          role: row.role as 'super' | 'group',
+          role: row.role as ManagerRole,
           group_id: row.group_id,
           group_name: row.groups?.name || '미배정',
         })) as Manager[];
@@ -1910,7 +1911,7 @@ export async function authenticateManager(email: string): Promise<Manager | null
         id: data.id,
         email: data.email,
         name: data.name === '최고관리자(서기)' ? '최고관리자' : data.name,
-        role: data.role as 'super' | 'group',
+        role: data.role as ManagerRole,
         group_id: data.group_id,
         group_name: data.groups?.name,
       };

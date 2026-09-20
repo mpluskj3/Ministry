@@ -9,7 +9,7 @@ export const isChildStatus = (status?: string | null): boolean => {
   if (!status) return false;
   return status === '자녀' || status === '자녀 (집계 제외)' || status.includes('자녀');
 };
-export type ManagerRole = 'super' | 'group';
+export type ManagerRole = 'super' | 'congregation' | 'group';
 
 export type ServiceMonth = 
   | '9월' | '10월' | '11월' | '12월' 

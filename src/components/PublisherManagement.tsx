@@ -75,6 +75,7 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedGroupFilter, setSelectedGroupFilter] = useState('all');
   const isSuperAdmin = manager?.role === 'super';
+  const canManageAll = manager?.role === 'super' || manager?.role === 'congregation';
 
   // 활성 전도인 vs 전출/무활동 보관함 vs 비상연락망 탭
   const [activeSubTab, setActiveSubTab] = useState<'active' | 'inactive' | 'emergency'>(initialSubTab);
@@ -113,8 +114,8 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
 
 
   const handleImportPublishers = async () => {
-    if (!isSuperAdmin) {
-      alert('시트 명단 복사·가져오기는 최고관리자만 가능합니다.');
+    if (!canManageAll) {
+      alert('시트 명단 복사·가져오기는 최고관리자 또는 회중관리자만 가능합니다.');
       return;
     }
 
@@ -390,9 +391,9 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
     ? (manager.group_name || groups.find(g => g.id === manager.group_id)?.name || null)
     : null;
 
-  // 전도인 수정 권한 확인 함수: 최고관리자는 전체, 집단관리자는 본인 집단 소속 전도인만 수정 가능
+  // 전도인 수정 권한 확인 함수: 최고관리자/회중관리자는 전체, 집단관리자는 본인 집단 소속 전도인만 수정 가능
   const canEditPublisher = (p: Publisher) => {
-    if (isSuperAdmin) return true;
+    if (canManageAll) return true;
     if (manager?.role === 'group') {
       if (myGroupId && p.group_id === myGroupId) return true;
       if (myGroupName && (p.group_name === myGroupName || groups.find(g => g.id === p.group_id)?.name === myGroupName)) return true;
@@ -402,8 +403,8 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
   };
 
   const handleOpenAdd = () => {
-    if (!isSuperAdmin) {
-      alert('신규 전도인 등록은 최고관리자만 가능합니다.');
+    if (!canManageAll) {
+      alert('신규 전도인 등록은 최고관리자 또는 회중관리자만 가능합니다.');
       return;
     }
 
@@ -503,8 +504,8 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
 
   // 전출 / 무활동 처리 모달 열기
   const handleOpenDeactivate = (pub: Publisher) => {
-    if (!isSuperAdmin) {
-      alert('전출 처리는 최고관리자만 수행할 수 있습니다.');
+    if (!canManageAll) {
+      alert('전출 처리는 최고관리자 또는 회중관리자만 수행할 수 있습니다.');
       return;
     }
     setTargetPublisher(pub);
@@ -514,8 +515,8 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
 
   // 전출 / 무활동 처리 실행 (과거 보고 연계 보존)
   const handleConfirmDeactivate = async () => {
-    if (!isSuperAdmin) {
-      alert('전출 처리는 최고관리자만 수행할 수 있습니다.');
+    if (!canManageAll) {
+      alert('전출 처리는 최고관리자 또는 회중관리자만 수행할 수 있습니다.');
       return;
     }
     if (!targetPublisher) return;
@@ -532,8 +533,8 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
 
   // 회중 복귀 (복원)
   const handleRestore = async (pub: Publisher) => {
-    if (!isSuperAdmin) {
-      alert('전도인 복원 처리는 최고관리자만 수행할 수 있습니다.');
+    if (!canManageAll) {
+      alert('전도인 복원 처리는 최고관리자 또는 회중관리자만 수행할 수 있습니다.');
       return;
     }
     if (!window.confirm(`'${pub.name}' 전도인을 활동 전도인 명단으로 복귀(복원)하시겠습니까?`)) return;
@@ -548,8 +549,8 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
 
   // 영구 삭제 (보관함에서만 가능, 데이터베이스 완전 삭제)
   const handlePermanentDelete = async (id: string, name: string) => {
-    if (!isSuperAdmin) {
-      alert('전도인 영구 삭제는 최고관리자만 수행할 수 있습니다.');
+    if (!canManageAll) {
+      alert('전도인 영구 삭제는 최고관리자 또는 회중관리자만 수행할 수 있습니다.');
       return;
     }
     if (!window.confirm(`⚠️ 경고: '${name}' 전도인을 영구 삭제하시겠습니까?\n영구 삭제 시 이 전도인의 모든 과거 봉사 보고 및 S-21 기록이 함께 삭제됩니다!`)) return;
@@ -563,8 +564,8 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
 
   // 수정 모달 내에서 삭제 버튼 처리
   const handleDeleteFromEdit = async () => {
-    if (!isSuperAdmin) {
-      alert('전도인 삭제 및 전출 처리는 최고관리자만 수행할 수 있습니다.');
+    if (!canManageAll) {
+      alert('전도인 삭제 및 전출 처리는 최고관리자 또는 회중관리자만 수행할 수 있습니다.');
       return;
     }
     if (!editingPublisher || !editingPublisher.id) return;
@@ -675,8 +676,8 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
 
   // CSV 내보내기: 이름, 직책, RP, 생년월일, 침례일자, 집단, 성별, 구별, 나이, 비고
   const handleExportCsv = () => {
-    if (!isSuperAdmin) {
-      alert('엑셀/CSV 다운로드는 최고관리자만 가능합니다.');
+    if (!canManageAll) {
+      alert('엑셀/CSV 다운로드는 최고관리자 또는 회중관리자만 가능합니다.');
       return;
     }
     if (filteredPublishers.length === 0) {
@@ -733,7 +734,7 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
           </p>
         </div>
 
-        {activeSubTab === 'active' && isSuperAdmin && (
+        {activeSubTab === 'active' && canManageAll && (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, flexWrap: 'wrap' }}>
             <button
               type="button"
@@ -1019,7 +1020,7 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
                   <span>전체 카드 인쇄 ({filteredPublishers.length}명)</span>
                 </button>
 
-                {isSuperAdmin && (
+                {canManageAll && (
                   <button
                     type="button"
                     onClick={handleExportCsv}

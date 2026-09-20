@@ -13,7 +13,7 @@ import {
   UserPlus,
   AlertTriangle
 } from 'lucide-react';
-import { Group, Manager } from '../types/database';
+import { Group, Manager, ManagerRole } from '../types/database';
 import {
   getGroups,
   saveGroup,
@@ -54,7 +54,15 @@ export const GroupManagerSettings: React.FC<GroupManagerSettingsProps> = ({
   currentManager,
   onManagerUpdated,
 }) => {
+  const isSuperAdmin = currentManager?.role === 'super';
   const [activeSubTab, setActiveSubTab] = useState<'groups' | 'managers'>('groups');
+
+  useEffect(() => {
+    if (!isSuperAdmin) {
+      setActiveSubTab('groups');
+    }
+  }, [isSuperAdmin]);
+
   const [groups, setGroups] = useState<Group[]>([]);
   const [managers, setManagers] = useState<Manager[]>([]);
   const [publisherCounts, setPublisherCounts] = useState<Record<string, number>>({});
@@ -76,10 +84,15 @@ export const GroupManagerSettings: React.FC<GroupManagerSettingsProps> = ({
   // Manager Modal State
   const [managerModalOpen, setManagerModalOpen] = useState(false);
   const [editingManager, setEditingManager] = useState<Manager | null>(null);
-  const [managerForm, setManagerForm] = useState({
+  const [managerForm, setManagerForm] = useState<{
+    name: string;
+    email: string;
+    role: ManagerRole;
+    group_id: string;
+  }>({
     name: '',
     email: '',
-    role: 'group' as 'super' | 'group',
+    role: 'group',
     group_id: '',
   });
 
@@ -252,6 +265,7 @@ export const GroupManagerSettings: React.FC<GroupManagerSettingsProps> = ({
   const totalPublishers = Object.values(publisherCounts).reduce((a, b) => a + b, 0);
   const overseerCount = groups.filter(g => g.overseer_name && g.overseer_name.trim() !== '').length;
   const superAdminCount = managers.filter(m => m.role === 'super').length;
+  const congregationAdminCount = managers.filter(m => m.role === 'congregation').length;
   const groupAdminCount = managers.filter(m => m.role === 'group').length;
 
   return (
@@ -314,59 +328,61 @@ export const GroupManagerSettings: React.FC<GroupManagerSettingsProps> = ({
           </p>
         </div>
 
-        {/* Tab Switcher */}
-        <div style={{
-          display: 'flex',
-          background: 'var(--bg-card)',
-          padding: 4,
-          borderRadius: 'var(--radius-md)',
-          border: '1px solid var(--border-color)',
-          boxShadow: 'var(--shadow-sm)',
-          maxWidth: '100%',
-          overflowX: 'auto',
-          justifyContent: 'center'
-        }}>
-          <button
-            onClick={() => setActiveSubTab('groups')}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-              padding: '8px 18px',
-              borderRadius: 'var(--radius-sm)',
-              border: 'none',
-              background: activeSubTab === 'groups' ? 'var(--primary)' : 'transparent',
-              color: activeSubTab === 'groups' ? '#fff' : 'var(--text-muted)',
-              fontSize: '0.88rem',
-              fontWeight: 700,
-              cursor: 'pointer',
-              transition: 'var(--transition-fast)'
-            }}
-          >
-            <Building2 size={16} />
-            <span>집단명 관리 ({groups.length})</span>
-          </button>
-          <button
-            onClick={() => setActiveSubTab('managers')}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-              padding: '8px 18px',
-              borderRadius: 'var(--radius-sm)',
-              border: 'none',
-              background: activeSubTab === 'managers' ? 'var(--primary)' : 'transparent',
-              color: activeSubTab === 'managers' ? '#fff' : 'var(--text-muted)',
-              fontSize: '0.88rem',
-              fontWeight: 700,
-              cursor: 'pointer',
-              transition: 'var(--transition-fast)'
-            }}
-          >
-            <ShieldCheck size={16} />
-            <span>관리자 계정 ({managers.length})</span>
-          </button>
-        </div>
+        {/* Tab Switcher: 관리자 계정 메뉴는 최고관리자만 볼 수 있음 */}
+        {isSuperAdmin && (
+          <div style={{
+            display: 'flex',
+            background: 'var(--bg-card)',
+            padding: 4,
+            borderRadius: 'var(--radius-md)',
+            border: '1px solid var(--border-color)',
+            boxShadow: 'var(--shadow-sm)',
+            maxWidth: '100%',
+            overflowX: 'auto',
+            justifyContent: 'center'
+          }}>
+            <button
+              onClick={() => setActiveSubTab('groups')}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                padding: '8px 18px',
+                borderRadius: 'var(--radius-sm)',
+                border: 'none',
+                background: activeSubTab === 'groups' ? 'var(--primary)' : 'transparent',
+                color: activeSubTab === 'groups' ? '#fff' : 'var(--text-muted)',
+                fontSize: '0.88rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                transition: 'var(--transition-fast)'
+              }}
+            >
+              <Building2 size={16} />
+              <span>집단명 관리 ({groups.length})</span>
+            </button>
+            <button
+              onClick={() => setActiveSubTab('managers')}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                padding: '8px 18px',
+                borderRadius: 'var(--radius-sm)',
+                border: 'none',
+                background: activeSubTab === 'managers' ? 'var(--primary)' : 'transparent',
+                color: activeSubTab === 'managers' ? '#fff' : 'var(--text-muted)',
+                fontSize: '0.88rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                transition: 'var(--transition-fast)'
+              }}
+            >
+              <ShieldCheck size={16} />
+              <span>관리자 계정 ({managers.length})</span>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Summary KPI Cards */}
@@ -441,28 +457,30 @@ export const GroupManagerSettings: React.FC<GroupManagerSettingsProps> = ({
           </div>
         </div>
 
-        {/* Card 4: 관리자 계정 수 */}
-        <div className="nfox-card" style={{ padding: '18px 20px', display: 'flex', alignItems: 'center', gap: 14 }}>
-          <div style={{
-            width: 44,
-            height: 44,
-            borderRadius: 'var(--radius-md)',
-            background: 'rgba(99, 102, 241, 0.12)',
-            color: 'var(--primary)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            flexShrink: 0
-          }}>
-            <UserPlus size={22} />
-          </div>
-          <div>
-            <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600 }}>등록 관리자 계정</div>
-            <div style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--text-main)' }}>
-              {managers.length}명 <span style={{ fontSize: '0.82rem', fontWeight: 500, color: 'var(--text-muted)' }}>(최고관리자 {superAdminCount}, 집단 {groupAdminCount})</span>
+        {/* Card 4: 관리자 계정 수 (최고관리자 전용) */}
+        {isSuperAdmin && (
+          <div className="nfox-card" style={{ padding: '18px 20px', display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div style={{
+              width: 44,
+              height: 44,
+              borderRadius: 'var(--radius-md)',
+              background: 'rgba(99, 102, 241, 0.12)',
+              color: 'var(--primary)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0
+            }}>
+              <UserPlus size={22} />
+            </div>
+            <div>
+              <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600 }}>등록 관리자 계정</div>
+              <div style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--text-main)' }}>
+                {managers.length}명 <span style={{ fontSize: '0.82rem', fontWeight: 500, color: 'var(--text-muted)' }}>(최고 {superAdminCount}, 회중 {congregationAdminCount}, 집단 {groupAdminCount})</span>
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* ------------------------------------------------------------- */}
@@ -621,9 +639,9 @@ export const GroupManagerSettings: React.FC<GroupManagerSettingsProps> = ({
       )}
 
       {/* ------------------------------------------------------------- */}
-      {/* 2. 관리자 계정 관리 뷰 (Google 계정 인증 연동) */}
+      {/* 2. 관리자 계정 관리 뷰 (최고관리자 전용) */}
       {/* ------------------------------------------------------------- */}
-      {activeSubTab === 'managers' && (
+      {isSuperAdmin && activeSubTab === 'managers' && (
         <div className="nfox-card" style={{ padding: '24px 28px' }}>
           {/* Google 계정 로그인 안내 배너 */}
           <div style={{
@@ -774,6 +792,11 @@ export const GroupManagerSettings: React.FC<GroupManagerSettingsProps> = ({
                               <ShieldCheck size={14} style={{ marginRight: 4 }} />
                               최고관리자
                             </span>
+                          ) : m.role === 'congregation' ? (
+                            <span className="badge" style={{ background: 'rgba(14, 165, 233, 0.15)', color: '#0284c7', fontWeight: 700, padding: '4px 10px' }}>
+                              <ShieldCheck size={14} style={{ marginRight: 4 }} />
+                              회중관리자 (서기)
+                            </span>
                           ) : (
                             <span className="badge" style={{ background: 'var(--accent-emerald-light)', color: 'var(--accent-emerald)', fontWeight: 700, padding: '4px 10px' }}>
                               <Building2 size={14} style={{ marginRight: 4 }} />
@@ -783,7 +806,9 @@ export const GroupManagerSettings: React.FC<GroupManagerSettingsProps> = ({
                         </td>
                         <td>
                           {m.role === 'super' ? (
-                            <span style={{ color: 'var(--text-muted)', fontSize: '0.88rem', fontWeight: 600 }}>전체 집단 총괄</span>
+                            <span style={{ color: 'var(--text-muted)', fontSize: '0.88rem', fontWeight: 600 }}>전체 총괄 (시스템/DB)</span>
+                          ) : m.role === 'congregation' ? (
+                            <span style={{ color: 'var(--primary)', fontSize: '0.88rem', fontWeight: 700 }}>전체 회중 (서기)</span>
                           ) : (
                             <span className="badge badge-group" style={{ padding: '4px 10px', fontSize: '0.85rem' }}>
                               {m.group_name || '미배정'}
@@ -1032,9 +1057,10 @@ export const GroupManagerSettings: React.FC<GroupManagerSettingsProps> = ({
                 <select
                   className="form-select"
                   value={managerForm.role}
-                  onChange={e => setManagerForm({ ...managerForm, role: e.target.value as any })}
+                  onChange={e => setManagerForm({ ...managerForm, role: e.target.value as ManagerRole })}
                 >
-                  <option value="super">최고관리자 (전체 집단 및 전도인 관리)</option>
+                  <option value="super">최고관리자 (전체 권한 및 시스템/DB 환경 설정)</option>
+                  <option value="congregation">회중관리자 (서기 - 전체 집단 및 전도인/보고 관리)</option>
                   <option value="group">집단관리자 (담당 집단 전담 관리)</option>
                 </select>
               </div>

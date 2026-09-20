@@ -71,6 +71,7 @@ export const EmergencyContacts: React.FC<EmergencyContactsProps> = ({ currentYea
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedGroupFilter, setSelectedGroupFilter] = useState('all');
   const isSuperAdmin = manager?.role === 'super';
+  const canManageAll = manager?.role === 'super' || manager?.role === 'congregation';
 
   // 집단 관리자인 경우 본인 소속 집단 ID 및 이름 추출
   const myGroupId = manager?.role === 'group'
@@ -80,9 +81,9 @@ export const EmergencyContacts: React.FC<EmergencyContactsProps> = ({ currentYea
     ? (manager.group_name || groups.find(g => g.id === manager.group_id)?.name || null)
     : null;
 
-  // 전도인/연락처 수정 권한 확인: 최고관리자는 전체, 집단관리자는 본인 소속 집단 전도인만 수정 가능
+  // 전도인/연락처 수정 권한 확인: 최고관리자/회중관리자는 전체, 집단관리자는 본인 소속 집단 전도인만 수정 가능
   const canEditContact = (c: EmergencyContact) => {
-    if (isSuperAdmin) return true;
+    if (canManageAll) return true;
     if (manager?.role === 'group') {
       if (myGroupId && c.group_id === myGroupId) return true;
       if (myGroupName && (c.group_name === myGroupName || groups.find(g => g.id === c.group_id)?.name === myGroupName)) return true;

@@ -91,7 +91,7 @@ CREATE TABLE IF NOT EXISTS public.managers (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     email VARCHAR(100) NOT NULL UNIQUE,
     name VARCHAR(50) NOT NULL,
-    role VARCHAR(20) NOT NULL CHECK (role IN ('super', 'group')), -- super: 최고관리자(서기), group: 집단관리자
+    role VARCHAR(20) NOT NULL CHECK (role IN ('super', 'congregation', 'group')), -- super: 최고관리자, congregation: 회중관리자(서기), group: 집단관리자
     group_id UUID REFERENCES public.groups(id) ON DELETE SET NULL, -- 집단관리자의 경우 해당 집단
     created_at TIMESTAMPTZ DEFAULT NOW()
 );

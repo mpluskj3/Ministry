@@ -316,9 +316,9 @@ export function App() {
   };
 
 
-  // 최고관리자 전용 탭 보호 (최고관리자가 아니면 대시보드로 자동 전환)
+  // 최고관리자 및 회중관리자 전용 탭 보호 (권한이 없으면 대시보드로 자동 전환)
   useEffect(() => {
-    if (activeTab === 'groups' && manager?.role !== 'super') {
+    if (activeTab === 'groups' && manager?.role !== 'super' && manager?.role !== 'congregation') {
       setActiveTab('dashboard');
     }
   }, [activeTab, manager]);
@@ -633,7 +633,7 @@ export function App() {
             />
           )}
 
-          {activeTab === 'groups' && manager?.role === 'super' && (
+          {activeTab === 'groups' && (manager?.role === 'super' || manager?.role === 'congregation') && (
             <GroupManagerSettings
               currentManager={manager}
               onManagerUpdated={(updated) => {

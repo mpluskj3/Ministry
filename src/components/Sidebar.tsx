@@ -71,13 +71,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onFixDefaultYear,
 }) => {
   const isSuperAdmin = manager?.role === 'super';
+  const canAccessGroups = manager?.role === 'super' || manager?.role === 'congregation';
 
   type TabType = 'dashboard' | 'report' | 'publishers' | 'groups';
   const navItems: Array<{ id: TabType; label: string; icon: any }> = [
     { id: 'dashboard', label: '봉사보고 분석', icon: LayoutDashboard },
     { id: 'report', label: '야외 봉사 보고 제출', icon: FileEdit },
     { id: 'publishers', label: '전도인 명단 관리', icon: Users },
-    ...(isSuperAdmin ? [{ id: 'groups' as TabType, label: '집단 및 관리자 설정', icon: Building2 }] : []),
+    ...(canAccessGroups ? [{ id: 'groups' as TabType, label: '집단 및 관리자 설정', icon: Building2 }] : []),
   ];
 
   return (
@@ -328,7 +329,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              {(!manager || manager.role === 'super') ? (
+              {(!manager || manager.role === 'super' || manager.role === 'congregation') ? (
                 <>
                   <button
                     onClick={() => {
@@ -469,7 +470,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     {manager.name}
                   </div>
                   <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                    {manager.role === 'super' ? '최고관리자' : `${manager.group_name} 감독자`}
+                    {manager.role === 'super' ? '최고관리자' : manager.role === 'congregation' ? '회중관리자 (서기)' : `${manager.group_name || '집단'} 감독자`}
                   </div>
                 </div>
               </div>
