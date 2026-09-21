@@ -9,6 +9,27 @@ export const isChildStatus = (status?: string | null): boolean => {
   if (!status) return false;
   return status === '자녀' || status === '자녀 (집계 제외)' || status.includes('자녀');
 };
+
+export const isChild = (p: { pioneer_status?: string | null; position?: string | null; special_notes?: string | null }): boolean => {
+  return Boolean(
+    isChildStatus(p.pioneer_status) ||
+    isChildStatus(p.position) ||
+    (p.special_notes && p.special_notes.includes('[자녀]'))
+  );
+};
+
+export const isTransferredPublisher = (p: { is_active: boolean; deactivated_reason?: string | null }): boolean => {
+  if (p.is_active) return false;
+  const reason = (p.deactivated_reason || '').trim();
+  if (reason.includes('무활동')) return false;
+  return true;
+};
+
+export const isInactivePublisher = (p: { is_active: boolean; deactivated_reason?: string | null; pioneer_status?: string | null; position?: string | null; special_notes?: string | null }): boolean => {
+  if (p.is_active) return false;
+  if (isChild(p)) return false;
+  return !isTransferredPublisher(p);
+};
 export type ManagerRole = 'super' | 'congregation' | 'group';
 
 export type ServiceMonth = 
@@ -142,6 +163,7 @@ export interface EmergencyContact {
   special_notes?: string;
   is_active: boolean;
   is_child?: boolean;
+  deactivated_reason?: string;
   updated_at?: string;
 }
 

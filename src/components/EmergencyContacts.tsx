@@ -22,7 +22,7 @@ import {
   Home,
   Info
 } from 'lucide-react';
-import { EmergencyContact, Group, Publisher, ServiceYear, Position, Gender, Hope, isChildStatus, Manager } from '../types/database';
+import { EmergencyContact, Group, Publisher, ServiceYear, Position, Gender, Hope, isChildStatus, Manager, isInactivePublisher, isTransferredPublisher } from '../types/database';
 import {
   getEmergencyContacts,
   getPublishers,
@@ -134,11 +134,13 @@ export const EmergencyContacts: React.FC<EmergencyContactsProps> = ({ currentYea
     try {
       setLoading(true);
       const [list, grps, pubs] = await Promise.all([
-        getEmergencyContacts(false), // 활동 중인 전도인 중심
+        getEmergencyContacts(true), // 비활성자 포함 로드 (무활동자 소속 집단 표시용)
         getGroups(),
         getPublishers(true)
       ]);
-      setContacts(list);
+      // 전출/이사/사망자는 비상연락망에서 완전히 제외 (활동 전도인 + 무활동 전도인만 유지)
+      const validContacts = list.filter(c => !isTransferredPublisher(c));
+      setContacts(validContacts);
       setGroups(grps);
       setAllPublishers(pubs);
     } catch (err) {
@@ -389,6 +391,20 @@ export const EmergencyContacts: React.FC<EmergencyContactsProps> = ({ currentYea
   const { sortedContacts, familyColorMap, familyCountMap, activeGroup } = useMemo(() => {
     const targetFilterGroup = groups.find(g => g.id === selectedGroupFilter);
     const base = contacts.filter(c => {
+      // 1. 전출/이사/사망자는 비상연락망 전체 및 집단에서 무조건 제외
+      if (isTransferredPublisher(c)) return false;
+
+      // 2. 전체('all') 보기일 때는 무활동자(!c.is_active) 제외 (활동 전도인만 표시)
+      if (selectedGroupFilter === 'all' && !c.is_active) {
+        return false;
+      }
+
+      // 3. 개별 집단 선택 시에는 해당 집단의 활동 전도인 및 소속 무활동자 포함
+      const matchesGroup = 
+        selectedGroupFilter === 'all' || 
+        c.group_id === selectedGroupFilter || 
+        (targetFilterGroup && c.group_name === targetFilterGroup.name);
+
       const matchesSearch =
         c.name.toLowerCase().includes(searchQuery.trim().toLowerCase()) ||
         (c.phone && c.phone.includes(searchQuery.trim())) ||
@@ -396,11 +412,8 @@ export const EmergencyContacts: React.FC<EmergencyContactsProps> = ({ currentYea
         (c.family_head && c.family_head.toLowerCase().includes(searchQuery.trim().toLowerCase())) ||
         (c.relationship && c.relationship.toLowerCase().includes(searchQuery.trim().toLowerCase())) ||
         (c.special_notes && c.special_notes.toLowerCase().includes(searchQuery.trim().toLowerCase()));
-      const matchesGroup = 
-        selectedGroupFilter === 'all' || 
-        c.group_id === selectedGroupFilter || 
-        (targetFilterGroup && c.group_name === targetFilterGroup.name);
-      return matchesSearch && matchesGroup;
+
+      return matchesGroup && matchesSearch;
     });
 
     const groupMap = new Map<string, Group>();
@@ -411,7 +424,7 @@ export const EmergencyContacts: React.FC<EmergencyContactsProps> = ({ currentYea
     const familyCount = new Map<string, number>();
     base.forEach(c => {
       const fh = c.family_head?.trim();
-      if (fh) {
+      if (fh && c.is_active) {
         const key = `${c.group_id || 'unknown'}_${fh}`;
         familyCount.set(key, (familyCount.get(key) || 0) + 1);
       }
@@ -432,15 +445,16 @@ export const EmergencyContacts: React.FC<EmergencyContactsProps> = ({ currentYea
     const assistantName = activeGrp?.assistant_overseer_name?.trim() || '';
 
     // 집단감독자 가족 묶음 식별
-    const overseerContact = overseerName ? base.find(c => c.name.trim() === overseerName) : null;
+    const overseerContact = overseerName ? base.find(c => c.name.trim() === overseerName && c.is_active) : null;
     const overseerFamilyHead = overseerContact?.family_head?.trim() || overseerName;
 
     // 집단보조자 가족 묶음 식별
-    const assistantContact = assistantName ? base.find(c => c.name.trim() === assistantName) : null;
+    const assistantContact = assistantName ? base.find(c => c.name.trim() === assistantName && c.is_active) : null;
     const assistantFamilyHead = assistantContact?.family_head?.trim() || assistantName;
 
     const isOverseerFamily = (c: EmergencyContact): boolean => {
       if (!overseerName) return false;
+      if (!c.is_active) return false;
       if (c.name.trim() === overseerName) return true;
       if (c.family_head && (c.family_head.trim() === overseerName || (overseerFamilyHead && c.family_head.trim() === overseerFamilyHead))) return true;
       return false;
@@ -448,6 +462,7 @@ export const EmergencyContacts: React.FC<EmergencyContactsProps> = ({ currentYea
 
     const isAssistantFamily = (c: EmergencyContact): boolean => {
       if (!assistantName) return false;
+      if (!c.is_active) return false;
       if (isOverseerFamily(c)) return false;
       if (c.name.trim() === assistantName) return true;
       if (c.family_head && (c.family_head.trim() === assistantName || (assistantFamilyHead && c.family_head.trim() === assistantFamilyHead))) return true;
@@ -485,18 +500,31 @@ export const EmergencyContacts: React.FC<EmergencyContactsProps> = ({ currentYea
     };
 
     // 정렬 우선순위:
-    // 1. 전체 보기('all') 시: 사용자 요청에 따라 이름 항목명 ㄱ-ㄴ-ㄷ 순 정렬
-    // 2. 단일 집단 선택 시: 기존 지정 정렬 순서 유지
-    //    1순위: 집단감독자 가족 묶음 (감독자 본인 최우선, 그 다음 가족 구성원 생년월일순)
-    //    2순위: 집단보조자 가족 묶음 (보조자 본인 최우선, 그 다음 가족 구성원 생년월일순)
-    //    3순위: 나머지 전도인/가족 (가족 대표자명 기준 ㄱ-ㄴ-ㄷ 순, 가족 내에서는 생년월일순: 남편, 아내, 자녀)
+    // 1. 전체 보기('all') 시: 사용자 요청에 따라 이름 항목명 ㄱ-ㄴ-ㄷ 순 정렬 (무활동자는 필터링 단계에서 제외됨)
+    // 2. 단일 집단 선택 시:
+    //    - 활동 전도인 우선, 무활동 전도인은 목록 맨 아래로 정렬
+    //    - 활동 전도인 내부:
+    //       1순위: 집단감독자 가족 묶음 (감독자 본인 최우선, 그 다음 가족 구성원 생년월일순)
+    //       2순위: 집단보조자 가족 묶음 (보조자 본인 최우선, 그 다음 가족 구성원 생년월일순)
+    //       3순위: 나머지 전도인/가족 (가족 대표자명 기준 ㄱ-ㄴ-ㄷ 순, 가족 내에서는 생년월일순: 남편, 아내, 자녀)
+    //    - 무활동 전도인 내부: 이름 가나다순
     const sorted = [...base].sort((a, b) => {
       // 전체 보기('all')일 때는 전도인 이름 가나다(ㄱ-ㄴ-ㄷ)순으로 정렬
       if (selectedGroupFilter === 'all') {
         return a.name.localeCompare(b.name, 'ko');
       }
 
-      // 개별 집단 선택 시 기존 집단별 정렬 규칙 적용
+      // 개별 집단 선택 시: 활동 전도인 우선, 무활동 전도인은 맨 아래로 분리
+      if (a.is_active !== b.is_active) {
+        return a.is_active ? -1 : 1;
+      }
+
+      // 둘 다 무활동 전도인인 경우 이름 가나다순 정렬
+      if (!a.is_active && !b.is_active) {
+        return a.name.localeCompare(b.name, 'ko');
+      }
+
+      // 둘 다 활동 전도인인 경우: 기존 집단별 정렬 규칙 적용
       const aInOverseer = isOverseerFamily(a);
       const bInOverseer = isOverseerFamily(b);
       if (aInOverseer && !bInOverseer) return -1;
@@ -643,11 +671,13 @@ export const EmergencyContacts: React.FC<EmergencyContactsProps> = ({ currentYea
               transition: 'all 0.15s ease'
             }}
           >
-            전체 ({contacts.length}명)
+            전체 ({contacts.filter(c => c.is_active).length})
           </button>
           {groups.map(g => {
             const isMyGroup = manager?.role === 'group' && (g.id === manager.group_id || g.name === manager.group_name);
-            const countInGroup = contacts.filter(c => c.group_id === g.id || c.group_name === g.name).length;
+            const activeCount = contacts.filter(c => c.is_active && (c.group_id === g.id || c.group_name === g.name)).length;
+            const inactiveCount = contacts.filter(c => !c.is_active && (c.group_id === g.id || c.group_name === g.name)).length;
+            const countText = inactiveCount > 0 ? `${activeCount}+${inactiveCount}` : `${activeCount}`;
             return (
               <button
                 key={g.id}
@@ -680,7 +710,7 @@ export const EmergencyContacts: React.FC<EmergencyContactsProps> = ({ currentYea
                     내 집단
                   </span>
                 )}
-                <span style={{ opacity: 0.75, fontSize: '0.74rem' }}>({countInGroup})</span>
+                <span style={{ opacity: 0.75, fontSize: '0.74rem' }}>({countText})</span>
               </button>
             );
           })}
@@ -797,20 +827,41 @@ export const EmergencyContacts: React.FC<EmergencyContactsProps> = ({ currentYea
                   const familyColor = familyHead ? familyColorMap.get(familyKey) : null;
                   const isFamilyHead = Boolean(familyHead && c.name.trim() === familyHead);
 
+                  // 무활동 첫 번째 항목 여부 (개별 집단 목록 상단 구분선)
+                  const isFirstInactive = selectedGroupFilter !== 'all' && !c.is_active && (idx === 0 || filteredContacts[idx - 1]?.is_active);
+
                   // 가족 묶음 지정 하이라이트 (셀 배경색과 왼쪽 테두리 악센트)
                   let rowBg = 'transparent';
                   let borderLeftStyle = '4px solid transparent';
-                  if (familyColor) {
+                  if (!c.is_active) {
+                    rowBg = 'rgba(156, 163, 175, 0.05)';
+                    borderLeftStyle = '4px solid rgba(156, 163, 175, 0.35)';
+                  } else if (familyColor) {
                     rowBg = familyColor.bg;
                     borderLeftStyle = `4px solid ${familyColor.border}`;
                   }
 
                   return (
                     <React.Fragment key={c.id}>
+                      {isFirstInactive && (
+                        <tr className="no-hover" style={{ height: 1 }}>
+                          <td
+                            colSpan={8}
+                            style={{
+                              padding: 0,
+                              height: 1,
+                              borderTop: '2px dashed rgba(156, 163, 175, 0.45)',
+                              borderBottom: 'none',
+                              background: 'transparent'
+                            }}
+                          />
+                        </tr>
+                      )}
                       <tr
                         style={{
                           backgroundColor: rowBg,
                           borderLeft: borderLeftStyle,
+                          opacity: !c.is_active ? 0.78 : 1,
                           transition: 'background-color 0.15s ease'
                         }}
                       >
@@ -832,7 +883,7 @@ export const EmergencyContacts: React.FC<EmergencyContactsProps> = ({ currentYea
                                 cursor: 'pointer',
                                 padding: 0,
                                 fontWeight: 700,
-                                color: 'var(--primary)',
+                                color: !c.is_active ? 'var(--text-muted)' : 'var(--primary)',
                                 fontSize: '0.92rem',
                                 textAlign: 'left',
                                 whiteSpace: 'nowrap'
@@ -842,6 +893,19 @@ export const EmergencyContacts: React.FC<EmergencyContactsProps> = ({ currentYea
                             >
                               {c.name}
                             </button>
+                            {!c.is_active && (
+                              <span style={{
+                                fontSize: '0.66rem',
+                                fontWeight: 700,
+                                background: 'rgba(156, 163, 175, 0.2)',
+                                color: 'var(--text-muted)',
+                                padding: '1px 5px',
+                                borderRadius: 4,
+                                whiteSpace: 'nowrap'
+                              }}>
+                                무활동
+                              </span>
+                            )}
                             {/* 감독자: 파란색 ● / 보조자: 초록색 ● 표시 */}
                             {isOverseer && (
                               <span

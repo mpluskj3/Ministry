@@ -965,6 +965,7 @@ export async function getEmergencyContacts(includeInactive = false, serviceYearI
       special_notes: p.special_notes || '',
       is_active: p.is_active,
       is_child: isChild,
+      deactivated_reason: p.deactivated_reason,
       updated_at: p.created_at,
     };
   });

@@ -25,7 +25,7 @@ import {
   FileSpreadsheet,
   Printer
 } from 'lucide-react';
-import { Publisher, Group, ServiceYear, Position, PioneerStatus, Hope, Gender, isChildStatus, Manager } from '../types/database';
+import { Publisher, Group, ServiceYear, Position, PioneerStatus, Hope, Gender, isChildStatus, isChild, isTransferredPublisher, isInactivePublisher, Manager } from '../types/database';
 import {
   getPublishers,
   getGroups,
@@ -100,6 +100,13 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
   useEffect(() => {
     setSelectedPublisherIds(new Set());
   }, [activeSubTab, selectedGroupFilter]);
+
+  // 전출/무활동 보관함은 최고관리자와 회중관리자만 접근 가능
+  useEffect(() => {
+    if (!canManageAll && activeSubTab === 'inactive') {
+      setActiveSubTab('active');
+    }
+  }, [canManageAll, activeSubTab]);
 
   // 최근 봉사 보고서 기반 AP/RP 상태 맵
   const [latestStatusMap, setLatestStatusMap] = useState<Map<string, string>>(new Map());
@@ -382,6 +389,8 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
     (p.special_notes && p.special_notes.includes('[자녀]'));
   const activePublishers = allPublishers.filter(p => p.is_active && !isChild(p));
   const inactivePublishers = allPublishers.filter(p => !p.is_active && !isChild(p));
+  // 회중 소속 순수 무활동 전도인 (전출/사망/자녀 제외)
+  const pureInactivePublishers = allPublishers.filter(p => !p.is_active && !isChild(p) && isInactivePublisher(p));
 
   // 집단 관리자인 경우 본인 소속 집단 ID 및 이름 추출
   const myGroupId = manager?.role === 'group'
@@ -610,19 +619,50 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
   };
 
   // 필터링 (group_id 및 group_name 이중 매칭으로 안전하게 필터링)
-  const currentList = activeSubTab === 'active' ? activePublishers : inactivePublishers;
   const targetFilterGroup = groups.find(g => g.id === selectedGroupFilter);
-  const filteredPublishers = currentList.filter(p => {
-    const matchesSearch =
-      p.name.toLowerCase().includes(searchQuery.trim().toLowerCase()) ||
-      (p.phone && p.phone.includes(searchQuery.trim())) ||
-      (p.address && p.address.toLowerCase().includes(searchQuery.trim().toLowerCase()));
-    const matchesGroup =
-      selectedGroupFilter === 'all' ||
-      p.group_id === selectedGroupFilter ||
-      (targetFilterGroup && p.group_name === targetFilterGroup.name);
-    return matchesSearch && matchesGroup;
-  });
+
+  // 활동 전도인 탭일 때:
+  // - 전체('all')일 때는 순수 활동 전도인만! (무활동자 제외)
+  // - 특정 집단 선택 시(selectedGroupFilter !== 'all') 해당 집단의 무활동 전도인도 함께 포함 (전출자는 제외)
+  const currentList = useMemo(() => {
+    if (activeSubTab === 'inactive') {
+      return inactivePublishers;
+    }
+    if (selectedGroupFilter === 'all') {
+      return activePublishers;
+    }
+    const inactivesInThisGroup = allPublishers.filter(p =>
+      !p.is_active &&
+      !isChild(p) &&
+      isInactivePublisher(p) &&
+      (p.group_id === selectedGroupFilter || (targetFilterGroup && p.group_name === targetFilterGroup.name))
+    );
+    return [...activePublishers, ...inactivesInThisGroup];
+  }, [activeSubTab, selectedGroupFilter, activePublishers, inactivePublishers, allPublishers, targetFilterGroup]);
+
+  const filteredPublishers = useMemo(() => {
+    return currentList
+      .filter(p => {
+        const matchesSearch =
+          p.name.toLowerCase().includes(searchQuery.trim().toLowerCase()) ||
+          (p.phone && p.phone.includes(searchQuery.trim())) ||
+          (p.address && p.address.toLowerCase().includes(searchQuery.trim().toLowerCase()));
+        const matchesGroup =
+          selectedGroupFilter === 'all' ||
+          p.group_id === selectedGroupFilter ||
+          (targetFilterGroup && p.group_name === targetFilterGroup.name);
+        return matchesSearch && matchesGroup;
+      })
+      .sort((a, b) => {
+        if (activeSubTab === 'active' && selectedGroupFilter !== 'all') {
+          // 활동 전도인 우선, 무활동 전도인은 맨 아래로 정렬
+          if (a.is_active !== b.is_active) {
+            return a.is_active ? -1 : 1;
+          }
+        }
+        return a.name.localeCompare(b.name, 'ko');
+      });
+  }, [currentList, searchQuery, selectedGroupFilter, targetFilterGroup, activeSubTab]);
 
   // 개별 전도인 체크박스 토글
   const handleToggleSelectOne = (id: string) => {
@@ -816,28 +856,30 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
             <span>활동 전도인 ({activePublishers.length}명)</span>
           </button>
 
-          <button
-            onClick={() => setActiveSubTab('inactive')}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 6,
-              padding: '8px 12px',
-              border: 'none',
-              background: 'none',
-              borderBottom: activeSubTab === 'inactive' ? '2px solid var(--accent-rose)' : '2px solid transparent',
-              color: activeSubTab === 'inactive' ? 'var(--accent-rose)' : 'var(--text-muted)',
-              fontWeight: activeSubTab === 'inactive' ? 700 : 500,
-              fontSize: '0.86rem',
-              cursor: 'pointer',
-              whiteSpace: 'nowrap',
-              flexShrink: 0,
-              transition: 'all 0.15s ease'
-            }}
-          >
-            <Archive size={15} />
-            <span>전출 / 무활동 보관함 ({inactivePublishers.length}명)</span>
-          </button>
+          {canManageAll && (
+            <button
+              onClick={() => setActiveSubTab('inactive')}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '8px 12px',
+                border: 'none',
+                background: 'none',
+                borderBottom: activeSubTab === 'inactive' ? '2px solid var(--accent-rose)' : '2px solid transparent',
+                color: activeSubTab === 'inactive' ? 'var(--accent-rose)' : 'var(--text-muted)',
+                fontWeight: activeSubTab === 'inactive' ? 700 : 500,
+                fontSize: '0.86rem',
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+                flexShrink: 0,
+                transition: 'all 0.15s ease'
+              }}
+            >
+              <Archive size={15} />
+              <span>전출 / 무활동 보관함 ({inactivePublishers.length}명)</span>
+            </button>
+          )}
 
           <button
             onClick={() => setActiveSubTab('emergency')}
@@ -904,11 +946,20 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
                   transition: 'all 0.15s ease'
                 }}
               >
-                전체 ({currentList.length})
+                전체 ({activeSubTab === 'inactive' ? inactivePublishers.length : activePublishers.length})
               </button>
               {groups.map(g => {
                 const isMyGroup = manager?.role === 'group' && (g.id === manager.group_id || g.name === manager.group_name);
-                const countInGroup = currentList.filter(p => p.group_id === g.id || p.group_name === g.name).length;
+                let countText = '';
+                if (activeSubTab === 'inactive') {
+                  const count = inactivePublishers.filter(p => p.group_id === g.id || p.group_name === g.name).length;
+                  countText = `${count}`;
+                } else {
+                  const activeCount = activePublishers.filter(p => p.group_id === g.id || p.group_name === g.name).length;
+                  const inactiveCount = pureInactivePublishers.filter(p => p.group_id === g.id || p.group_name === g.name).length;
+                  countText = inactiveCount > 0 ? `${activeCount}+${inactiveCount}` : `${activeCount}`;
+                }
+
                 return (
                   <button
                     type="button"
@@ -943,7 +994,7 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
                         내 집단
                       </span>
                     )}
-                    <span style={{ opacity: 0.75, fontSize: '0.74rem' }}>({countInGroup})</span>
+                    <span style={{ opacity: 0.75, fontSize: '0.74rem' }}>({countText})</span>
                   </button>
                 );
               })}
@@ -1078,42 +1129,82 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
                       </td>
                     </tr>
                   ) : (
-                    filteredPublishers.map((p) => (
-                      <tr key={p.id} className={selectedPublisherIds.has(p.id) ? 'row-selected' : undefined} style={{ background: selectedPublisherIds.has(p.id) ? 'rgba(99, 102, 241, 0.05)' : undefined }}>
-                        {/* 선택 체크박스 */}
-                        <td style={{ width: 44, minWidth: 44, textAlign: 'center' }}>
-                          <input
-                            type="checkbox"
-                            checked={selectedPublisherIds.has(p.id)}
-                            onChange={() => handleToggleSelectOne(p.id)}
-                            style={{ cursor: 'pointer', width: 16, height: 16 }}
-                            title={`${p.name} 선택`}
-                          />
-                        </td>
-
-                        {/* 1. 이름: 클릭 시 S-21 전도인 기록 카드 모달 실행 */}
-                        <td style={{ width: 110, minWidth: 110 }}>
-                          <button
-                            onClick={() => setCardModalData({ id: p.id, name: p.name })}
+                    filteredPublishers.map((p, index) => {
+                      const isFirstInactive = activeSubTab === 'active' && !p.is_active && (index === 0 || filteredPublishers[index - 1]?.is_active);
+                      return (
+                        <React.Fragment key={p.id}>
+                          {isFirstInactive && (
+                            <tr className="no-hover" style={{ height: 1 }}>
+                              <td
+                                colSpan={12}
+                                style={{
+                                  padding: 0,
+                                  height: 1,
+                                  borderTop: '2px dashed rgba(156, 163, 175, 0.45)',
+                                  borderBottom: 'none',
+                                  background: 'transparent'
+                                }}
+                              />
+                            </tr>
+                          )}
+                          <tr
+                            className={selectedPublisherIds.has(p.id) ? 'row-selected' : undefined}
                             style={{
-                              background: 'none',
-                              border: 'none',
-                              padding: 0,
-                              margin: 0,
-                              cursor: 'pointer',
-                              fontWeight: 700,
-                              color: 'var(--primary)',
-                              fontSize: '0.92rem',
-                              textAlign: 'left'
+                              background: selectedPublisherIds.has(p.id) 
+                                ? 'rgba(99, 102, 241, 0.05)' 
+                                : (!p.is_active ? 'rgba(156, 163, 175, 0.05)' : undefined),
+                              opacity: !p.is_active ? 0.78 : 1
                             }}
-                            className="name-link-btn"
-                            title={`${p.name} 전도인 기록 카드(S-21) 열기`}
                           >
-                            {p.name}
-                          </button>
-                        </td>
+                            {/* 선택 체크박스 */}
+                            <td style={{ width: 44, minWidth: 44, textAlign: 'center' }}>
+                              <input
+                                type="checkbox"
+                                checked={selectedPublisherIds.has(p.id)}
+                                onChange={() => handleToggleSelectOne(p.id)}
+                                style={{ cursor: 'pointer', width: 16, height: 16 }}
+                                title={`${p.name} 선택`}
+                              />
+                            </td>
 
-                        {/* 2. 직책 */}
+                            {/* 1. 이름: 클릭 시 S-21 전도인 기록 카드 모달 실행 */}
+                            <td style={{ width: 110, minWidth: 110 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                <button
+                                  onClick={() => setCardModalData({ id: p.id, name: p.name })}
+                                  style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    padding: 0,
+                                    margin: 0,
+                                    cursor: 'pointer',
+                                    fontWeight: 700,
+                                    color: !p.is_active ? 'var(--text-muted)' : 'var(--primary)',
+                                    fontSize: '0.92rem',
+                                    textAlign: 'left'
+                                  }}
+                                  className="name-link-btn"
+                                  title={`${p.name} 전도인 기록 카드(S-21) 열기`}
+                                >
+                                  {p.name}
+                                </button>
+                                {!p.is_active && (
+                                  <span style={{
+                                    fontSize: '0.66rem',
+                                    fontWeight: 700,
+                                    background: 'rgba(156, 163, 175, 0.2)',
+                                    color: 'var(--text-muted)',
+                                    padding: '1px 5px',
+                                    borderRadius: 4,
+                                    whiteSpace: 'nowrap'
+                                  }}>
+                                    무활동
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+
+                            {/* 2. 직책 */}
                         <td style={{ textAlign: 'center' }}>
                           {p.position === '장로' ? (
                             <span className="badge badge-elder">장로</span>
@@ -1245,7 +1336,7 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
                                     <RotateCcw size={13} /> 복원
                                   </button>
                                 )}
-                                {isSuperAdmin && (
+                                {activeSubTab === 'inactive' && isSuperAdmin && (
                                   <button
                                     onClick={() => handlePermanentDelete(p.id, p.name)}
                                     className="btn-secondary"
@@ -1269,9 +1360,11 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
                           )}
                         </td>
                       </tr>
-                    ))
-                  )}
-                </tbody>
+                    </React.Fragment>
+                  );
+                })
+                )}
+              </tbody>
               </table>
             </div>
           </div>

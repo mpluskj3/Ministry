@@ -13,7 +13,7 @@ import {
   UserPlus,
   AlertTriangle
 } from 'lucide-react';
-import { Group, Manager, ManagerRole } from '../types/database';
+import { Group, Manager, ManagerRole, Publisher, isChild, isTransferredPublisher, isInactivePublisher } from '../types/database';
 import {
   getGroups,
   saveGroup,
@@ -65,7 +65,10 @@ export const GroupManagerSettings: React.FC<GroupManagerSettingsProps> = ({
 
   const [groups, setGroups] = useState<Group[]>([]);
   const [managers, setManagers] = useState<Manager[]>([]);
-  const [publisherCounts, setPublisherCounts] = useState<Record<string, number>>({});
+  const [activeCounts, setActiveCounts] = useState<Record<string, number>>({});
+  const [inactiveMap, setInactiveMap] = useState<Record<string, Publisher[]>>({});
+  const [totalActiveCount, setTotalActiveCount] = useState(0);
+  const [totalInactiveCount, setTotalInactiveCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
   // 모달 배경 드래그 오인 클릭 방지용 ref
@@ -110,14 +113,40 @@ export const GroupManagerSettings: React.FC<GroupManagerSettingsProps> = ({
       setGroups(grps);
       setManagers(mgrs);
 
-      // 집단별 전도인 수 계산
-      const counts: Record<string, number> = {};
+      // 집단별 전도인 수 계산 (자녀 제외, 전출자 제외)
+      const activeByGroup: Record<string, number> = {};
+      const inactiveByGroup: Record<string, Publisher[]> = {};
+      let activeTotal = 0;
+      let inactiveTotal = 0;
+
       pubs.forEach(p => {
-        if (p.group_id) {
-          counts[p.group_id] = (counts[p.group_id] || 0) + 1;
+        // 1. 미침례 자녀는 전도인이 아니므로 완전 제외
+        if (isChild(p)) return;
+
+        // 2. 이사/전출/사망자는 회중 소속 전도인이 아니므로 총 전도인 및 집단 계산에서 완전 제외
+        if (isTransferredPublisher(p)) return;
+
+        // 3. 활동 전도인
+        if (p.is_active) {
+          activeTotal++;
+          if (p.group_id) {
+            activeByGroup[p.group_id] = (activeByGroup[p.group_id] || 0) + 1;
+          }
+        } 
+        // 4. 회중 소속 무활동 전도인
+        else if (isInactivePublisher(p)) {
+          inactiveTotal++;
+          if (p.group_id) {
+            if (!inactiveByGroup[p.group_id]) inactiveByGroup[p.group_id] = [];
+            inactiveByGroup[p.group_id].push(p);
+          }
         }
       });
-      setPublisherCounts(counts);
+
+      setActiveCounts(activeByGroup);
+      setInactiveMap(inactiveByGroup);
+      setTotalActiveCount(activeTotal);
+      setTotalInactiveCount(inactiveTotal);
     } catch (err: any) {
       setErrorMsg('데이터를 불러오지 못했습니다: ' + (err.message || '오류'));
     } finally {
@@ -183,7 +212,7 @@ export const GroupManagerSettings: React.FC<GroupManagerSettingsProps> = ({
   };
 
   const handleDeleteGroup = async (g: Group) => {
-    const pubCount = publisherCounts[g.id] || 0;
+    const pubCount = (activeCounts[g.id] || 0) + (inactiveMap[g.id]?.length || 0);
     const confirmMsg = pubCount > 0
       ? `'${g.name}' 집단에 현재 소속 전도인 ${pubCount}명이 있습니다. 정말 삭제하시겠습니까? (삭제 시 전도인의 소속은 미배정으로 변경됩니다)`
       : `'${g.name}' 집단을 삭제하시겠습니까?`;
@@ -262,7 +291,7 @@ export const GroupManagerSettings: React.FC<GroupManagerSettingsProps> = ({
     }
   };
 
-  const totalPublishers = Object.values(publisherCounts).reduce((a, b) => a + b, 0);
+  const totalAffiliated = totalActiveCount + totalInactiveCount;
   const overseerCount = groups.filter(g => g.overseer_name && g.overseer_name.trim() !== '').length;
   const superAdminCount = managers.filter(m => m.role === 'super').length;
   const congregationAdminCount = managers.filter(m => m.role === 'congregation').length;
@@ -413,7 +442,7 @@ export const GroupManagerSettings: React.FC<GroupManagerSettingsProps> = ({
           </div>
         </div>
 
-        {/* Card 2: 총 배정 전도인 */}
+        {/* Card 2: 총 소속 전도인 (자녀 제외, 전출자 제외) */}
         <div className="nfox-card" style={{ padding: '18px 20px', display: 'flex', alignItems: 'center', gap: 14 }}>
           <div style={{
             width: 44,
@@ -430,7 +459,18 @@ export const GroupManagerSettings: React.FC<GroupManagerSettingsProps> = ({
           </div>
           <div>
             <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600 }}>총 소속 전도인</div>
-            <div style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--accent-emerald)' }}>{totalPublishers}명</div>
+            <div style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--accent-emerald)', display: 'flex', alignItems: 'baseline', gap: 6, flexWrap: 'wrap' }}>
+              <span>{totalAffiliated}명</span>
+              {totalInactiveCount > 0 ? (
+                <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)' }}>
+                  (활동 {totalActiveCount} · 무활동 {totalInactiveCount})
+                </span>
+              ) : (
+                <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)' }}>
+                  (활동 {totalActiveCount})
+                </span>
+              )}
+            </div>
           </div>
         </div>
 
@@ -599,10 +639,42 @@ export const GroupManagerSettings: React.FC<GroupManagerSettingsProps> = ({
                         )}
                       </td>
                       <td>
-                        <span className="badge badge-group" style={{ fontSize: '0.85rem', fontWeight: 700, padding: '4px 10px' }}>
-                          <Users size={13} style={{ marginRight: 5 }} />
-                          {publisherCounts[g.id] || 0}명
-                        </span>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                          <span className="badge badge-group" style={{ fontSize: '0.85rem', fontWeight: 700, padding: '4px 10px', width: 'fit-content' }}>
+                            <Users size={13} style={{ marginRight: 5 }} />
+                            활동 {activeCounts[g.id] || 0}명
+                          </span>
+                          {/* 무활동자가 소속된 집단인 경우 연한 색상으로 분리 표시 */}
+                          {inactiveMap[g.id] && inactiveMap[g.id].length > 0 && (
+                            <div style={{
+                              fontSize: '0.76rem',
+                              color: 'var(--text-muted)',
+                              background: 'rgba(156, 163, 175, 0.08)',
+                              border: '1px dashed rgba(156, 163, 175, 0.35)',
+                              borderRadius: 6,
+                              padding: '4px 8px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 6,
+                              width: 'fit-content'
+                            }}>
+                              <span style={{
+                                fontSize: '0.68rem',
+                                fontWeight: 700,
+                                color: 'var(--text-muted)',
+                                background: 'rgba(156, 163, 175, 0.2)',
+                                padding: '1px 5px',
+                                borderRadius: 4,
+                                whiteSpace: 'nowrap'
+                              }}>
+                                무활동 {inactiveMap[g.id].length}명
+                              </span>
+                              <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>
+                                {inactiveMap[g.id].map(p => p.name).join(', ')}
+                              </span>
+                            </div>
+                          )}
+                        </div>
                       </td>
                       <td style={{ textAlign: 'center' }}>
                         <div style={{ display: 'inline-flex', gap: 6 }}>
