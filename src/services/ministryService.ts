@@ -325,6 +325,59 @@ export async function createServiceYear(yearNameInput: string, makeCurrent: bool
   return createdYear;
 }
 
+export async function deleteServiceYear(yearId: string): Promise<{ success: boolean; newCurrentYear?: ServiceYear }> {
+  const years = await getServiceYears();
+  if (years.length <= 1) {
+    throw new Error('시스템에 최소 1개 이상의 봉사연도가 유지되어야 하므로 삭제할 수 없습니다.');
+  }
+
+  const targetYear = years.find(y => y.id === yearId);
+  if (!targetYear) {
+    throw new Error('삭제할 봉사연도를 찾을 수 없습니다.');
+  }
+
+  const remainingYears = years.filter(y => y.id !== yearId);
+  const wasCurrent = targetYear.is_current;
+  const newCurrent = wasCurrent ? remainingYears[0] : undefined;
+
+  const supabase = getSupabaseClient();
+  if (supabase) {
+    // 1. Supabase 연동 모드: DB에서 봉사연도 삭제 (ON DELETE CASCADE로 월별 마감 및 보고서 연쇄 삭제됨)
+    const { error } = await supabase.from('service_years').delete().eq('id', yearId);
+    if (error) {
+      throw new Error(`봉사연도 삭제 실패: ${error.message}`);
+    }
+
+    // 활성 연도였던 경우 남은 연도 중 최신 연도를 활성으로 설정
+    if (wasCurrent && newCurrent) {
+      await supabase.from('service_years').update({ is_current: true }).eq('id', newCurrent.id);
+    }
+  } else {
+    // 2. 로컬 스토리지 모드
+    const localYears = getLocalData<ServiceYear[]>('service_years', INITIAL_SERVICE_YEARS);
+    let updatedYears = localYears.filter(y => y.id !== yearId);
+    if (wasCurrent && updatedYears.length > 0) {
+      updatedYears = updatedYears.map((y, idx) => ({
+        ...y,
+        is_current: idx === 0,
+      }));
+    }
+    setLocalData('service_years', updatedYears);
+
+    // 로컬 마감 상태 삭제
+    try {
+      localStorage.removeItem(`statuses_${yearId}`);
+    } catch {}
+
+    // 로컬 보고서 데이터 정리
+    const allReports = getLocalData<any[]>('reports', []);
+    const filteredReports = allReports.filter(r => r.service_year_id !== yearId);
+    setLocalData('reports', filteredReports);
+  }
+
+  return { success: true, newCurrentYear: newCurrent ? { ...newCurrent, is_current: true } : undefined };
+}
+
 // -------------------------------------------------------------
 // 2. 집단(Groups) 관련 API
 // -------------------------------------------------------------

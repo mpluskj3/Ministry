@@ -659,7 +659,14 @@ export function App() {
         <SettingsModal
           currentYear={currentYear}
           onClose={() => setSettingsModalOpen(false)}
-          onConfigSaved={() => {}}
+          onConfigSaved={async () => {
+            try {
+              const updatedYears = await getServiceYears();
+              setServiceYears(updatedYears);
+            } catch (e) {
+              console.error('Failed to reload service years:', e);
+            }
+          }}
           onServiceYearChanged={handleServiceYearChanged}
         />
       )}

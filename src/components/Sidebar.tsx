@@ -146,8 +146,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     padding: '2px 5px',
                     borderRadius: 'var(--radius-sm)',
                     border: (systemDefaultYear && currentYear.id !== systemDefaultYear.id) ? '1px solid #f97316' : '1px solid var(--border-color)',
-                    background: (systemDefaultYear && currentYear.id !== systemDefaultYear.id) ? 'rgba(249, 115, 22, 0.12)' : 'rgba(0,0,0,0.03)',
-                    color: (systemDefaultYear && currentYear.id !== systemDefaultYear.id) ? '#ea580c' : 'var(--text-main)',
+                    background: (systemDefaultYear && currentYear.id !== systemDefaultYear.id) 
+                      ? 'rgba(249, 115, 22, 0.15)' 
+                      : (theme === 'dark' ? '#1f273d' : '#f1f5f9'),
+                    color: (systemDefaultYear && currentYear.id !== systemDefaultYear.id) 
+                      ? '#ea580c' 
+                      : (theme === 'dark' ? '#f9fafb' : '#0f172a'),
+                    colorScheme: theme === 'dark' ? 'dark' : 'light',
                     cursor: 'pointer',
                     outline: 'none',
                     maxWidth: 120
@@ -155,8 +160,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   title="조회할 봉사연도를 선택하세요 (과거 및 다른 연도 보고서/전도인 카드 열람)"
                 >
                   {(serviceYears.length > 0 ? serviceYears : [currentYear]).map(y => (
-                    <option key={y.id} value={y.id}>
-                      {y.year_name}연도 {systemDefaultYear?.id === y.id ? '(기본)' : ''}
+                    <option 
+                      key={y.id} 
+                      value={y.id}
+                      style={{
+                        backgroundColor: theme === 'dark' ? '#192033' : '#ffffff',
+                        color: theme === 'dark' ? '#f9fafb' : '#111827'
+                      }}
+                    >
+                      {y.year_name}연도 {systemDefaultYear?.id === y.id ? '(활성)' : ''}
                     </option>
                   ))}
                 </select>

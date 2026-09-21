@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Database, CheckCircle2, AlertCircle, Copy, Check, RefreshCw, Layers, Building2, Plus, Calendar, FolderArchive, Download, Upload } from 'lucide-react';
+import { X, Database, CheckCircle2, AlertCircle, Copy, Check, RefreshCw, Layers, Building2, Plus, Calendar, FolderArchive, Download, Upload, Trash2 } from 'lucide-react';
 import {
   getStoredSupabaseConfig,
   saveStoredSupabaseConfig,
@@ -10,6 +10,7 @@ import {
   getServiceYears,
   setCurrentServiceYear,
   createServiceYear,
+  deleteServiceYear,
   normalizeServiceYearName,
   getAllServiceYearReports,
   importMonthlyReports
@@ -104,21 +105,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     onClose();
   };
 
-  const handleChangeServiceYear = async () => {
-    if (selectedYearId === currentYear.id) return;
-    try {
-      await setCurrentServiceYear(selectedYearId);
-      const matched = serviceYears.find(y => y.id === selectedYearId);
-      alert('활성 봉사연도가 변경되었습니다.');
-      if (matched && onServiceYearChanged) {
-        onServiceYearChanged({ ...matched, is_current: true });
-      }
-      onClose();
-    } catch (err: any) {
-      alert('봉사연도 변경 실패: ' + (err.message || '오류'));
-    }
-  };
-
   const handleCreateServiceYear = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newYearInput.trim()) {
@@ -128,7 +114,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     setCreatingYear(true);
     try {
       const created = await createServiceYear(newYearInput.trim(), makeNewYearCurrent);
-      alert(`${created.year_name} 봉사연도(${parseInt(created.year_name) - 1}년 9월 ~ ${created.year_name}년 8월)가 성공적으로 생성되었습니다!`);
+      alert(`${created.year_name} 봉사연도가 성공적으로 생성되었습니다!`);
       const updatedYears = await getServiceYears();
       setServiceYears(updatedYears);
       setNewYearInput('');
@@ -141,6 +127,44 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       alert('봉사연도 생성 실패: ' + (err.message || '오류'));
     } finally {
       setCreatingYear(false);
+    }
+  };
+
+  const handleDeleteServiceYear = async (yearId: string) => {
+    const target = serviceYears.find(y => y.id === yearId);
+    if (!target) return;
+
+    if (serviceYears.length <= 1) {
+      alert('시스템에 최소 1개 이상의 봉사연도가 유지되어야 하므로 삭제할 수 없습니다.');
+      return;
+    }
+
+    const isCurrent = target.id === currentYear.id || target.is_current;
+    const confirmMsg = isCurrent
+      ? `'${target.year_name} 봉사연도'는 현재 활성(사용 중인) 봉사연도입니다.\n\n정말 삭제하시겠습니까?\n\n※ 주의: 해당 연도의 모든 월별 보고서와 마감 기록이 영구 삭제되며, 남아있는 다른 최신 봉사연도가 활성 연도로 자동 전환됩니다.`
+      : `'${target.year_name} 봉사연도'를 정말 삭제하시겠습니까?\n\n※ 주의: 해당 연도의 모든 월별 보고서와 마감 기록이 함께 영구 삭제됩니다.`;
+
+    if (!window.confirm(confirmMsg)) {
+      return;
+    }
+
+    try {
+      const res = await deleteServiceYear(yearId);
+      alert(`'${target.year_name} 봉사연도'가 성공적으로 삭제되었습니다.`);
+
+      const updatedYears = await getServiceYears();
+      setServiceYears(updatedYears);
+
+      if (res.newCurrentYear && onServiceYearChanged) {
+        setSelectedYearId(res.newCurrentYear.id);
+        onServiceYearChanged(res.newCurrentYear);
+      } else {
+        const nextSelected = updatedYears.find(y => y.id === currentYear.id)?.id || updatedYears[0]?.id || '';
+        setSelectedYearId(nextSelected);
+        onConfigSaved();
+      }
+    } catch (err: any) {
+      alert('봉사연도 삭제 실패: ' + (err.message || '오류'));
     }
   };
 
@@ -392,7 +416,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           </button>
         </div>
 
-        {/* Section 3: Service Year Management (봉사연도 선택) */}
+        {/* Section 3: Service Year Management (봉사연도 관리 및 삭제) */}
         <div style={{
           background: 'rgba(0,0,0,0.02)',
           border: '1px solid var(--border-subtle)',
@@ -404,9 +428,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <div>
               <h4 style={{ fontSize: '1rem', margin: 0, display: 'flex', alignItems: 'center', gap: 6, fontWeight: 700 }}>
                 <Calendar size={16} color="var(--primary-600)" />
-                봉사연도 선택
+                봉사연도 관리 및 삭제
               </h4>
               <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', margin: '4px 0 0 0' }}>
+                활성 봉사연도를 전환하거나, 신규 봉사연도를 생성하고 불필요한 봉사연도를 삭제할 수 있습니다.
               </p>
             </div>
             <button
@@ -448,9 +473,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 />
                 <div style={{ fontSize: '0.84rem', color: 'var(--text-main)' }}>
                   <strong>{newYearInput || '????'} 봉사연도</strong>
-                  <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginLeft: 8 }}>
-                    ({(parseInt(newYearInput, 10) || 2027) - 1}년 9월 1일 ~ {newYearInput || '????'}년 8월 31일)
-                  </span>
                 </div>
               </div>
 
@@ -461,7 +483,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     checked={makeNewYearCurrent}
                     onChange={(e) => setMakeNewYearCurrent(e.target.checked)}
                   />
-                  <span>생성 후 즉시 현재 활성 연도로 전환</span>
+                  <span>생성 후 즉시 활성 연도로 전환</span>
                 </label>
                 <div style={{ display: 'flex', gap: 8 }}>
                   <button
@@ -485,29 +507,94 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             </form>
           )}
 
-          {/* Service Year Selector */}
-          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-            <select
-              className="form-select"
-              value={selectedYearId}
-              onChange={(e) => setSelectedYearId(e.target.value)}
-              style={{ flex: 1, fontWeight: 600 }}
-            >
-              {serviceYears.map(y => (
-                <option key={y.id} value={y.id}>
-                  {y.year_name} 봉사연도 {y.is_current ? '(활성)' : ''}
-                </option>
-              ))}
-            </select>
-            <button
-              type="button"
-              onClick={handleChangeServiceYear}
-              disabled={selectedYearId === currentYear.id}
-              className="btn-primary"
-              style={{ flexShrink: 0, fontSize: '0.85rem', whiteSpace: 'nowrap' }}
-            >
-              변경
-            </button>
+          {/* 등록된 봉사연도 목록 및 삭제 리스트 */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {serviceYears.map(y => {
+              const isCurrent = y.id === currentYear.id || y.is_current;
+              return (
+                <div
+                  key={y.id}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '10px 14px',
+                    background: isCurrent ? 'rgba(99, 102, 241, 0.08)' : 'var(--bg-card)',
+                    border: isCurrent ? '1.5px solid var(--primary)' : '1px solid var(--border-color)',
+                    borderRadius: 'var(--radius-md)',
+                    gap: 12,
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flexWrap: 'wrap' }}>
+                    <span style={{ fontWeight: 700, fontSize: '0.92rem', color: 'var(--text-main)', whiteSpace: 'nowrap' }}>
+                      {y.year_name} 봉사연도
+                    </span>
+                    {isCurrent && (
+                      <span style={{
+                        fontSize: '0.72rem',
+                        fontWeight: 700,
+                        background: 'var(--primary)',
+                        color: '#fff',
+                        padding: '2px 8px',
+                        borderRadius: 12,
+                        whiteSpace: 'nowrap'
+                      }}>
+                        활성
+                      </span>
+                    )}
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                    {!isCurrent && (
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          try {
+                            await setCurrentServiceYear(y.id);
+                            alert(`'${y.year_name} 봉사연도'로 활성 연도가 변경되었습니다.`);
+                            onServiceYearChanged?.({ ...y, is_current: true });
+                            const updated = await getServiceYears();
+                            setServiceYears(updated);
+                            setSelectedYearId(y.id);
+                          } catch (err: any) {
+                            alert('활성 연도 변경 실패: ' + (err.message || '오류'));
+                          }
+                        }}
+                        className="btn-secondary"
+                        style={{ fontSize: '0.76rem', padding: '4px 10px', height: 28 }}
+                        title="이 봉사연도를 활성 연도로 전환합니다"
+                      >
+                        활성화
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteServiceYear(y.id)}
+                      disabled={serviceYears.length <= 1}
+                      style={{
+                        background: 'transparent',
+                        border: '1px solid rgba(244, 63, 94, 0.35)',
+                        color: 'var(--accent-rose, #f43f5e)',
+                        borderRadius: 'var(--radius-sm)',
+                        padding: '4px 8px',
+                        height: 28,
+                        cursor: serviceYears.length <= 1 ? 'not-allowed' : 'pointer',
+                        opacity: serviceYears.length <= 1 ? 0.35 : 1,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        fontSize: '0.76rem',
+                        fontWeight: 600,
+                      }}
+                      title={serviceYears.length <= 1 ? '최소 1개 이상의 봉사연도가 유지되어야 합니다' : `'${y.year_name} 봉사연도' 및 관련 데이터 삭제`}
+                    >
+                      <Trash2 size={13} />
+                      <span>삭제</span>
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
 
