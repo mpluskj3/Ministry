@@ -1238,7 +1238,7 @@ export async function getMonthlyReports(serviceYearId: string, month: ServiceMon
       .order('submitted_at', { ascending: false });
 
     if (!error && data) {
-      return data.map((r: any) => {
+      const fetchedReports = data.map((r: any) => {
         const pubStatus = r.publishers?.pioneer_status;
         const isRp = pubStatus === 'RP' || r.pioneer_status === 'RP';
         const hasHours = Number(r.hours || 0) > 0;
@@ -1251,6 +1251,24 @@ export async function getMonthlyReports(serviceYearId: string, month: ServiceMon
           group_name: r.publishers?.groups?.name || r.group_name || '미배정',
         };
       }) as MonthlyReport[];
+
+      // 혹시 원격 DB에 미처 마이그레이션되지 않았거나 로컬 캐시에 있는 해당 월 보고서 누락분 보강
+      const existingKeySet = new Set(fetchedReports.map(r => `${r.publisher_name}_${r.month}`));
+      const localReports = getLocalData<MonthlyReport[]>('monthly_reports', INITIAL_REPORTS);
+      const fallbackForMonth = localReports.filter(r => (!serviceYearId || r.service_year_id === serviceYearId) && r.month === month);
+      for (const fb of fallbackForMonth) {
+        if (!existingKeySet.has(`${fb.publisher_name}_${fb.month}`)) {
+          const isRp = fb.pioneer_status === 'RP';
+          const hasHours = Number(fb.hours || 0) > 0;
+          fetchedReports.push({
+            ...fb,
+            pioneer_status: isRp ? 'RP' : (hasHours ? 'AP' : (isChildStatus(fb.pioneer_status) ? fb.pioneer_status : '일반'))
+          });
+          existingKeySet.add(`${fb.publisher_name}_${fb.month}`);
+        }
+      }
+
+      return fetchedReports;
     }
   }
 
@@ -1304,7 +1322,8 @@ export async function getAllServiceYearReports(serviceYearId?: string): Promise<
 
       // 혹시 원격 DB에 1000건 초과 데이터가 미처 마이그레이션되지 않았을 경우를 대비해 누락분 보강
       const existingKeySet = new Set(fetchedReports.map(r => `${r.publisher_name}_${r.month}`));
-      const fallbackForYear = INITIAL_REPORTS.filter(r => !serviceYearId || r.service_year_id === serviceYearId);
+      const localReports = getLocalData<MonthlyReport[]>('monthly_reports', INITIAL_REPORTS);
+      const fallbackForYear = localReports.filter(r => !serviceYearId || r.service_year_id === serviceYearId);
       for (const fb of fallbackForYear) {
         if (!existingKeySet.has(`${fb.publisher_name}_${fb.month}`)) {
           const isRp = fb.pioneer_status === 'RP';

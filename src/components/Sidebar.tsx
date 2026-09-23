@@ -124,10 +124,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
             <div style={{ minWidth: 0, flex: 1 }}>
               <div
-                style={{ fontWeight: 800, fontSize: '0.92rem', letterSpacing: '-0.02em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
-                title={congregationName ? `${congregationName} - 봉사보고 관리` : '봉사보고 관리'}
+                style={{ fontWeight: 800, fontSize: '0.95rem', letterSpacing: '-0.02em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+                title={congregationName || '춘천남부 회중'}
               >
-                {congregationName ? `${congregationName} - 봉사보고 관리` : '봉사보고 관리'}
+                {congregationName || '춘천남부 회중'}
               </div>
 
               {/* 봉사연도 전환기: 집단감독자/보조자/최고관리자 누구나 연도를 변경하여 조회 가능 */}

@@ -21,34 +21,29 @@ function checkIsManagerMode(): boolean {
   const search = window.location.search.toLowerCase();
   const hash = window.location.hash.toLowerCase();
 
-  // /manager 또는 /manager/
-  if (path.endsWith('/manager') || path.endsWith('/manager/') || path.includes('/manager')) {
+  // 1. /manager 경로 확인 (/manager, /manager/)
+  if (path === '/manager' || path === '/manager/' || path.endsWith('/manager') || path.endsWith('/manager/')) {
     return true;
   }
-  // ?page=manager, ?manager
-  if (search.includes('manager')) {
+  // 2. 쿼리스트링 (?page=manager 또는 ?manager)
+  if (search.includes('page=manager') || search.includes('?manager') || search.includes('&manager')) {
     return true;
   }
-  // #manager, #/manager
-  if (hash.includes('manager')) {
+  // 3. 해시 (#manager, #/manager)
+  if (hash === '#manager' || hash === '#/manager' || hash.includes('/manager')) {
     return true;
   }
-  // Google OAuth 리디렉션 감지: access_token이나 code 등이 있으면 인증 처리 중이므로 관리자 화면 유지
-  if (hash.includes('access_token') || hash.includes('refresh_token') || search.includes('code=') || search.includes('access_token') || hash.includes('error=')) {
-    return true;
-  }
-  // sessionStorage: Google OAuth 로그인 시작 시 기록 (리디렉션 전후 관리자 모드 유지)
+  // 4. Google OAuth 로그인 리디렉션 처리 중인지 확인
+  // (로그인 시작 시 sessionStorage에 기록된 플래그가 있고, OAuth 콜백 파라미터가 포함된 경우)
   try {
-    if (sessionStorage.getItem('ministry_oauth_manager_login') === '1') return true;
-  } catch {}
-  // localStorage에 관리자 세션이 있으면 관리자 모드 유지
-  try {
-    const saved = localStorage.getItem('ministry_manager_session');
-    if (saved) {
-      const mgr = JSON.parse(saved);
-      if (mgr?.id || mgr?.role || mgr?.name || mgr?.email) return true;
+    const isOAuthLogin = sessionStorage.getItem('ministry_oauth_manager_login') === '1';
+    if (isOAuthLogin && (hash.includes('access_token') || hash.includes('refresh_token') || search.includes('code=') || search.includes('error='))) {
+      return true;
     }
   } catch {}
+
+  // ⚠️ 더 이상 localStorage의 관리자 세션 유무로 관리자 모드를 자동 판정하지 않습니다.
+  // URL이 명시적으로 /manager 또는 ?page=manager일 때만 관리자 모드로 진입합니다.
   return false;
 }
 
@@ -82,16 +77,12 @@ export function App() {
   const [loading, setLoading] = useState(true);
   const [unreportedCount, setUnreportedCount] = useState<number>(0);
 
-  // 기본 페이지는 전도인 야외 봉사 보고 접수처이며, manager가 감지될 때만 관리자 모드로 전환
+  // 기본 페이지는 전도인 야외 봉사 보고 접수처이며, manager URL이 감지될 때만 관리자 모드로 전환
   const [isManagerMode, setIsManagerMode] = useState<boolean>(() => checkIsManagerMode());
 
-  // URL 변경 감지 (뒤로가기/앞으로가기만 감지 - hashchange 제외)
-  // hashchange는 Supabase OAuth 토큰 처리 시 발생하므로 manager 모드 리셋을 방지
+  // URL 변경 감지 (뒤로가기/앞으로가기)
   useEffect(() => {
     const handleLocationChange = () => {
-      // manager 세션이 있는 경우 manager mode 유지
-      const saved = localStorage.getItem('ministry_manager_session');
-      if (saved) return;
       setIsManagerMode(checkIsManagerMode());
     };
     window.addEventListener('popstate', handleLocationChange);

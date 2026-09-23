@@ -1046,6 +1046,12 @@ ${submitUrl}
   const handleSelectMonthAndGoDetail = (m: ServiceMonth) => {
     setSelectedMonth(m);
     setViewMode('monthly');
+    setSearchQuery('');
+    setFilterParticipated('all');
+    setFilterPioneerStatus('all');
+    setFilterPosition('all');
+    setFilterGroup('all');
+    setFilterRemarks('all');
   };
 
   const handleEditWeekendAttendance = () => {
