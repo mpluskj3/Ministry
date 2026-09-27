@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
-import { X, Check, Trash2, Plus, AlertCircle, FileEdit, Clock, BookOpen, AlertTriangle } from 'lucide-react';
+import { X, Check, Trash2, Plus, AlertCircle, FileEdit, Clock, BookOpen, AlertTriangle, ChevronUp, ChevronDown } from 'lucide-react';
 import { ServiceMonth, ServiceYear, RemarkItem, MonthlyReport } from '../types/database';
 import { submitMinistryReport, deleteMonthlyReport } from '../services/ministryService';
 
 const REMARK_TYPES = [
   '원격봉사',
-  'LDC봉사',
+  'LDC',
+  '장로학교',
+  '유지보수',
   '파이오니아학교',
   '베델봉사',
   '대회자원봉사',
@@ -60,7 +62,9 @@ export const ReportEditModal: React.FC<ReportEditModalProps> = ({
 
   // 비고 추가
   const handleAddRemark = () => {
-    setRemarks(prev => [...prev, { type: '기타', hours: '1' }]);
+    const usedTypes = new Set(remarks.map(r => r.type));
+    const nextType = REMARK_TYPES.find(t => !usedTypes.has(t)) || REMARK_TYPES[remarks.length % REMARK_TYPES.length];
+    setRemarks(prev => [...prev, { type: nextType, hours: '' }]);
   };
 
   // 비고 삭제
@@ -70,9 +74,10 @@ export const ReportEditModal: React.FC<ReportEditModalProps> = ({
 
   // 비고 필드 변경
   const handleRemarkChange = (idx: number, field: keyof RemarkItem, val: any) => {
+    const finalVal = String(val);
     setRemarks(prev => {
       const copy = [...prev];
-      copy[idx] = { ...copy[idx], [field]: String(val) };
+      copy[idx] = { ...copy[idx], [field]: finalVal };
       return copy;
     });
   };
@@ -103,7 +108,9 @@ export const ReportEditModal: React.FC<ReportEditModalProps> = ({
         participated,
         hours: numHours,
         bibleStudies: numStudies,
-        remarks: remarks.map(r => ({ type: r.type, hours: String(r.hours || '1'), etc: r.etc || '' })),
+        remarks: remarks
+          .filter(r => r.hours && String(r.hours).trim().length > 0)
+          .map(r => ({ type: r.type, hours: String(r.hours).trim(), etc: r.etc || '' })),
         isAuxiliaryPioneer,
         isAdminOverride: true,
       });
@@ -125,7 +132,12 @@ export const ReportEditModal: React.FC<ReportEditModalProps> = ({
 
     try {
       setLoading(true);
-      await deleteMonthlyReport(existingReport.id);
+      await deleteMonthlyReport(existingReport.id, {
+        publisherId: publisher.id,
+        publisherName: publisher.name,
+        month,
+        serviceYearId: serviceYear.id,
+      });
       onSaved();
       onClose();
     } catch (err: any) {
@@ -219,18 +231,86 @@ export const ReportEditModal: React.FC<ReportEditModalProps> = ({
               </label>
               <div style={{ position: 'relative' }}>
                 <input
-                  type="number"
-                  min="0"
-                  step="1"
+                  type="text"
+                  lang="ko"
                   placeholder="예: 15"
                   value={hours}
                   onChange={(e) => {
-                    setHours(e.target.value);
+                    const val = e.target.value.replace(/[^0-9]/g, '');
+                    setHours(val);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'ArrowUp') {
+                      e.preventDefault();
+                      const cur = parseInt(hours || '0', 10);
+                      setHours(String(Math.min(300, cur + 1)));
+                    } else if (e.key === 'ArrowDown') {
+                      e.preventDefault();
+                      const cur = parseInt(hours || '0', 10);
+                      setHours(String(Math.max(0, cur - 1)));
+                    }
                   }}
                   className="form-input"
-                  style={{ paddingRight: 32, fontWeight: 700 }}
+                  style={{ paddingRight: 28, fontWeight: 700 }}
                 />
-                <Clock size={15} style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-faint)' }} />
+                <div style={{
+                  position: 'absolute',
+                  right: 4,
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 0
+                }}>
+                  <button
+                    type="button"
+                    tabIndex={-1}
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => {
+                      const cur = parseInt(hours || '0', 10);
+                      setHours(String(Math.min(300, cur + 1)));
+                    }}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      padding: '1px 2px',
+                      cursor: 'pointer',
+                      color: 'var(--text-muted)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      lineHeight: 1
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--primary)')}
+                    onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-muted)')}
+                  >
+                    <ChevronUp size={13} />
+                  </button>
+                  <button
+                    type="button"
+                    tabIndex={-1}
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => {
+                      const cur = parseInt(hours || '0', 10);
+                      setHours(String(Math.max(0, cur - 1)));
+                    }}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      padding: '1px 2px',
+                      cursor: 'pointer',
+                      color: 'var(--text-muted)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      lineHeight: 1
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--primary)')}
+                    onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-muted)')}
+                  >
+                    <ChevronDown size={13} />
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -240,16 +320,86 @@ export const ReportEditModal: React.FC<ReportEditModalProps> = ({
               </label>
               <div style={{ position: 'relative' }}>
                 <input
-                  type="number"
-                  min="0"
-                  step="1"
+                  type="text"
+                  lang="ko"
                   placeholder="예: 1"
                   value={bibleStudies}
-                  onChange={(e) => setBibleStudies(e.target.value)}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/[^0-9]/g, '');
+                    setBibleStudies(val);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'ArrowUp') {
+                      e.preventDefault();
+                      const cur = parseInt(bibleStudies || '0', 10);
+                      setBibleStudies(String(Math.min(99, cur + 1)));
+                    } else if (e.key === 'ArrowDown') {
+                      e.preventDefault();
+                      const cur = parseInt(bibleStudies || '0', 10);
+                      setBibleStudies(String(Math.max(0, cur - 1)));
+                    }
+                  }}
                   className="form-input"
-                  style={{ paddingRight: 32, fontWeight: 700 }}
+                  style={{ paddingRight: 28, fontWeight: 700 }}
                 />
-                <BookOpen size={15} style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-faint)' }} />
+                <div style={{
+                  position: 'absolute',
+                  right: 4,
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 0
+                }}>
+                  <button
+                    type="button"
+                    tabIndex={-1}
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => {
+                      const cur = parseInt(bibleStudies || '0', 10);
+                      setBibleStudies(String(Math.min(99, cur + 1)));
+                    }}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      padding: '1px 2px',
+                      cursor: 'pointer',
+                      color: 'var(--text-muted)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      lineHeight: 1
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--primary)')}
+                    onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-muted)')}
+                  >
+                    <ChevronUp size={13} />
+                  </button>
+                  <button
+                    type="button"
+                    tabIndex={-1}
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => {
+                      const cur = parseInt(bibleStudies || '0', 10);
+                      setBibleStudies(String(Math.max(0, cur - 1)));
+                    }}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      padding: '1px 2px',
+                      cursor: 'pointer',
+                      color: 'var(--text-muted)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      lineHeight: 1
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--primary)')}
+                    onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-muted)')}
+                  >
+                    <ChevronDown size={13} />
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -319,17 +469,20 @@ export const ReportEditModal: React.FC<ReportEditModalProps> = ({
                       ))}
                     </select>
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, flex: '1' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, flex: '1.5' }}>
                       <input
-                        type="number"
-                        min="1"
+                        type="text"
+                        lang="ko"
+                        inputMode="text"
+                        autoCapitalize="none"
+                        autoCorrect="off"
+                        spellCheck={false}
                         value={rm.hours}
-                        onChange={(e) => handleRemarkChange(idx, 'hours', Number(e.target.value))}
+                        onChange={(e) => handleRemarkChange(idx, 'hours', e.target.value)}
                         className="form-input"
-                        placeholder="시간"
-                        style={{ fontSize: '0.82rem', padding: '6px 8px', textAlign: 'center' }}
+                        placeholder="시간 또는 내용"
+                        style={{ fontSize: '0.82rem', padding: '6px 8px' }}
                       />
-                      <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', flexShrink: 0 }}>시간</span>
                     </div>
 
                     <button

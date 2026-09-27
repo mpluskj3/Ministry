@@ -18,7 +18,10 @@ import {
   HelpCircle,
   Sparkles,
   Info,
-  X
+  History,
+  X,
+  ChevronUp,
+  ChevronDown
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import {
@@ -38,10 +41,13 @@ import {
   getExistingReport,
   getAutoSelectServiceMonth
 } from '../services/ministryService';
+import { engToKor } from '../utils/hangulUtils';
 
 const REMARK_TYPES = [
   '원격봉사',
-  'LDC봉사',
+  'LDC',
+  '장로학교',
+  '유지보수',
   '파이오니아학교',
   '베델봉사',
   '대회자원봉사',
@@ -67,6 +73,43 @@ export const ReportForm: React.FC<ReportFormProps> = ({
   const [selectedPublisher, setSelectedPublisher] = useState<Publisher | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
+
+  // 최근 제출/입력한 전도인 이름 캐시 (로컬 스토리지 연동)
+  const [recentNames, setRecentNames] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('ministry_recent_names');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          return parsed.filter((n): n is string => typeof n === 'string' && n.trim().length > 0);
+        }
+      }
+    } catch {
+      // ignore
+    }
+    return [];
+  });
+
+  const handleRemoveRecentName = (nameToRemove: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    setRecentNames(prev => {
+      const updated = prev.filter(n => n !== nameToRemove);
+      try {
+        localStorage.setItem('ministry_recent_names', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+  };
+
+  const handleClearAllRecentNames = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    setRecentNames([]);
+    try {
+      localStorage.removeItem('ministry_recent_names');
+    } catch {}
+  };
 
   // 자동 월 선택 (현재 날짜 및 봉사연도 기준)
   const [month, setMonth] = useState<ServiceMonth>(() => getAutoSelectServiceMonth(undefined, currentYear?.year_name));
@@ -114,24 +157,13 @@ export const ReportForm: React.FC<ReportFormProps> = ({
         const autoMonth = getAutoSelectServiceMonth(statuses, currentYear?.year_name);
         setMonth(autoMonth);
 
-        // 이전 제출자 기억 불러오기: 전도인 본인 기기(isStandalone && !manager)일 때만 동작
-        if (isStandalone && !manager) {
-          const lastPubName = localStorage.getItem('ministry_last_reporter');
-          if (lastPubName) {
-            const matched = pubs.find(p => p.name === lastPubName);
-            if (matched) {
-              setSelectedPublisher(matched);
-              setSearchQuery(matched.name);
-            }
-          }
-        } else {
-          // 관리자 대리 제출 모드에서는 항상 입력창을 빈 상태로 초기화
-          setSelectedPublisher(null);
-          setSearchQuery('');
-          setExistingReport(null);
-          setShowExistingAlert(false);
-          setIsEditMode(false);
-        }
+        // 새로고침 시 항상 입력창을 빈 상태로 초기화 (이전 제출 안내 팝업 자동 노출 방지)
+        localStorage.removeItem('ministry_last_reporter');
+        setSelectedPublisher(null);
+        setSearchQuery('');
+        setExistingReport(null);
+        setShowExistingAlert(false);
+        setIsEditMode(false);
       } catch (err) {
         console.error('Failed to load initial form data:', err);
       }
@@ -141,9 +173,18 @@ export const ReportForm: React.FC<ReportFormProps> = ({
 
   const nameInputRef = React.useRef<HTMLInputElement>(null);
   const hoursInputRef = React.useRef<HTMLInputElement>(null);
+  const blurTimeoutRef = React.useRef<any>(null);
+  const searchQueryRef = React.useRef<string>('');
+  const isCancellingRef = React.useRef<boolean>(false);
+
+  // searchQuery 변경 시 ref 동기화
+  useEffect(() => {
+    searchQueryRef.current = searchQuery;
+  }, [searchQuery]);
 
   // 전도인 또는 월 변경 시 기존 제출 내역 확인
   const checkForExistingReport = useCallback(async (pubId: string, targetMonth: ServiceMonth) => {
+    if (isCancellingRef.current) return;
     // 마감된 월이면 누구든 기존 보고 알림을 띄우지 않음
     if (!!monthStatuses[targetMonth]) {
       setExistingReport(null);
@@ -153,6 +194,7 @@ export const ReportForm: React.FC<ReportFormProps> = ({
     }
     try {
       const prev = await getExistingReport(currentYear.id, pubId, targetMonth);
+      if (isCancellingRef.current) return;
       if (prev) {
         setExistingReport(prev);
         setShowExistingAlert(true);
@@ -167,7 +209,7 @@ export const ReportForm: React.FC<ReportFormProps> = ({
   }, [currentYear.id, monthStatuses]);
 
   useEffect(() => {
-    if (selectedPublisher) {
+    if (selectedPublisher && !isCancellingRef.current) {
       checkForExistingReport(selectedPublisher.id, month);
     } else {
       setExistingReport(null);
@@ -197,19 +239,44 @@ export const ReportForm: React.FC<ReportFormProps> = ({
     setIsEditMode(true); // 여전히 수정 모드(덮어쓰기)로 진행
   };
 
-  const handleCancelExistingAlert = () => {
+  // 폼 전체 완전 초기화 (이름, 기존 보고, 수정 모드, 봉사 시간/연구/비고 등 전체)
+  const handleResetForm = () => {
+    // 1. 대기 중인 onBlur 타이머 즉시 취소
+    if (blurTimeoutRef.current) {
+      clearTimeout(blurTimeoutRef.current);
+      blurTimeoutRef.current = null;
+    }
+    // 2. 취소 플래그 활성화 및 검색어 ref 비우기
+    isCancellingRef.current = true;
+    searchQueryRef.current = '';
+
+    // 3. 폼 상태 완전 초기화
     setShowExistingAlert(false);
     setExistingReport(null);
     setSelectedPublisher(null);
     setSearchQuery('');
     setIsEditMode(false);
+    setShowDropdown(false);
+    setHours('');
+    setBibleStudies('');
+    setIsAuxiliaryPioneer(false);
+    setRemarks([]);
+    setParticipated(true);
+    setErrorMsg(null);
+
+    // 4. 안전한 지연 후 플래그 해제 및 이름 입력창으로 포커스
     setTimeout(() => {
+      isCancellingRef.current = false;
       nameInputRef.current?.focus();
-    }, 100);
+    }, 200);
   };
+
+  const handleCancelExistingAlert = handleResetForm;
 
   // 전도인 선택
   const handleSelectPublisher = (pub: Publisher) => {
+    if (isCancellingRef.current) return;
+    searchQueryRef.current = pub.name;
     setSelectedPublisher(pub);
     setSearchQuery(pub.name);
     setShowDropdown(false);
@@ -222,7 +289,9 @@ export const ReportForm: React.FC<ReportFormProps> = ({
   };
 
   const handleAddRemark = () => {
-    setRemarks([...remarks, { type: '원격봉사', hours: '', etc: '' }]);
+    const usedTypes = new Set(remarks.map(r => r.type));
+    const nextType = REMARK_TYPES.find(t => !usedTypes.has(t)) || REMARK_TYPES[remarks.length % REMARK_TYPES.length];
+    setRemarks([...remarks, { type: nextType, hours: '', etc: '' }]);
   };
 
   const handleRemoveRemark = (index: number) => {
@@ -242,15 +311,19 @@ export const ReportForm: React.FC<ReportFormProps> = ({
 
     let targetPublisher = selectedPublisher;
     if (!targetPublisher) {
-      const trimmed = searchQuery.trim();
-      if (!trimmed) {
+      const rawTrimmed = searchQuery.trim();
+      if (!rawTrimmed) {
         setErrorMsg('전도인 이름을 입력해주세요.');
         nameInputRef.current?.focus();
         return;
       }
+      const korTrimmed = engToKor(rawTrimmed);
 
-      // 1. 공백 제거 후 정확한 일치 검사
-      const exactMatches = publishers.filter(p => p.name.trim() === trimmed);
+      // 1. 원본 입력(영문 포함) 및 한글 변환 일치 검사
+      const exactMatches = publishers.filter(p => 
+        p.name.trim().toLowerCase() === rawTrimmed.toLowerCase() ||
+        p.name.trim() === korTrimmed
+      );
       if (exactMatches.length === 1) {
         targetPublisher = exactMatches[0];
         setSelectedPublisher(exactMatches[0]);
@@ -260,13 +333,17 @@ export const ReportForm: React.FC<ReportFormProps> = ({
         return;
       } else {
         // 공백 무시 검색 (예: '홍 길동' -> '홍길동')
-        const noSpaceTrimmed = trimmed.replace(/\s+/g, '');
-        const fuzzyMatches = publishers.filter(p => p.name.replace(/\s+/g, '') === noSpaceTrimmed);
+        const noSpaceRaw = rawTrimmed.replace(/\s+/g, '').toLowerCase();
+        const noSpaceKor = korTrimmed.replace(/\s+/g, '');
+        const fuzzyMatches = publishers.filter(p => {
+          const pNameNoSpace = p.name.replace(/\s+/g, '');
+          return pNameNoSpace.toLowerCase() === noSpaceRaw || pNameNoSpace === noSpaceKor;
+        });
         if (fuzzyMatches.length === 1) {
           targetPublisher = fuzzyMatches[0];
           setSelectedPublisher(fuzzyMatches[0]);
         } else {
-          setErrorMsg(`'${trimmed}' 전도인 명단을 찾을 수 없습니다. 등록된 성명을 올바르게 입력해주세요.`);
+          setErrorMsg(`'${rawTrimmed}' 전도인 명단을 찾을 수 없습니다. 등록된 성명을 올바르게 입력해주세요.`);
           nameInputRef.current?.focus();
           return;
         }
@@ -289,7 +366,15 @@ export const ReportForm: React.FC<ReportFormProps> = ({
       return;
     }
 
-    // RP, SP, FM이 아닌데 시간 보고를 할 경우 AP 체크가 안된 상태에서 보고를 제출하려고 할 때 확인 모달 노출
+    // 이번 달 보조 파이오니아(AP) 체크 시 봉사 시간 필수 입력 안내
+    if (isAuxiliaryPioneer && participated && numHours <= 0) {
+      alert('보조 파이오니아로 봉사하신 경우 봉사 시간을 입력해야 합니다.\n봉사 시간을 입력하고 보고해주세요.');
+      setErrorMsg('보조 파이오니아는 봉사 시간을 입력해주세요.');
+      hoursInputRef.current?.focus();
+      return;
+    }
+
+    // RP, SP, FM이 아닌 전도인이 시간 입력을 한 경우: 보조 파이오니아 확인 모달 노출 (파이오니아가 아니면 시간 입력 불가)
     const isFulltimePioneer = ['RP', 'SP', 'FM'].includes(targetPublisher.pioneer_status || '');
     if (!isFulltimePioneer && participated && numHours > 0 && !isAuxiliaryPioneer) {
       setPendingPublisher(targetPublisher);
@@ -301,18 +386,18 @@ export const ReportForm: React.FC<ReportFormProps> = ({
   };
 
   // 실제 보고서 저장 및 제출 실행
-  const doSubmit = async (targetPublisher: Publisher, finalIsAuxiliaryPioneer: boolean) => {
-    const numHours = parseFloat(hours) || 0;
+  const doSubmit = async (targetPublisher: Publisher, finalIsAuxiliaryPioneer: boolean, overrideHours?: number) => {
+    const numHours = overrideHours !== undefined ? overrideHours : (parseFloat(hours) || 0);
     const numStudies = parseInt(bibleStudies) || 0;
 
     setLoading(true);
     try {
       const validRemarks = remarks
-        .filter(r => r.hours && parseFloat(r.hours) > 0)
+        .filter(r => r.hours && String(r.hours).trim().length > 0)
         .map(r => ({
           type: r.type,
-          hours: r.hours,
-          etc: r.etc ? r.etc.trim() : ''
+          hours: String(r.hours).trim(),
+          etc: ''
         }));
 
       await submitMinistryReport({
@@ -359,17 +444,25 @@ export const ReportForm: React.FC<ReportFormProps> = ({
         time: new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }),
       });
 
-      // 폼 리셋 (관리자 모드일 경우 다음 전도인 입력을 위해 성명도 초기화)
+      // 제출 완료된 전도인 이름을 최근 캐시 목록에 기억 (최신순 최대 10개)
+      setRecentNames(prev => {
+        const updated = [targetPublisher.name, ...prev.filter(n => n !== targetPublisher.name)].slice(0, 10);
+        try {
+          localStorage.setItem('ministry_recent_names', JSON.stringify(updated));
+        } catch {}
+        return updated;
+      });
+
+      // 폼 리셋: 이름, 시간, 성서 연구, 보조 파이오니아, 비고 등 모든 입력값 초기화
+      setSelectedPublisher(null);
+      setSearchQuery('');
       setHours('');
       setBibleStudies('');
       setIsAuxiliaryPioneer(false);
       setRemarks([]);
       setIsEditMode(false);
       setExistingReport(null);
-      if (!isStandalone || manager) {
-        setSelectedPublisher(null);
-        setSearchQuery('');
-      }
+      localStorage.removeItem('ministry_last_reporter');
     } catch (err: any) {
       setErrorMsg(err.message || '보고서 제출 중 오류가 발생했습니다.');
     } finally {
@@ -379,10 +472,13 @@ export const ReportForm: React.FC<ReportFormProps> = ({
     }
   };
 
-  // 전도인 검색 필터
-  const filteredPublishers = publishers.filter(p =>
-    p.name.toLowerCase().includes(searchQuery.trim().toLowerCase())
-  );
+  // 전도인 검색 필터 (영문 자판으로 입력된 경우에도 한글로 자동 변환하여 매칭)
+  const filteredPublishers = publishers.filter(p => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return true;
+    const korQ = engToKor(q).toLowerCase();
+    return p.name.toLowerCase().includes(q) || p.name.toLowerCase().includes(korQ);
+  });
 
   return (
     <div style={{ maxWidth: 640, margin: '0 auto', paddingBottom: 40 }}>
@@ -418,12 +514,8 @@ export const ReportForm: React.FC<ReportFormProps> = ({
             </div>
             <button
               type="button"
-              onClick={() => {
-                setIsEditMode(false);
-                setHours('');
-                setBibleStudies('');
-                setRemarks([]);
-              }}
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={handleResetForm}
               style={{
                 background: 'none',
                 border: 'none',
@@ -457,7 +549,7 @@ export const ReportForm: React.FC<ReportFormProps> = ({
           </div>
         )}
 
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} autoComplete="off">
           {/* 한 행에 '이름'과 '월' 나란히 표시 */}
           <div style={{
             display: 'grid',
@@ -480,9 +572,20 @@ export const ReportForm: React.FC<ReportFormProps> = ({
                 <input
                   ref={nameInputRef}
                   type="text"
+                  name="search_publisher_query"
+                  autoComplete="off"
+                  data-lpignore="true"
+                  data-form-type="other"
+                  aria-autocomplete="none"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
                   className="form-input"
                   placeholder={isStandalone ? "이름을 입력하세요" : "전도인 이름 입력 또는 목록 선택"}
+                  style={{ paddingRight: selectedPublisher ? 36 : 14 }}
                   value={searchQuery}
+                  onClick={() => setShowDropdown(true)}
+                  onFocus={() => setShowDropdown(true)}
                   onChange={(e) => {
                     const val = e.target.value;
                     setSearchQuery(val);
@@ -491,21 +594,26 @@ export const ReportForm: React.FC<ReportFormProps> = ({
 
                     if (!trimmed) {
                       setSelectedPublisher(null);
-                      setShowDropdown(false);
+                      setShowDropdown(true);
                       return;
                     }
 
-                    const exactMatches = publishers.filter(p => p.name.trim() === trimmed);
+                    // 영문 입력 또는 한글 입력 모두 매칭 (영타로 쳐도 전도인 자동인식)
+                    const korTrimmed = engToKor(trimmed);
+                    const exactMatches = publishers.filter(p => 
+                      p.name.trim().toLowerCase() === trimmed.toLowerCase() || 
+                      p.name.trim() === korTrimmed
+                    );
                     if (exactMatches.length === 1) {
-                      // 정확히 1명 일치 시 관리자/공개 모드 불문 즉시 자동 확인
                       handleSelectPublisher(exactMatches[0]);
                       setShowDropdown(false);
                     } else if (exactMatches.length > 1) {
-                      // 동명이인인 경우에만 집단 구분을 선택하도록 드롭다운 노출
                       setSelectedPublisher(null);
                       setShowDropdown(true);
                     } else {
-                      if (selectedPublisher && selectedPublisher.name.trim() !== trimmed) {
+                      if (selectedPublisher && 
+                          selectedPublisher.name.trim().toLowerCase() !== trimmed.toLowerCase() && 
+                          selectedPublisher.name.trim() !== korTrimmed) {
                         setSelectedPublisher(null);
                       }
                       if (!isStandalone) {
@@ -518,7 +626,11 @@ export const ReportForm: React.FC<ReportFormProps> = ({
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
                       const trimmed = searchQuery.trim();
-                      const exactMatches = publishers.filter(p => p.name.trim() === trimmed);
+                      const korTrimmed = engToKor(trimmed);
+                      const exactMatches = publishers.filter(p => 
+                        p.name.trim().toLowerCase() === trimmed.toLowerCase() || 
+                        p.name.trim() === korTrimmed
+                      );
                       if (exactMatches.length === 1) {
                         e.preventDefault();
                         handleSelectPublisher(exactMatches[0]);
@@ -530,18 +642,20 @@ export const ReportForm: React.FC<ReportFormProps> = ({
                       }
                     }
                   }}
-                  onFocus={() => {
-                    if (!isStandalone) {
-                      setShowDropdown(true);
-                    }
-                  }}
                   onBlur={() => {
-                    // 딜레이를 주어 드롭다운 항목 클릭 허용
-                    setTimeout(() => {
+                    if (blurTimeoutRef.current) {
+                      clearTimeout(blurTimeoutRef.current);
+                    }
+                    blurTimeoutRef.current = setTimeout(() => {
                       setShowDropdown(false);
-                      const trimmed = searchQuery.trim();
-                      if (!selectedPublisher && trimmed) {
-                        const exactMatches = publishers.filter(p => p.name.trim() === trimmed);
+                      if (isCancellingRef.current) return;
+                      const trimmed = searchQueryRef.current.trim();
+                      if (trimmed) {
+                        const korTrimmed = engToKor(trimmed);
+                        const exactMatches = publishers.filter(p => 
+                          p.name.trim().toLowerCase() === trimmed.toLowerCase() || 
+                          p.name.trim() === korTrimmed
+                        );
                         if (exactMatches.length === 1) {
                           handleSelectPublisher(exactMatches[0]);
                         }
@@ -551,137 +665,349 @@ export const ReportForm: React.FC<ReportFormProps> = ({
                   required
                 />
                 {selectedPublisher && (
-                  <div
-                    title="확인됨"
-                    style={{
-                      position: 'absolute',
-                      right: 12,
-                      top: '50%',
-                      transform: 'translateY(-50%)',
-                      color: 'var(--accent-emerald)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center'
-                    }}
-                  >
+                  <div style={{
+                    position: 'absolute',
+                    right: 12,
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    color: 'var(--accent-emerald)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    pointerEvents: 'none'
+                  }} title="확인됨">
                     <UserCheck size={18} />
                   </div>
                 )}
               </div>
 
-              {/* Auto-suggest dropdown: 관리자 모드이거나 동명이인 선택일 때만 조건부 표시 */}
+              {/* 자동 완성 및 최근 기억된 이름 캐시 드롭다운 */}
               {showDropdown && (
-                !isStandalone ? (
-                  /* 관리자 모드: 전체/검색된 전도인 목록 표시 */
-                  filteredPublishers.length > 0 && (
-                    <div style={{
-                      position: 'absolute',
-                      top: '100%',
-                      left: 0,
-                      right: 0,
-                      zIndex: 40,
-                      background: 'var(--bg-card)',
-                      border: '1px solid var(--border-color)',
-                      borderRadius: 'var(--radius-md)',
-                      boxShadow: 'var(--shadow-lg)',
-                      maxHeight: 220,
-                      overflowY: 'auto',
-                      marginTop: 4
-                    }}>
-                      {filteredPublishers.map((p) => (
-                        <div
-                          key={p.id}
-                          onClick={() => handleSelectPublisher(p)}
-                          style={{
-                            padding: '10px 14px',
-                            cursor: 'pointer',
+                (searchQuery.trim() === '' ? (!isStandalone || recentNames.length > 0) : (!isStandalone ? true : publishers.filter(p => p.name === searchQuery.trim()).length > 1))
+              ) && (
+                <div style={{
+                  position: 'absolute',
+                  top: '100%',
+                  left: 0,
+                  right: 0,
+                  zIndex: 40,
+                  background: 'var(--bg-card)',
+                  border: '1px solid var(--border-color)',
+                  borderRadius: 'var(--radius-md)',
+                  boxShadow: 'var(--shadow-lg)',
+                  maxHeight: 240,
+                  overflowY: 'auto',
+                  marginTop: 4
+                }}>
+                  {/* 1. 검색어가 비어있는 경우: 최근 입력/제출한 캐시 이름 노출 */}
+                  {searchQuery.trim() === '' ? (
+                    <>
+                      {recentNames.length > 0 && (
+                        <div>
+                          <div style={{
+                            padding: '8px 12px',
+                            fontSize: '0.78rem',
+                            fontWeight: 700,
+                            color: 'var(--text-muted)',
+                            background: 'var(--bg-subtle, rgba(0,0,0,0.03))',
+                            borderBottom: '1px solid var(--border-color)',
                             display: 'flex',
                             alignItems: 'center',
-                            justifyContent: 'space-between',
-                            borderBottom: '1px solid var(--border-color)',
-                            fontSize: '0.9rem',
-                            transition: 'var(--transition-fast)'
-                          }}
-                          onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--primary-light)')}
-                          onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-                        >
-                          <div>
-                            <span style={{ fontWeight: 700 }}>{p.name}</span>
-                            <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginLeft: 8 }}>
-                              {p.group_name}
+                            justifyContent: 'space-between'
+                          }}>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <History size={13} style={{ color: 'var(--primary)' }} />
+                              최근 입력한 이름
                             </span>
+                            <button
+                              type="button"
+                              onMouseDown={handleClearAllRecentNames}
+                              style={{
+                                background: 'none',
+                                border: 'none',
+                                color: 'var(--text-muted)',
+                                fontSize: '0.72rem',
+                                cursor: 'pointer',
+                                padding: '2px 4px'
+                              }}
+                              title="최근 기록 전체 삭제"
+                            >
+                              전체 지우기
+                            </button>
                           </div>
-                          <div>
-                            {p.pioneer_status !== '일반' && p.pioneer_status !== 'AP' && (
-                              <span className={`badge badge-${p.pioneer_status?.toLowerCase()}`}>
-                                {p.pioneer_status}
-                              </span>
-                            )}
-                          </div>
+                          {recentNames.map((name) => {
+                            const matchedPubs = publishers.filter(p => p.name === name);
+                            if (matchedPubs.length > 1) {
+                              return matchedPubs.map(p => (
+                                <div
+                                  key={p.id}
+                                  onMouseDown={() => {
+                                    handleSelectPublisher(p);
+                                    setShowDropdown(false);
+                                  }}
+                                  style={{
+                                    padding: '10px 14px',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    borderBottom: '1px solid var(--border-color)',
+                                    fontSize: '0.9rem',
+                                    transition: 'var(--transition-fast)'
+                                  }}
+                                  onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--primary-light)')}
+                                  onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                                >
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                    <History size={14} style={{ color: 'var(--text-muted)' }} />
+                                    <span style={{ fontWeight: 700 }}>{p.name}</span>
+                                    <span style={{ fontSize: '0.8rem', color: 'var(--primary)', fontWeight: 600 }}>
+                                      ({p.group_name})
+                                    </span>
+                                    {p.pioneer_status !== '일반' && p.pioneer_status !== 'AP' && (
+                                      <span className={`badge badge-${p.pioneer_status?.toLowerCase()}`} style={{ fontSize: '0.7rem', padding: '1px 6px' }}>
+                                        {p.pioneer_status}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onMouseDown={(e) => handleRemoveRecentName(name, e)}
+                                    title="기록에서 삭제"
+                                    style={{
+                                      background: 'none',
+                                      border: 'none',
+                                      color: 'var(--text-muted)',
+                                      cursor: 'pointer',
+                                      padding: 4,
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      borderRadius: '50%'
+                                    }}
+                                    onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--accent-rose)')}
+                                    onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-muted)')}
+                                  >
+                                    <X size={14} />
+                                  </button>
+                                </div>
+                              ));
+                            }
+                            const p = matchedPubs[0];
+                            return (
+                              <div
+                                key={name}
+                                onMouseDown={() => {
+                                  if (p) {
+                                    handleSelectPublisher(p);
+                                  } else {
+                                    setSearchQuery(name);
+                                  }
+                                  setShowDropdown(false);
+                                }}
+                                style={{
+                                  padding: '10px 14px',
+                                  cursor: 'pointer',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'space-between',
+                                  borderBottom: '1px solid var(--border-color)',
+                                  fontSize: '0.9rem',
+                                  transition: 'var(--transition-fast)'
+                                }}
+                                onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--primary-light)')}
+                                onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                              >
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                  <History size={14} style={{ color: 'var(--text-muted)' }} />
+                                  <span style={{ fontWeight: 700 }}>{name}</span>
+                                  {p && (
+                                    <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                                      {p.group_name}
+                                    </span>
+                                  )}
+                                  {p && p.pioneer_status !== '일반' && p.pioneer_status !== 'AP' && (
+                                    <span className={`badge badge-${p.pioneer_status?.toLowerCase()}`} style={{ fontSize: '0.7rem', padding: '1px 6px' }}>
+                                      {p.pioneer_status}
+                                    </span>
+                                  )}
+                                </div>
+                                <button
+                                  type="button"
+                                  onMouseDown={(e) => handleRemoveRecentName(name, e)}
+                                  title="기록에서 삭제"
+                                  style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    color: 'var(--text-muted)',
+                                    cursor: 'pointer',
+                                    padding: 4,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    borderRadius: '50%'
+                                  }}
+                                  onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--accent-rose)')}
+                                  onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-muted)')}
+                                >
+                                  <X size={14} />
+                                </button>
+                              </div>
+                            );
+                          })}
                         </div>
-                      ))}
-                    </div>
-                  )
-                ) : (
-                  /* 공개 전도인 모드: 오직 동명이인(동일한 이름의 복수 전도인)일 때만 집단 구분을 위해 표시 */
-                  publishers.filter(p => p.name === searchQuery.trim()).length > 1 && (
-                    <div style={{
-                      position: 'absolute',
-                      top: '100%',
-                      left: 0,
-                      right: 0,
-                      zIndex: 40,
-                      background: 'var(--bg-card)',
-                      border: '1px solid var(--border-color)',
-                      borderRadius: 'var(--radius-md)',
-                      boxShadow: 'var(--shadow-lg)',
-                      maxHeight: 200,
-                      overflowY: 'auto',
-                      marginTop: 4
-                    }}>
-                      <div style={{
-                        padding: '8px 12px',
-                        fontSize: '0.76rem',
-                        fontWeight: 700,
-                        color: 'var(--primary)',
-                        background: 'var(--primary-light)',
-                        borderBottom: '1px solid var(--border-color)'
-                      }}>
-                        동일한 이름의 전도인이 있습니다. 본인의 소속 집단을 선택해주세요:
-                      </div>
-                      {publishers.filter(p => p.name === searchQuery.trim()).map((p) => (
-                        <div
-                          key={p.id}
-                          onClick={() => handleSelectPublisher(p)}
-                          style={{
-                            padding: '10px 14px',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            borderBottom: '1px solid var(--border-color)',
-                            fontSize: '0.9rem',
-                            transition: 'var(--transition-fast)'
-                          }}
-                          onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--primary-light)')}
-                          onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-                        >
-                          <div>
-                            <span style={{ fontWeight: 700 }}>{p.name}</span>
-                            <span style={{ fontSize: '0.84rem', color: 'var(--primary)', marginLeft: 8, fontWeight: 700 }}>
-                              ({p.group_name})
-                            </span>
-                          </div>
-                          {p.pioneer_status !== '일반' && p.pioneer_status !== 'AP' && (
-                            <span className={`badge badge-${p.pioneer_status?.toLowerCase()}`}>
-                              {p.pioneer_status}
-                            </span>
+                      )}
+
+                      {/* 관리자 모드인 경우: 전체 전도인 목록도 함께 표시 */}
+                      {!isStandalone && (
+                        <div>
+                          {recentNames.length > 0 && (
+                            <div style={{
+                              padding: '6px 12px',
+                              fontSize: '0.74rem',
+                              fontWeight: 700,
+                              color: 'var(--text-muted)',
+                              background: 'var(--bg-subtle, rgba(0,0,0,0.02))',
+                              borderBottom: '1px solid var(--border-color)'
+                            }}>
+                              전체 전도인 목록
+                            </div>
                           )}
+                          {publishers.map((p) => (
+                            <div
+                              key={p.id}
+                              onMouseDown={() => {
+                                handleSelectPublisher(p);
+                                setShowDropdown(false);
+                              }}
+                              style={{
+                                padding: '10px 14px',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                borderBottom: '1px solid var(--border-color)',
+                                fontSize: '0.9rem',
+                                transition: 'var(--transition-fast)'
+                              }}
+                              onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--primary-light)')}
+                              onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                            >
+                              <div>
+                                <span style={{ fontWeight: 700 }}>{p.name}</span>
+                                <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginLeft: 8 }}>
+                                  {p.group_name}
+                                </span>
+                              </div>
+                              <div>
+                                {p.pioneer_status !== '일반' && p.pioneer_status !== 'AP' && (
+                                  <span className={`badge badge-${p.pioneer_status?.toLowerCase()}`}>
+                                    {p.pioneer_status}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          ))}
                         </div>
-                      ))}
-                    </div>
-                  )
-                )
+                      )}
+                    </>
+                  ) : (
+                    /* 2. 검색어가 입력된 경우 */
+                    !isStandalone ? (
+                      /* 관리자 모드: 검색된 전도인 목록 */
+                      filteredPublishers.length > 0 ? (
+                        filteredPublishers.map((p) => (
+                          <div
+                            key={p.id}
+                            onMouseDown={() => {
+                              handleSelectPublisher(p);
+                              setShowDropdown(false);
+                            }}
+                            style={{
+                              padding: '10px 14px',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              borderBottom: '1px solid var(--border-color)',
+                              fontSize: '0.9rem',
+                              transition: 'var(--transition-fast)'
+                            }}
+                            onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--primary-light)')}
+                            onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                          >
+                            <div>
+                              <span style={{ fontWeight: 700 }}>{p.name}</span>
+                              <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginLeft: 8 }}>
+                                {p.group_name}
+                              </span>
+                            </div>
+                            <div>
+                              {p.pioneer_status !== '일반' && p.pioneer_status !== 'AP' && (
+                                <span className={`badge badge-${p.pioneer_status?.toLowerCase()}`}>
+                                  {p.pioneer_status}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div style={{ padding: '12px 14px', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                          검색된 전도인이 없습니다.
+                        </div>
+                      )
+                    ) : (
+                      /* 공개 전도인 모드: 동명이인일 때 집단 선택 */
+                      publishers.filter(p => p.name === searchQuery.trim()).length > 1 ? (
+                        <>
+                          <div style={{
+                            padding: '8px 12px',
+                            fontSize: '0.76rem',
+                            fontWeight: 700,
+                            color: 'var(--primary)',
+                            background: 'var(--primary-light)',
+                            borderBottom: '1px solid var(--border-color)'
+                          }}>
+                            동일한 이름의 전도인이 있습니다. 본인의 소속 집단을 선택해주세요:
+                          </div>
+                          {publishers.filter(p => p.name === searchQuery.trim()).map((p) => (
+                            <div
+                              key={p.id}
+                              onMouseDown={() => {
+                                handleSelectPublisher(p);
+                                setShowDropdown(false);
+                              }}
+                              style={{
+                                padding: '10px 14px',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                borderBottom: '1px solid var(--border-color)',
+                                fontSize: '0.9rem',
+                                transition: 'var(--transition-fast)'
+                              }}
+                              onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--primary-light)')}
+                              onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                            >
+                              <div>
+                                <span style={{ fontWeight: 700 }}>{p.name}</span>
+                                <span style={{ fontSize: '0.84rem', color: 'var(--primary)', marginLeft: 8, fontWeight: 700 }}>
+                                  ({p.group_name})
+                                </span>
+                              </div>
+                              {p.pioneer_status !== '일반' && p.pioneer_status !== 'AP' && (
+                                <span className={`badge badge-${p.pioneer_status?.toLowerCase()}`}>
+                                  {p.pioneer_status}
+                                </span>
+                              )}
+                            </div>
+                          ))}
+                        </>
+                      ) : null
+                    )
+                  )}
+                </div>
               )}
             </div>
 
@@ -834,17 +1160,92 @@ export const ReportForm: React.FC<ReportFormProps> = ({
                     <BookOpen size={16} color="var(--accent-amber)" />
                     <span>성서 연구</span>
                   </label>
-                  <input
-                    type="number"
-                    className="form-input"
-                    placeholder="0"
-                    min="0"
-                    max="99"
-                    value={bibleStudies}
-                    onChange={(e) => setBibleStudies(e.target.value)}
-                    disabled={isClosed}
-                    style={{ fontSize: '1.05rem', fontWeight: 700 }}
-                  />
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      type="text"
+                      lang="ko"
+                      className="form-input"
+                      placeholder="0"
+                      value={bibleStudies}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/[^0-9]/g, '');
+                        setBibleStudies(val);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'ArrowUp') {
+                          e.preventDefault();
+                          const cur = parseInt(bibleStudies || '0', 10);
+                          setBibleStudies(String(Math.min(99, cur + 1)));
+                        } else if (e.key === 'ArrowDown') {
+                          e.preventDefault();
+                          const cur = parseInt(bibleStudies || '0', 10);
+                          setBibleStudies(String(Math.max(0, cur - 1)));
+                        }
+                      }}
+                      disabled={isClosed}
+                      style={{ fontSize: '1.05rem', fontWeight: 700, paddingRight: 28 }}
+                    />
+                    <div style={{
+                      position: 'absolute',
+                      right: 4,
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 0
+                    }}>
+                      <button
+                        type="button"
+                        tabIndex={-1}
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => {
+                          const cur = parseInt(bibleStudies || '0', 10);
+                          setBibleStudies(String(Math.min(99, cur + 1)));
+                        }}
+                        disabled={isClosed}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          padding: '1px 2px',
+                          cursor: isClosed ? 'not-allowed' : 'pointer',
+                          color: 'var(--text-muted)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          lineHeight: 1
+                        }}
+                        onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--primary)')}
+                        onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-muted)')}
+                      >
+                        <ChevronUp size={13} />
+                      </button>
+                      <button
+                        type="button"
+                        tabIndex={-1}
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => {
+                          const cur = parseInt(bibleStudies || '0', 10);
+                          setBibleStudies(String(Math.max(0, cur - 1)));
+                        }}
+                        disabled={isClosed}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          padding: '1px 2px',
+                          cursor: isClosed ? 'not-allowed' : 'pointer',
+                          color: 'var(--text-muted)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          lineHeight: 1
+                        }}
+                        onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--primary)')}
+                        onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-muted)')}
+                      >
+                        <ChevronDown size={13} />
+                      </button>
+                    </div>
+                  </div>
                 </div>
 
                 {/* 봉사 시간 */}
@@ -853,21 +1254,93 @@ export const ReportForm: React.FC<ReportFormProps> = ({
                     <Clock size={16} color="var(--primary)" />
                     <span>봉사 시간</span>
                   </label>
-                  <input
-                    ref={hoursInputRef}
-                    type="number"
-                    step="0.5"
-                    min="0"
-                    max="300"
-                    className="form-input"
-                    placeholder="0"
-                    value={hours}
-                    onChange={(e) => {
-                      setHours(e.target.value);
-                    }}
-                    disabled={isClosed}
-                    style={{ fontSize: '1.05rem', fontWeight: 700 }}
-                  />
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      ref={hoursInputRef}
+                      type="text"
+                      lang="ko"
+                      className="form-input"
+                      placeholder="0"
+                      value={hours}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/[^0-9]/g, '');
+                        setHours(val);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'ArrowUp') {
+                          e.preventDefault();
+                          const cur = parseInt(hours || '0', 10);
+                          setHours(String(Math.min(300, cur + 1)));
+                        } else if (e.key === 'ArrowDown') {
+                          e.preventDefault();
+                          const cur = parseInt(hours || '0', 10);
+                          setHours(String(Math.max(0, cur - 1)));
+                        }
+                      }}
+                      disabled={isClosed}
+                      style={{ fontSize: '1.05rem', fontWeight: 700, paddingRight: 28 }}
+                    />
+                    <div style={{
+                      position: 'absolute',
+                      right: 4,
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 0
+                    }}>
+                      <button
+                        type="button"
+                        tabIndex={-1}
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => {
+                          const cur = parseInt(hours || '0', 10);
+                          setHours(String(Math.min(300, cur + 1)));
+                        }}
+                        disabled={isClosed}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          padding: '1px 2px',
+                          cursor: isClosed ? 'not-allowed' : 'pointer',
+                          color: 'var(--text-muted)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          lineHeight: 1
+                        }}
+                        onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--primary)')}
+                        onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-muted)')}
+                      >
+                        <ChevronUp size={13} />
+                      </button>
+                      <button
+                        type="button"
+                        tabIndex={-1}
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => {
+                          const cur = parseInt(hours || '0', 10);
+                          setHours(String(Math.max(0, cur - 1)));
+                        }}
+                        disabled={isClosed}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          padding: '1px 2px',
+                          cursor: isClosed ? 'not-allowed' : 'pointer',
+                          color: 'var(--text-muted)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          lineHeight: 1
+                        }}
+                        onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--primary)')}
+                        onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-muted)')}
+                      >
+                        <ChevronDown size={13} />
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -930,7 +1403,7 @@ export const ReportForm: React.FC<ReportFormProps> = ({
 
                 {remarks.length === 0 ? (
                   <p style={{ fontSize: '0.8rem', color: 'var(--text-faint)', margin: 0 }}>
-                    원격 봉사, LDC 봉사, 파이오니아 학교 등 인정 시간이 있는 경우 추가해 주세요.
+                    원격봉사, LDC, 파이오니아학교 등 비고 사항이 있는 경우 추가해 주세요.
                   </p>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -941,28 +1414,23 @@ export const ReportForm: React.FC<ReportFormProps> = ({
                           value={r.type}
                           onChange={(e) => handleRemarkChange(idx, 'type', e.target.value)}
                           disabled={isClosed}
-                          style={{ width: '38%' }}
+                          style={{ width: '40%', minWidth: 105 }}
                         >
                           {REMARK_TYPES.map(t => (
                             <option key={t} value={t}>{t}</option>
                           ))}
                         </select>
                         <input
-                          type="number"
-                          step="0.5"
-                          className="form-input"
-                          placeholder="인정 시간"
-                          value={r.hours}
-                          onChange={(e) => handleRemarkChange(idx, 'hours', e.target.value)}
-                          disabled={isClosed}
-                          style={{ width: '28%' }}
-                        />
-                        <input
                           type="text"
                           className="form-input"
-                          placeholder="메모/내용 (선택)"
-                          value={r.etc || ''}
-                          onChange={(e) => handleRemarkChange(idx, 'etc', e.target.value)}
+                          lang="ko"
+                          inputMode="text"
+                          autoCapitalize="none"
+                          autoCorrect="off"
+                          spellCheck={false}
+                          placeholder="시간 또는 비고 내용"
+                          value={r.hours}
+                          onChange={(e) => handleRemarkChange(idx, 'hours', e.target.value)}
                           disabled={isClosed}
                           style={{ flex: 1 }}
                         />
@@ -1063,6 +1531,7 @@ export const ReportForm: React.FC<ReportFormProps> = ({
             {/* 우측 상단 닫기(X) 버튼 */}
             <button
               type="button"
+              onMouseDown={(e) => e.preventDefault()}
               onClick={handleCancelExistingAlert}
               style={{
                 position: 'absolute',
@@ -1152,6 +1621,7 @@ export const ReportForm: React.FC<ReportFormProps> = ({
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               <button
                 type="button"
+                onMouseDown={(e) => e.preventDefault()}
                 onClick={handleLoadExistingReport}
                 className="btn-primary"
                 style={{ padding: '12px', justifyContent: 'center', fontWeight: 700 }}
@@ -1160,6 +1630,7 @@ export const ReportForm: React.FC<ReportFormProps> = ({
               </button>
               <button
                 type="button"
+                onMouseDown={(e) => e.preventDefault()}
                 onClick={handleDismissExistingAlert}
                 className="btn-secondary"
                 style={{ padding: '10px', justifyContent: 'center' }}
@@ -1168,6 +1639,7 @@ export const ReportForm: React.FC<ReportFormProps> = ({
               </button>
               <button
                 type="button"
+                onMouseDown={(e) => e.preventDefault()}
                 onClick={handleCancelExistingAlert}
                 style={{
                   padding: '10px',
@@ -1255,6 +1727,24 @@ export const ReportForm: React.FC<ReportFormProps> = ({
                   </div>
                 </>
               )}
+              {submittedReceipt.remarks && submittedReceipt.remarks.length > 0 && (
+                <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--border-color)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                    <span style={{ color: 'var(--text-muted)' }}>비고 (고려받을 시간)</span>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 3, paddingLeft: 2 }}>
+                    {submittedReceipt.remarks.map((r: any, idx: number) => {
+                      const val = String(r.hours || '').trim();
+                      const displayVal = val ? (!isNaN(Number(val)) && Number(val) > 0 ? `${val}시간` : val) : '';
+                      return (
+                        <div key={idx} style={{ fontSize: '0.84rem', color: 'var(--text-color)', fontWeight: 600 }}>
+                          • {r.type}{displayVal ? `: ${displayVal}` : ''}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
               <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 10, paddingTop: 8, borderTop: '1px solid var(--border-color)', fontSize: '0.78rem', color: 'var(--text-faint)' }}>
                 <span>접수 일시</span>
                 <span>{submittedReceipt.time}</span>
@@ -1264,7 +1754,11 @@ export const ReportForm: React.FC<ReportFormProps> = ({
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               <button
                 type="button"
-                onClick={() => setSubmittedReceipt(null)}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => {
+                  setSubmittedReceipt(null);
+                  handleResetForm();
+                }}
                 className="btn-primary"
                 style={{ padding: '12px', justifyContent: 'center' }}
               >
@@ -1302,7 +1796,10 @@ export const ReportForm: React.FC<ReportFormProps> = ({
             {/* 닫기 버튼 */}
             <button
               type="button"
-              onClick={() => setShowApConfirmModal(false)}
+              onClick={() => {
+                setShowApConfirmModal(false);
+                setPendingPublisher(null);
+              }}
               style={{
                 position: 'absolute',
                 top: 14,
@@ -1364,7 +1861,8 @@ export const ReportForm: React.FC<ReportFormProps> = ({
                 <span style={{ fontWeight: 700, color: 'var(--primary)' }}>{hours}시간</span>
               </div>
               <p style={{ margin: '10px 0 0 0', fontSize: '0.84rem', color: 'var(--text-secondary)' }}>
-                봉사 시간을 입력하셨으나 <strong>'보조 파이오니아'</strong> 항목이 체크되어 있지 않습니다.<br />
+                일반 전도인은 봉사 시간을 보고하지 않습니다 (참여 여부만 보고).<br />
+                봉사 시간을 보고하시려면 이번 달 <strong>보조 파이오니아</strong>로 봉사하셨어야 합니다.<br /><br />
                 이번 달에 <strong>보조 파이오니아</strong>로 봉사하셨습니까?
               </p>
             </div>
@@ -1374,6 +1872,7 @@ export const ReportForm: React.FC<ReportFormProps> = ({
                 type="button"
                 onClick={() => {
                   setIsAuxiliaryPioneer(true);
+                  setShowApConfirmModal(false);
                   doSubmit(pendingPublisher, true);
                 }}
                 className="btn-primary"
@@ -1394,7 +1893,9 @@ export const ReportForm: React.FC<ReportFormProps> = ({
                 type="button"
                 onClick={() => {
                   setIsAuxiliaryPioneer(false);
-                  doSubmit(pendingPublisher, false);
+                  setHours('');
+                  setShowApConfirmModal(false);
+                  doSubmit(pendingPublisher, false, 0);
                 }}
                 className="btn-secondary"
                 style={{
@@ -1405,7 +1906,7 @@ export const ReportForm: React.FC<ReportFormProps> = ({
                   justifyContent: 'center'
                 }}
               >
-                <span>아니오 (일반 시간으로 제출)</span>
+                <span>아니오, 일반 전도인입니다 (시간 삭제 후 제출)</span>
               </button>
 
               <button
@@ -1413,6 +1914,7 @@ export const ReportForm: React.FC<ReportFormProps> = ({
                 onClick={() => {
                   setShowApConfirmModal(false);
                   setPendingPublisher(null);
+                  hoursInputRef.current?.focus();
                 }}
                 style={{
                   background: 'none',
@@ -1424,7 +1926,7 @@ export const ReportForm: React.FC<ReportFormProps> = ({
                   textDecoration: 'underline'
                 }}
               >
-                양식으로 돌아가서 직접 수정하기
+                취소하고 직접 수정하기
               </button>
             </div>
           </div>

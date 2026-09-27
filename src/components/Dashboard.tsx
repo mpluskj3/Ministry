@@ -571,7 +571,7 @@ ${submitUrl}
       r.participated ? 'Y' : 'N',
       r.bible_studies || 0,
       r.hours || 0,
-      (r.remarks || []).map(rm => `${rm.type}: ${rm.hours}시간`).join(' '),
+      (r.remarks || []).map(rm => (!isNaN(Number(rm.hours)) && Number(rm.hours) > 0 ? `${rm.type}: ${rm.hours}시간` : `${rm.type}: ${rm.hours}`)).join(' '),
       r.pioneer_status === 'RP'
         ? 'RP'
         : (Number(r.hours || 0) > 0 ? 'AP' : (isChildStatus(r.pioneer_status) ? '자녀' : '전도인')),
@@ -2887,7 +2887,7 @@ ${submitUrl}
 
                         {/* 비고: 특기사항 및 인정시간 */}
                         <td style={{ fontSize: '0.8rem', color: 'var(--text-muted)', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', textAlign: 'center' }}>
-                          {(r.remarks || []).map(rm => `${rm.type}: ${rm.hours}시간`).join(', ') || '-'}
+                          {(r.remarks || []).map(rm => (!isNaN(Number(rm.hours)) && Number(rm.hours) > 0 ? `${rm.type}: ${rm.hours}시간` : `${rm.type}: ${rm.hours}`)).join(', ') || '-'}
                         </td>
 
                         {/* 구분: RP가 아닌데 시간 보고가 되어 있다면 AP로 표시 */}
@@ -3203,8 +3203,18 @@ ${submitUrl}
           month={editModalData.month}
           existingReport={editModalData.existingReport}
           onClose={() => setEditModalData(null)}
-          onSaved={() => {
-            loadDashboardData();
+          onSaved={async () => {
+            const targetPubId = editModalData.publisher.id;
+            const targetMonth = editModalData.month;
+            const targetRepId = editModalData.existingReport?.id;
+            setEditModalData(null);
+            // 낙관적 UI 반영: 즉각 화면에서 삭제
+            setReports(prev => prev.filter(r => {
+              if (targetRepId && r.id === targetRepId) return false;
+              if (targetPubId && targetMonth && r.publisher_id === targetPubId && r.month === targetMonth) return false;
+              return true;
+            }));
+            await loadDashboardData();
           }}
         />
       )}
