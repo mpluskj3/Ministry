@@ -19,7 +19,7 @@ ALTER TABLE public.monthly_reports ADD COLUMN IF NOT EXISTS pioneer_status VARCH
 -- 2. 직책 및 구분 제약 조건 완화 ('자녀' 포함 허용)
 ALTER TABLE public.publishers DROP CONSTRAINT IF EXISTS publishers_position_check;
 ALTER TABLE public.publishers ADD CONSTRAINT publishers_position_check 
-  CHECK (position IN ('장로', '봉사의 종', '봉종', '전도인', '미침', '일반'));
+  CHECK (position IN ('장로', '봉사의 종', '봉종', '전도인', '미침', '일반', ''));
 
 ALTER TABLE public.publishers DROP CONSTRAINT IF EXISTS publishers_pioneer_status_check;
 ALTER TABLE public.publishers ADD CONSTRAINT publishers_pioneer_status_check 

@@ -34,6 +34,13 @@ import {
   saveGroup
 } from '../services/ministryService';
 import { PublisherCardModal } from './PublisherCardModal';
+import { EmergencyCoverPage } from './EmergencyCoverPage';
+import { EmergencyPrintModal } from './EmergencyPrintModal';
+import {
+  EmergencyCoverData,
+  DEFAULT_EMERGENCY_COVER_DATA,
+  EMERGENCY_COVER_STORAGE_KEY
+} from '../types/emergency';
 
 // 가족 묶음 구분을 위한 감각적이고 조화로운 파스텔 배경 색상 및 테두리 팔레트
 export const FAMILY_PALETTES = [
@@ -111,6 +118,93 @@ export const EmergencyContacts: React.FC<EmergencyContactsProps> = ({ currentYea
   // 모달 배경 드래그 오인 클릭 방지용 ref
   const overlayMouseDownRef = useRef(false);
 
+  // 비상연락망 인쇄 및 첫페이지 설정 모달 상태
+  const [printModalOpen, setPrintModalOpen] = useState(false);
+  const [printOptions, setPrintOptions] = useState<{
+    includeCover: boolean;
+    printMode: 'all_groups_paginated' | 'current_view';
+    coverData: EmergencyCoverData;
+  }>({
+    includeCover: true,
+    printMode: 'all_groups_paginated',
+    coverData: DEFAULT_EMERGENCY_COVER_DATA
+  });
+
+  // 로컬 스토리지에 저장된 비상연락망 첫페이지 설정 불러오기
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(EMERGENCY_COVER_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        setPrintOptions(prev => ({
+          ...prev,
+          coverData: { ...DEFAULT_EMERGENCY_COVER_DATA, ...parsed }
+        }));
+      } else {
+        const savedCongName = localStorage.getItem('ministry_congregation_name');
+        if (savedCongName) {
+          setPrintOptions(prev => ({
+            ...prev,
+            coverData: { ...prev.coverData, congregationName: savedCongName }
+          }));
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load initial cover data:', err);
+    }
+  }, []);
+
+  const handleOpenPrintModal = () => {
+    try {
+      const saved = localStorage.getItem(EMERGENCY_COVER_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        setPrintOptions(prev => ({
+          ...prev,
+          coverData: { ...DEFAULT_EMERGENCY_COVER_DATA, ...parsed }
+        }));
+      }
+    } catch (e) {
+      console.error(e);
+    }
+    setPrintModalOpen(true);
+  };
+
+  const handleExecutePrint = (options: {
+    includeCover: boolean;
+    printMode: 'all_groups_paginated' | 'current_view';
+    coverData: EmergencyCoverData;
+  }) => {
+    setPrintOptions(options);
+    setPrintModalOpen(false);
+
+    // A4 가로(Landscape) 인쇄 전용 스타일 태그 동적 삽입
+    let pageStyleEl = document.getElementById('emergency-print-orientation-style') as HTMLStyleElement | null;
+    if (!pageStyleEl) {
+      pageStyleEl = document.createElement('style');
+      pageStyleEl.id = 'emergency-print-orientation-style';
+      document.head.appendChild(pageStyleEl);
+    }
+    pageStyleEl.innerHTML = `
+      @page {
+        size: A4 landscape !important;
+        margin: 8mm 10mm 8mm 10mm !important;
+      }
+    `;
+
+    const handleAfterPrint = () => {
+      if (pageStyleEl && pageStyleEl.parentNode) {
+        pageStyleEl.parentNode.removeChild(pageStyleEl);
+      }
+      window.removeEventListener('afterprint', handleAfterPrint);
+    };
+    window.addEventListener('afterprint', handleAfterPrint);
+
+    setTimeout(() => {
+      window.print();
+    }, 150);
+  };
+
   // 상단 헤더 액션 포탈 (PublisherManagement 서브탭 우측 연동)
   const [portalEl, setPortalEl] = useState<HTMLElement | null>(null);
 
@@ -170,7 +264,7 @@ export const EmergencyContacts: React.FC<EmergencyContactsProps> = ({ currentYea
       name: '',
       group_id: defaultGrp?.id || '',
       gender: '남',
-      position: '',
+      position: '일반',
       rp: '',
       birth_date: '',
       baptism_date: '',
@@ -194,6 +288,7 @@ export const EmergencyContacts: React.FC<EmergencyContactsProps> = ({ currentYea
     const linkedPub = allPublishers.find(p => p.id === contact.publisher_id || p.name === contact.name);
     setEditingContact({
       ...contact,
+      position: contact.position || linkedPub?.position || '일반',
       gender: contact.gender || linkedPub?.gender || '남',
       baptism_date: contact.baptism_date || linkedPub?.baptism_date || '',
       hope: contact.hope || linkedPub?.hope || '다른 양',
@@ -217,9 +312,14 @@ export const EmergencyContacts: React.FC<EmergencyContactsProps> = ({ currentYea
     try {
       // 기존 전도인 명단에서 동일한 이름이 있으면 publisher_id 자동 연동
       const existingPub = allPublishers.find(p => p.name === cleanName);
+      const safePos = (!editingContact.position || !editingContact.position.trim() || editingContact.position === '(선택 안 함)')
+        ? '일반'
+        : (editingContact.position === '봉사의 종' ? '봉종' : editingContact.position);
+
       const contactToSave: Partial<EmergencyContact> = {
         ...editingContact,
         name: cleanName,
+        position: safePos as Position,
         publisher_id: editingContact.publisher_id || existingPub?.id
       };
 
@@ -572,6 +672,128 @@ export const EmergencyContacts: React.FC<EmergencyContactsProps> = ({ currentYea
 
   const filteredContacts = sortedContacts;
 
+  // 전체 집단 순차 인쇄를 위한 집단 목록 (표시 순서 기준)
+  const sortedGroupsForPrint = useMemo(() => {
+    return [...groups].sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
+  }, [groups]);
+
+  // 개별 집단별 전도인 정렬 및 가족 색상 맵 산출 헬퍼 함수 (전체 집단 연속 인쇄용)
+  const getGroupSortedData = (grp: Group) => {
+    const base = contacts.filter(c => {
+      if (isTransferredPublisher(c)) return false;
+      return c.group_id === grp.id || c.group_name === grp.name;
+    });
+
+    const familyCount = new Map<string, number>();
+    base.forEach(c => {
+      const fh = c.family_head?.trim();
+      if (fh && c.is_active) {
+        const key = `${c.group_id || 'unknown'}_${fh}`;
+        familyCount.set(key, (familyCount.get(key) || 0) + 1);
+      }
+    });
+
+    const colorMap = new Map<string, typeof FAMILY_PALETTES[0]>();
+    let paletteIdx = 0;
+    familyCount.forEach((count, key) => {
+      if (count >= 2) {
+        colorMap.set(key, FAMILY_PALETTES[paletteIdx % FAMILY_PALETTES.length]);
+        paletteIdx++;
+      }
+    });
+
+    const overseerName = grp.overseer_name?.trim() || '';
+    const assistantName = grp.assistant_overseer_name?.trim() || '';
+
+    const overseerContact = overseerName ? base.find(c => c.name.trim() === overseerName && c.is_active) : null;
+    const overseerFamilyHead = overseerContact?.family_head?.trim() || overseerName;
+
+    const assistantContact = assistantName ? base.find(c => c.name.trim() === assistantName && c.is_active) : null;
+    const assistantFamilyHead = assistantContact?.family_head?.trim() || assistantName;
+
+    const isOverseerFamily = (c: EmergencyContact): boolean => {
+      if (!overseerName || !c.is_active) return false;
+      if (c.name.trim() === overseerName) return true;
+      if (c.family_head && (c.family_head.trim() === overseerName || (overseerFamilyHead && c.family_head.trim() === overseerFamilyHead))) return true;
+      return false;
+    };
+
+    const isAssistantFamily = (c: EmergencyContact): boolean => {
+      if (!assistantName || !c.is_active) return false;
+      if (isOverseerFamily(c)) return false;
+      if (c.name.trim() === assistantName) return true;
+      if (c.family_head && (c.family_head.trim() === assistantName || (assistantFamilyHead && c.family_head.trim() === assistantFamilyHead))) return true;
+      return false;
+    };
+
+    const compareFamilyMembers = (a: EmergencyContact, b: EmergencyContact): number => {
+      const bA = a.birth_date?.trim() || '';
+      const bB = b.birth_date?.trim() || '';
+      if (bA && bB && bA !== bB) return bA.localeCompare(bB);
+      if (bA && !bB) return -1;
+      if (!bA && bB) return 1;
+
+      const getRelOrder = (c: EmergencyContact) => {
+        const rel = (c.relationship || '').trim();
+        const isHead = Boolean(c.family_head?.trim() && c.name.trim() === c.family_head.trim());
+        if (isHead || rel.includes('세대주') || rel.includes('본인') || rel.includes('남편') || rel.includes('부')) return 1;
+        if (rel.includes('배우자') || rel.includes('아내') || rel.includes('처') || rel.includes('모')) return 2;
+        if (rel.includes('자녀') || rel.includes('아들') || rel.includes('딸')) return 4;
+        return 3;
+      };
+
+      const orderA = getRelOrder(a);
+      const orderB = getRelOrder(b);
+      if (orderA !== orderB) return orderA - orderB;
+
+      return a.name.localeCompare(b.name, 'ko');
+    };
+
+    const sorted = [...base].sort((a, b) => {
+      if (a.is_active !== b.is_active) return a.is_active ? -1 : 1;
+      if (!a.is_active && !b.is_active) return a.name.localeCompare(b.name, 'ko');
+
+      const aInOverseer = isOverseerFamily(a);
+      const bInOverseer = isOverseerFamily(b);
+      if (aInOverseer && !bInOverseer) return -1;
+      if (!aInOverseer && bInOverseer) return 1;
+      if (aInOverseer && bInOverseer) {
+        const aIsSelf = a.name.trim() === overseerName;
+        const bIsSelf = b.name.trim() === overseerName;
+        if (aIsSelf && !bIsSelf) return -1;
+        if (!aIsSelf && bIsSelf) return 1;
+        return compareFamilyMembers(a, b);
+      }
+
+      const aInAssistant = isAssistantFamily(a);
+      const bInAssistant = isAssistantFamily(b);
+      if (aInAssistant && !bInAssistant) return -1;
+      if (!aInAssistant && bInAssistant) return 1;
+      if (aInAssistant && bInAssistant) {
+        const aIsSelf = a.name.trim() === assistantName;
+        const bIsSelf = b.name.trim() === assistantName;
+        if (aIsSelf && !bIsSelf) return -1;
+        if (!aIsSelf && bIsSelf) return 1;
+        return compareFamilyMembers(a, b);
+      }
+
+      const aRepKey = a.family_head?.trim() || a.name.trim();
+      const bRepKey = b.family_head?.trim() || b.name.trim();
+      if (aRepKey !== bRepKey) {
+        return aRepKey.localeCompare(bRepKey, 'ko');
+      }
+
+      return compareFamilyMembers(a, b);
+    });
+
+    return {
+      sorted,
+      colorMap,
+      overseerName,
+      assistantName
+    };
+  };
+
   const actionButtons = (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
       <button
@@ -596,9 +818,10 @@ export const EmergencyContacts: React.FC<EmergencyContactsProps> = ({ currentYea
       )}
 
       <button
-        onClick={() => window.print()}
+        onClick={handleOpenPrintModal}
         className="btn-secondary"
         style={{ gap: 6, fontSize: '0.84rem' }}
+        title="비상연락망 인쇄 및 첫페이지(표지) 설정"
       >
         <Printer size={14} />
         <span>인쇄</span>
@@ -773,25 +996,121 @@ export const EmergencyContacts: React.FC<EmergencyContactsProps> = ({ currentYea
         </div>
       </div>
 
-      {/* 헤더: 집단명, 총 인원 (인쇄일 삭제 및 깔끔한 좌우 정렬) */}
-      <div className="emergency-print-header" style={{ marginBottom: 10 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderBottom: '2px solid var(--border-color)', paddingBottom: 6 }}>
-          <div>
-            <h1 style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0, color: 'var(--text-main)', letterSpacing: '-0.02em' }}>
-              회중 비상연락망 <span style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--primary)' }}>({selectedGroupFilter === 'all' ? '전체' : (groups.find(g => g.id === selectedGroupFilter)?.name ? `${groups.find(g => g.id === selectedGroupFilter)?.name} 집단` : '선택 집단')})</span>
-            </h1>
-            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '3px 0 0 0' }}>
-              비상사태 및 재해시 비상연락망, 가족 대표자 및 주소 관리
-            </p>
-          </div>
-          <div style={{ textAlign: 'right', fontSize: '0.82rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', flexShrink: 0, paddingLeft: 8 }}>
-            <span style={{ fontWeight: 700, color: 'var(--text-main)' }}>총 {filteredContacts.length}명</span>
+      {/* 1. 인쇄 전용 첫페이지 (총괄 표지: 순회구, 순회감독자, 봉사위원회, 집단감독자 - 화면에서는 숨김) */}
+      {printOptions.includeCover && (
+        <div className="emergency-cover-print-area print-only">
+          <EmergencyCoverPage data={printOptions.coverData} isPrintView={true} />
+        </div>
+      )}
+
+      {/* 2. 전체 집단별 연속 인쇄 영역 (printMode === 'all_groups_paginated'일 때만 인쇄 시 출력) */}
+      {printOptions.printMode === 'all_groups_paginated' && (
+        <div className="emergency-all-groups-print-area print-only">
+          {sortedGroupsForPrint.map((grp) => {
+            const grpData = getGroupSortedData(grp);
+            return (
+              <div key={grp.id} className="emergency-group-print-page">
+                <div className="emergency-print-header" style={{ marginBottom: 8 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderBottom: '2px solid #334155', paddingBottom: 5 }}>
+                    <div>
+                      <h1 style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0, color: '#0f172a', letterSpacing: '0.08em' }}>
+                        {grp.name} 집단 - 비 상 연 락 망
+                      </h1>
+                    </div>
+                    <div style={{ textAlign: 'right', fontSize: '0.8rem', color: '#64748b', whiteSpace: 'nowrap' }}>
+                      <span style={{ fontWeight: 700, color: '#0f172a' }}>총 {grpData.sorted.length}명</span>
+                    </div>
+                  </div>
+                </div>
+
+                <table className="data-table emergency-contacts-table emergency-contacts-print-table" style={{ width: '100%', tableLayout: 'fixed' }}>
+                  <thead>
+                    <tr>
+                      <th style={{ width: '4.5%', textAlign: 'center' }}>No</th>
+                      <th style={{ width: '10%' }}>이 름</th>
+                      <th style={{ width: '14%' }}>전 화 번 호</th>
+                      <th style={{ width: '7%', textAlign: 'center' }}>직책</th>
+                      <th style={{ width: '5.5%', textAlign: 'center' }}>RP</th>
+                      <th style={{ width: '33%' }}>주 소</th>
+                      <th style={{ width: '14%' }}>비 상 연 락 처</th>
+                      <th style={{ width: '12%' }}>관 계</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {grpData.sorted.map((c, idx) => {
+                      const isOverseer = Boolean(grpData.overseerName && grpData.overseerName.trim() === c.name.trim());
+                      const isAssistant = Boolean(grpData.assistantName && grpData.assistantName.trim() === c.name.trim());
+                      const familyHead = c.family_head?.trim();
+                      const familyKey = `${c.group_id || 'unknown'}_${familyHead || ''}`;
+                      const familyColor = familyHead ? grpData.colorMap.get(familyKey) : null;
+                      const isFirstInactive = !c.is_active && (idx === 0 || grpData.sorted[idx - 1]?.is_active);
+
+                      let rowBg = 'transparent';
+                      let borderLeftStyle = '3px solid transparent';
+                      if (!c.is_active) {
+                        rowBg = 'rgba(156, 163, 175, 0.05)';
+                        borderLeftStyle = '3px solid rgba(156, 163, 175, 0.35)';
+                      } else if (familyColor) {
+                        rowBg = familyColor.bg;
+                        borderLeftStyle = `3px solid ${familyColor.border}`;
+                      }
+
+                      return (
+                        <React.Fragment key={c.id}>
+                          {isFirstInactive && (
+                            <tr style={{ height: 1 }}>
+                              <td colSpan={8} style={{ padding: 0, height: 1, borderTop: '2px dashed #94a3b8' }} />
+                            </tr>
+                          )}
+                          <tr style={{ backgroundColor: rowBg, borderLeft: borderLeftStyle, opacity: !c.is_active ? 0.78 : 1 }}>
+                            <td style={{ textAlign: 'center', fontWeight: 600, color: '#64748b' }}>{idx + 1}</td>
+                            <td style={{ fontWeight: 600, color: '#0f172a' }}>
+                              <span>{c.name}</span>
+                              {!c.is_active && <span style={{ marginLeft: 3, fontSize: '0.68rem', color: '#64748b' }}> (무활동)</span>}
+                              {isOverseer && <span style={{ color: '#2563eb', marginLeft: 3 }}>●</span>}
+                              {isAssistant && <span style={{ color: '#10b981', marginLeft: 3 }}>●</span>}
+                            </td>
+                            <td>{c.phone || '-'}</td>
+                            <td style={{ textAlign: 'center' }}>
+                              {c.position && c.position !== '일반' ? (c.position === '봉사의 종' ? '봉종' : c.position) : ''}
+                            </td>
+                            <td style={{ textAlign: 'center', fontWeight: 600 }}>{c.rp || ''}</td>
+                            <td>{c.address || ''}</td>
+                            <td>{c.emergency_phone || ''}</td>
+                            <td>{c.relationship || ''}</td>
+                          </tr>
+                        </React.Fragment>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* 3. 화면용 비상연락망 영역 (전체 집단 인쇄 시에는 인쇄에서 숨김 처리) */}
+      <div className={`emergency-screen-area ${printOptions.printMode === 'all_groups_paginated' ? 'hide-on-print' : ''}`}>
+        {/* 헤더: 집단명, 총 인원 (인쇄일 삭제 및 깔끔한 좌우 정렬) */}
+        <div className="emergency-print-header" style={{ marginBottom: 10 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderBottom: '2px solid var(--border-color)', paddingBottom: 6 }}>
+            <div>
+              <h1 style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0, color: 'var(--text-main)', letterSpacing: '-0.02em' }}>
+                회중 비상연락망 <span style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--primary)' }}>({selectedGroupFilter === 'all' ? '전체' : (groups.find(g => g.id === selectedGroupFilter)?.name ? `${groups.find(g => g.id === selectedGroupFilter)?.name} 집단` : '선택 집단')})</span>
+              </h1>
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '3px 0 0 0' }}>
+                비상사태 및 재해시 비상연락망, 가족 대표자 및 주소 관리
+              </p>
+            </div>
+            <div style={{ textAlign: 'right', fontSize: '0.82rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', flexShrink: 0, paddingLeft: 8 }}>
+              <span style={{ fontWeight: 700, color: 'var(--text-main)' }}>총 {filteredContacts.length}명</span>
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Contacts Table: 이름, 전화, 직책, RP, 주소, 비상연락처, 관계 */}
-      <div className="nfox-card emergency-table-card" style={{ padding: 0, overflow: 'hidden' }}>
+        {/* Contacts Table: 이름, 전화, 직책, RP, 주소, 비상연락처, 관계 */}
+        <div className="nfox-card emergency-table-card" style={{ padding: 0, overflow: 'hidden' }}>
         <div className="data-table-container sticky-container">
           <table className="data-table data-table-sticky emergency-contacts-table" style={{ minWidth: 1040 }}>
             <thead>
@@ -1085,6 +1404,7 @@ export const EmergencyContacts: React.FC<EmergencyContactsProps> = ({ currentYea
           </table>
         </div>
       </div>
+      </div>
 
       {/* ------------------------------------------------------------- */}
       {/* 연락처 추가/수정 모달: 이름, 전화, 직책, RP, 주소, 비상연락처, 관계 */}
@@ -1188,7 +1508,7 @@ export const EmergencyContacts: React.FC<EmergencyContactsProps> = ({ currentYea
                       className="form-select"
                       disabled={editingContact.is_child || isChildStatus(editingContact.rp)}
                       value={(editingContact.is_child || isChildStatus(editingContact.rp)) ? '' : (editingContact.position === '장로' || editingContact.position === '봉종' ? editingContact.position : (editingContact.position === '봉사의 종' ? '봉종' : ''))}
-                      onChange={e => setEditingContact({ ...editingContact, position: e.target.value })}
+                      onChange={e => setEditingContact({ ...editingContact, position: (e.target.value || '일반') as Position })}
                     >
                       <option value="">(선택 안 함)</option>
                       <option value="장로">장로</option>
@@ -1699,6 +2019,16 @@ export const EmergencyContacts: React.FC<EmergencyContactsProps> = ({ currentYea
           onClose={() => setCardModalData(null)}
         />
       )}
+
+      {/* 비상연락망 인쇄 및 첫페이지(표지) 설정 모달 */}
+      <EmergencyPrintModal
+        isOpen={printModalOpen}
+        onClose={() => setPrintModalOpen(false)}
+        groups={groups}
+        contacts={contacts}
+        currentGroupFilter={selectedGroupFilter}
+        onPrint={handleExecutePrint}
+      />
     </div>
   );
 };

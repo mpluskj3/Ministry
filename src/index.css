@@ -1437,7 +1437,9 @@ select option {
 
   /* 주소 말줄임 해제 및 인쇄 시 전체 표시 */
   table.emergency-contacts-table td:nth-child(5) div,
-  table.emergency-contacts-table td:nth-child(5) span {
+  table.emergency-contacts-table td:nth-child(5) span,
+  table.emergency-contacts-table td:nth-child(6) div,
+  table.emergency-contacts-table td:nth-child(6) span {
     max-width: none !important;
     white-space: normal !important;
     word-break: keep-all !important;
@@ -1454,6 +1456,83 @@ select option {
     display: none !important;
   }
 
+  /* 비상연락망 첫페이지(총괄 표지) A4 가로 모드 최적화 */
+  .emergency-cover-print-area {
+    display: block !important;
+    page-break-after: always !important;
+    break-after: page !important;
+    padding-top: 16mm !important;
+    padding-bottom: 10mm !important;
+    min-height: 170mm !important;
+    box-sizing: border-box !important;
+  }
+
+  .emergency-cover-table {
+    border-collapse: collapse !important;
+    margin-bottom: 16px !important;
+    width: 100% !important;
+  }
+
+  .emergency-cover-table th,
+  .emergency-cover-table td {
+    border: 1.2px solid #334155 !important;
+    color: #0f172a !important;
+    padding: 7px 12px !important;
+    font-size: 9pt !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* 전체 집단별 연속 인쇄 (A4 가로 모드 1페이지 완벽 수납) */
+  .emergency-all-groups-print-area {
+    display: block !important;
+  }
+
+  .emergency-group-print-page {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    page-break-after: always !important;
+    break-after: page !important;
+    padding-top: 2mm !important;
+    box-sizing: border-box !important;
+  }
+
+  .emergency-group-print-page:last-child {
+    page-break-after: auto !important;
+    break-after: auto !important;
+  }
+
+  /* A4 가로 모드 표 레이아웃: 넓은 가로폭(297mm)을 시원하게 활용하여 줄바꿈 방지 */
+  table.emergency-contacts-print-table,
+  table.emergency-contacts-table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+  }
+
+  table.emergency-contacts-print-table th,
+  table.emergency-contacts-print-table td {
+    padding: 4.5px 6px !important;
+    font-size: 8.2pt !important;
+    line-height: 1.25 !important;
+    border: 1px solid #94a3b8 !important;
+  }
+
+  table.emergency-contacts-print-table th {
+    background-color: #f1f5f9 !important;
+    font-weight: 700 !important;
+    text-align: center !important;
+  }
+
+  /* No 열이 포함된 인쇄 전용 표 정렬 */
+  table.emergency-contacts-print-table td:nth-child(1) { text-align: center !important; }
+  table.emergency-contacts-print-table td:nth-child(2) { text-align: left !important; font-weight: 600 !important; }
+  table.emergency-contacts-print-table td:nth-child(3) { text-align: left !important; white-space: nowrap !important; }
+  table.emergency-contacts-print-table td:nth-child(4) { text-align: center !important; white-space: nowrap !important; }
+  table.emergency-contacts-print-table td:nth-child(5) { text-align: center !important; white-space: nowrap !important; }
+  table.emergency-contacts-print-table td:nth-child(6) { text-align: left !important; }
+  table.emergency-contacts-print-table td:nth-child(7) { text-align: left !important; white-space: nowrap !important; }
+  table.emergency-contacts-print-table td:nth-child(8) { text-align: left !important; white-space: nowrap !important; }
+
   tr {
     page-break-inside: avoid;
     break-inside: avoid;
@@ -1463,3 +1542,21 @@ select option {
     color: #1e3a8a !important;
   }
 }
+
+/* 화면에서는 인쇄 전용 영역 숨김 */
+.print-only {
+  display: none !important;
+}
+
+@media print {
+  .no-print,
+  .hide-on-print,
+  .emergency-screen-area.hide-on-print {
+    display: none !important;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+}
+

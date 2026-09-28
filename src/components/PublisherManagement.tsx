@@ -411,7 +411,7 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
     return false;
   };
 
-  const handleOpenAdd = () => {
+  const handleOpenAdd = (defaultInactive: boolean = false) => {
     if (!canManageAll) {
       alert('신규 전도인 등록은 최고관리자 또는 회중관리자만 가능합니다.');
       return;
@@ -436,7 +436,9 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
       family_head: '',
       relationship: '',
       special_notes: '',
-      is_active: true,
+      is_active: !defaultInactive,
+      deactivated_reason: defaultInactive ? '무활동' : undefined,
+      deactivated_at: defaultInactive ? new Date().toISOString() : undefined,
     });
     setEditModalOpen(true);
   };
@@ -458,6 +460,8 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
       return;
     }
 
+    const isTargetInactive = editingPublisher.is_active === false;
+
     // 신규 등록 시 중복 이름 사전 검증
     if (!editingPublisher.id) {
       if (!isSuperAdmin) {
@@ -471,13 +475,18 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
       }
       const existingInactive = allPublishers.find(p => !p.is_active && p.name === cleanName);
       if (existingInactive) {
-        const restore = window.confirm(`'${cleanName}' 전도인은 현재 '전출/무활동 보관함'에 보관되어 있습니다.\n\n• [확인]: 보관함에서 활동 전도인 명단으로 즉시 복귀(복원)\n• [취소]: 등록 중단`);
-        if (restore) {
-          await handleRestore(existingInactive);
-          setEditModalOpen(false);
-          setEditingPublisher(null);
+        if (!isTargetInactive) {
+          const restore = window.confirm(`'${cleanName}' 전도인은 현재 '전출/무활동 보관함'에 보관되어 있습니다.\n\n• [확인]: 보관함에서 활동 전도인 명단으로 즉시 복귀(복원)\n• [취소]: 등록 중단`);
+          if (restore) {
+            await handleRestore(existingInactive);
+            setEditModalOpen(false);
+            setEditingPublisher(null);
+          }
+          return;
+        } else {
+          alert(`'${cleanName}' 전도인은 이미 '전출/무활동 보관함'에 등록되어 있습니다.\n기존 정보를 수정하시려면 보관함에서 해당 전도인의 [수정] 버튼을 이용해주세요.`);
+          return;
         }
-        return;
       }
     } else {
       // 기존 전도인 수정 권한 확인
@@ -496,11 +505,31 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
     }
 
     try {
-      await savePublisher({ ...editingPublisher, name: cleanName });
+      const rawPos = (editingPublisher.position as string) || '';
+      const safePos: Position = (!rawPos || !rawPos.trim() || rawPos === '(선택 안 함)')
+        ? '일반'
+        : (rawPos === '봉사의 종' ? '봉종' : rawPos as Position);
+
+      const pubToSave: Partial<Publisher> = {
+        ...editingPublisher,
+        name: cleanName,
+        position: safePos,
+        is_active: !isTargetInactive,
+        deactivated_reason: isTargetInactive ? (editingPublisher.deactivated_reason || '무활동') : undefined,
+        deactivated_at: isTargetInactive ? (editingPublisher.deactivated_at || new Date().toISOString()) : undefined,
+      };
+
+      await savePublisher(pubToSave);
       setEditModalOpen(false);
       setEditingPublisher(null);
       await loadData();
-      alert(`'${cleanName}' 전도인 정보가 성공적으로 저장되었습니다.`);
+
+      if (isTargetInactive) {
+        alert(`'${cleanName}' 전도인이 무활동 보관함에 성공적으로 등록/저장되었습니다.`);
+        setActiveSubTab('inactive');
+      } else {
+        alert(`'${cleanName}' 전도인 정보가 성공적으로 저장되었습니다.`);
+      }
     } catch (err: any) {
       const msg = err.message || '';
       if (msg.includes('unique_publisher_name') || msg.includes('duplicate key')) {
@@ -798,7 +827,7 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
               <span>시트 명단 가져오기</span>
             </button>
             <button
-              onClick={handleOpenAdd}
+              onClick={() => handleOpenAdd(false)}
               className="btn-primary"
               style={{
                 gap: 6,
@@ -811,6 +840,28 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
             >
               <UserPlus size={15} />
               <span>전도인 등록</span>
+            </button>
+          </div>
+        )}
+
+        {activeSubTab === 'inactive' && canManageAll && (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <button
+              onClick={() => handleOpenAdd(true)}
+              className="btn-primary"
+              style={{
+                gap: 6,
+                padding: '8px 16px',
+                fontSize: '0.84rem',
+                whiteSpace: 'nowrap',
+                flexShrink: 0,
+                justifyContent: 'center',
+                background: '#64748b'
+              }}
+              title="무활동 전도인을 바로 등록합니다."
+            >
+              <UserPlus size={15} />
+              <span>무활동자 등록</span>
             </button>
           </div>
         )}
@@ -1416,6 +1467,63 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
                 <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
                   기본 인적사항
                 </div>
+
+                {/* 0. 전도인 활동 상태 (활동 / 무활동) */}
+                <div style={{
+                  marginBottom: 12,
+                  padding: '10px 14px',
+                  background: editingPublisher.is_active === false ? 'rgba(244, 63, 94, 0.05)' : 'rgba(16, 185, 129, 0.05)',
+                  borderRadius: 'var(--radius-sm)',
+                  border: `1px solid ${editingPublisher.is_active === false ? 'rgba(244, 63, 94, 0.25)' : 'rgba(16, 185, 129, 0.25)'}`,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 16
+                }}>
+                  <span style={{ fontSize: '0.84rem', fontWeight: 700, color: 'var(--text-main)', whiteSpace: 'nowrap' }}>전도인 상태:</span>
+                  <label style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: '0.84rem', cursor: 'pointer', fontWeight: editingPublisher.is_active !== false ? 700 : 400 }}>
+                    <input
+                      type="radio"
+                      name="publisher_status"
+                      checked={editingPublisher.is_active !== false}
+                      onChange={() => setEditingPublisher({
+                        ...editingPublisher,
+                        is_active: true,
+                        deactivated_reason: undefined,
+                        deactivated_at: undefined
+                      })}
+                    />
+                    <span style={{ color: editingPublisher.is_active !== false ? 'var(--accent-emerald)' : 'var(--text-muted)' }}>활동 전도인</span>
+                  </label>
+                  <label style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: '0.84rem', cursor: 'pointer', fontWeight: editingPublisher.is_active === false ? 700 : 400 }}>
+                    <input
+                      type="radio"
+                      name="publisher_status"
+                      checked={editingPublisher.is_active === false}
+                      onChange={() => setEditingPublisher({
+                        ...editingPublisher,
+                        is_active: false,
+                        deactivated_reason: '무활동',
+                        deactivated_at: editingPublisher.deactivated_at || new Date().toISOString()
+                      })}
+                    />
+                    <span style={{ color: editingPublisher.is_active === false ? 'var(--accent-rose)' : 'var(--text-muted)' }}>무활동 전도인</span>
+                  </label>
+                </div>
+
+                {editingPublisher.is_active === false && (
+                  <div style={{
+                    marginTop: -6,
+                    marginBottom: 10,
+                    padding: '6px 10px',
+                    borderRadius: 'var(--radius-sm)',
+                    background: 'rgba(244, 63, 94, 0.08)',
+                    color: 'var(--accent-rose)',
+                    fontSize: '0.76rem',
+                    lineHeight: 1.4
+                  }}>
+                    💡 <strong>무활동 전도인</strong>으로 저장 시 월별 봉사 보고 및 활동 전도인 통계에서 제외되며, <strong>'전출/무활동 보관함'</strong> 탭에 보관됩니다.
+                  </div>
+                )}
 
                 {/* 1. 이름 & 소속 집단 */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>

@@ -566,6 +566,24 @@ export async function savePublisher(publisher: Partial<Publisher>): Promise<Publ
   if (!sanitized.baptism_date) sanitized.baptism_date = null;
   if (!sanitized.birth_date) sanitized.birth_date = null;
 
+  // publishers_position_check 제약조건 위반 방지: 빈 문자열, null, '(선택 안 함)'은 '일반'으로 표준화
+  if (sanitized.position !== undefined) {
+    let pos = typeof sanitized.position === 'string' ? sanitized.position.trim() : '';
+    if (!pos || pos === '(선택 안 함)') {
+      pos = '일반';
+    } else if (pos === '봉사의 종') {
+      pos = '봉종';
+    }
+    sanitized.position = pos;
+    publisher.position = pos as any;
+  }
+
+  // is_active가 true인 경우 비활성화 정보 초기화
+  if (sanitized.is_active === true) {
+    sanitized.deactivated_reason = null;
+    sanitized.deactivated_at = null;
+  }
+
   // publishers 테이블의 실제 스키마 컬럼만 화이트리스트로 추출 (조인 객체 groups, 파생 필드 group_name 등 배제)
   const allowedColumns = [
     'name',
@@ -992,6 +1010,10 @@ export async function saveEmergencyContact(contact: Partial<EmergencyContact>): 
     }
   }
 
+  const safePosition = (!contact.position || typeof contact.position !== 'string' || !contact.position.trim() || contact.position === '(선택 안 함)')
+    ? '일반'
+    : (contact.position === '봉사의 종' ? '봉종' : contact.position);
+
   if (targetPubId) {
     await savePublisher({
       id: targetPubId,
@@ -1001,7 +1023,7 @@ export async function saveEmergencyContact(contact: Partial<EmergencyContact>): 
       baptism_date: contact.baptism_date,
       gender: contact.gender,
       hope: contact.hope,
-      position: contact.position as any,
+      position: safePosition as any,
       pioneer_status,
       phone: contact.phone,
       emergency_phone: contact.emergency_phone,
@@ -1019,7 +1041,7 @@ export async function saveEmergencyContact(contact: Partial<EmergencyContact>): 
       baptism_date: contact.baptism_date,
       gender: contact.gender,
       hope: contact.hope,
-      position: contact.position as any,
+      position: safePosition as any,
       pioneer_status,
       phone: contact.phone,
       emergency_phone: contact.emergency_phone,
