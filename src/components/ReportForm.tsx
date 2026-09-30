@@ -550,11 +550,11 @@ export const ReportForm: React.FC<ReportFormProps> = ({
         )}
 
         <form onSubmit={handleSubmit} autoComplete="off">
-          {/* 한 행에 '이름'과 '월' 나란히 표시 */}
+          {/* 한 행에 '이름'과 '월' 나란히 표시 (이름 칸을 넓게, 월 선택은 90px 콤팩트 크기로 최적화) */}
           <div style={{
             display: 'grid',
-            gridTemplateColumns: '1fr 140px',
-            gap: 12,
+            gridTemplateColumns: '1fr 90px',
+            gap: 10,
             marginBottom: 20,
             alignItems: 'start'
           }}>
@@ -704,95 +704,8 @@ export const ReportForm: React.FC<ReportFormProps> = ({
                     <>
                       {recentNames.length > 0 && (
                         <div>
-                          <div style={{
-                            padding: '8px 12px',
-                            fontSize: '0.78rem',
-                            fontWeight: 700,
-                            color: 'var(--text-muted)',
-                            background: 'var(--bg-subtle, rgba(0,0,0,0.03))',
-                            borderBottom: '1px solid var(--border-color)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between'
-                          }}>
-                            <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                              <History size={13} style={{ color: 'var(--primary)' }} />
-                              최근 입력한 이름
-                            </span>
-                            <button
-                              type="button"
-                              onMouseDown={handleClearAllRecentNames}
-                              style={{
-                                background: 'none',
-                                border: 'none',
-                                color: 'var(--text-muted)',
-                                fontSize: '0.72rem',
-                                cursor: 'pointer',
-                                padding: '2px 4px'
-                              }}
-                              title="최근 기록 전체 삭제"
-                            >
-                              전체 지우기
-                            </button>
-                          </div>
                           {recentNames.map((name) => {
                             const matchedPubs = publishers.filter(p => p.name === name);
-                            if (matchedPubs.length > 1) {
-                              return matchedPubs.map(p => (
-                                <div
-                                  key={p.id}
-                                  onMouseDown={() => {
-                                    handleSelectPublisher(p);
-                                    setShowDropdown(false);
-                                  }}
-                                  style={{
-                                    padding: '10px 14px',
-                                    cursor: 'pointer',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'space-between',
-                                    borderBottom: '1px solid var(--border-color)',
-                                    fontSize: '0.9rem',
-                                    transition: 'var(--transition-fast)'
-                                  }}
-                                  onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--primary-light)')}
-                                  onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-                                >
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                    <History size={14} style={{ color: 'var(--text-muted)' }} />
-                                    <span style={{ fontWeight: 700 }}>{p.name}</span>
-                                    <span style={{ fontSize: '0.8rem', color: 'var(--primary)', fontWeight: 600 }}>
-                                      ({p.group_name})
-                                    </span>
-                                    {p.pioneer_status !== '일반' && p.pioneer_status !== 'AP' && (
-                                      <span className={`badge badge-${p.pioneer_status?.toLowerCase()}`} style={{ fontSize: '0.7rem', padding: '1px 6px' }}>
-                                        {p.pioneer_status}
-                                      </span>
-                                    )}
-                                  </div>
-                                  <button
-                                    type="button"
-                                    onMouseDown={(e) => handleRemoveRecentName(name, e)}
-                                    title="기록에서 삭제"
-                                    style={{
-                                      background: 'none',
-                                      border: 'none',
-                                      color: 'var(--text-muted)',
-                                      cursor: 'pointer',
-                                      padding: 4,
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      justifyContent: 'center',
-                                      borderRadius: '50%'
-                                    }}
-                                    onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--accent-rose)')}
-                                    onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-muted)')}
-                                  >
-                                    <X size={14} />
-                                  </button>
-                                </div>
-                              ));
-                            }
                             const p = matchedPubs[0];
                             return (
                               <div
@@ -806,31 +719,22 @@ export const ReportForm: React.FC<ReportFormProps> = ({
                                   setShowDropdown(false);
                                 }}
                                 style={{
-                                  padding: '10px 14px',
+                                  padding: '11px 14px',
                                   cursor: 'pointer',
                                   display: 'flex',
                                   alignItems: 'center',
                                   justifyContent: 'space-between',
                                   borderBottom: '1px solid var(--border-color)',
-                                  fontSize: '0.9rem',
+                                  fontSize: '0.94rem',
+                                  whiteSpace: 'nowrap',
                                   transition: 'var(--transition-fast)'
                                 }}
                                 onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--primary-light)')}
                                 onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                               >
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                  <History size={14} style={{ color: 'var(--text-muted)' }} />
-                                  <span style={{ fontWeight: 700 }}>{name}</span>
-                                  {p && (
-                                    <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                                      {p.group_name}
-                                    </span>
-                                  )}
-                                  {p && p.pioneer_status !== '일반' && p.pioneer_status !== 'AP' && (
-                                    <span className={`badge badge-${p.pioneer_status?.toLowerCase()}`} style={{ fontSize: '0.7rem', padding: '1px 6px' }}>
-                                      {p.pioneer_status}
-                                    </span>
-                                  )}
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, overflow: 'hidden' }}>
+                                  <History size={15} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+                                  <span style={{ fontWeight: 700, color: 'var(--text-main)', whiteSpace: 'nowrap' }}>{name}</span>
                                 </div>
                                 <button
                                   type="button"
@@ -841,16 +745,18 @@ export const ReportForm: React.FC<ReportFormProps> = ({
                                     border: 'none',
                                     color: 'var(--text-muted)',
                                     cursor: 'pointer',
-                                    padding: 4,
+                                    padding: '4px 6px',
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
-                                    borderRadius: '50%'
+                                    borderRadius: '50%',
+                                    flexShrink: 0,
+                                    marginLeft: 8
                                   }}
                                   onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--accent-rose)')}
                                   onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-muted)')}
                                 >
-                                  <X size={14} />
+                                  <X size={15} />
                                 </button>
                               </div>
                             );
@@ -1022,13 +928,13 @@ export const ReportForm: React.FC<ReportFormProps> = ({
                 className="form-select"
                 value={month}
                 onChange={(e) => setMonth(e.target.value as ServiceMonth)}
-                style={{ fontWeight: 700, padding: '10px 12px' }}
+                style={{ fontWeight: 700, padding: '10px 8px', textAlign: 'center', fontSize: '0.92rem' }}
               >
                 {SERVICE_MONTHS.map((m) => {
                   const closed = !!monthStatuses[m];
                   return (
                     <option key={m} value={m}>
-                      {m} {closed ? '(마감)' : ''}
+                      {m}{closed ? ' (마감)' : ''}
                     </option>
                   );
                 })}

@@ -23,7 +23,10 @@ import {
   AlertCircle,
   ExternalLink,
   FileSpreadsheet,
-  Printer
+  Printer,
+  ChevronDown,
+  ArrowUp,
+  ArrowDown
 } from 'lucide-react';
 import { Publisher, Group, ServiceYear, Position, PioneerStatus, Hope, Gender, isChildStatus, isChild, isTransferredPublisher, isInactivePublisher, Manager } from '../types/database';
 import {
@@ -96,10 +99,29 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
   const [selectedPublisherIds, setSelectedPublisherIds] = useState<Set<string>>(new Set());
   const [batchPrintModalData, setBatchPrintModalData] = useState<Array<{ id: string; name: string }> | null>(null);
 
-  // 탭 또는 집단 필터 변경 시 선택 초기화
+  // 테이블 정렬 및 드롭다운 필터 상태
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [filterPosition, setFilterPosition] = useState<string>('all');
+  const [filterPioneerStatus, setFilterPioneerStatus] = useState<string>('all');
+  const [filterGender, setFilterGender] = useState<string>('all');
+  const [filterHope, setFilterHope] = useState<string>('all');
+  const [activeHeaderDropdown, setActiveHeaderDropdown] = useState<string | null>(null);
+
+  // 헤더 드롭다운 외부 클릭 시 닫기
+  useEffect(() => {
+    const handleClickOutside = () => {
+      setActiveHeaderDropdown(null);
+    };
+    window.addEventListener('click', handleClickOutside);
+    return () => {
+      window.removeEventListener('click', handleClickOutside);
+    };
+  }, []);
+
+  // 탭 또는 필터 조건 변경 시 선택 초기화
   useEffect(() => {
     setSelectedPublisherIds(new Set());
-  }, [activeSubTab, selectedGroupFilter]);
+  }, [activeSubTab, selectedGroupFilter, filterPosition, filterPioneerStatus, filterGender, filterHope]);
 
   // 전출/무활동 보관함은 최고관리자와 회중관리자만 접근 가능
   useEffect(() => {
@@ -673,14 +695,55 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
     return currentList
       .filter(p => {
         const matchesSearch =
+          !searchQuery.trim() ||
           p.name.toLowerCase().includes(searchQuery.trim().toLowerCase()) ||
           (p.phone && p.phone.includes(searchQuery.trim())) ||
           (p.address && p.address.toLowerCase().includes(searchQuery.trim().toLowerCase()));
+
         const matchesGroup =
           selectedGroupFilter === 'all' ||
           p.group_id === selectedGroupFilter ||
           (targetFilterGroup && p.group_name === targetFilterGroup.name);
-        return matchesSearch && matchesGroup;
+
+        // 직책 필터
+        let matchesPosition = true;
+        if (filterPosition !== 'all') {
+          if (filterPosition === '장로') {
+            matchesPosition = p.position === '장로';
+          } else if (filterPosition === '봉종') {
+            matchesPosition = p.position === '봉종' || p.position === '봉사의 종';
+          } else if (filterPosition === '미침') {
+            matchesPosition = p.position === '미침';
+          } else if (filterPosition === '일반') {
+            matchesPosition = !p.position || p.position === '일반' || (p.position as string) === '(선택 안 함)';
+          }
+        }
+
+        // RP(구분) 필터
+        let matchesPioneer = true;
+        if (filterPioneerStatus !== 'all') {
+          if (filterPioneerStatus === 'RP') {
+            matchesPioneer = p.pioneer_status === 'RP';
+          } else if (filterPioneerStatus === 'SP') {
+            matchesPioneer = p.pioneer_status === 'SP';
+          } else if (filterPioneerStatus === 'FM') {
+            matchesPioneer = p.pioneer_status === 'FM';
+          } else if (filterPioneerStatus === '일반') {
+            matchesPioneer = !p.pioneer_status || p.pioneer_status === '일반' || p.pioneer_status === 'AP';
+          }
+        }
+
+        // 성별 필터
+        const matchesGender =
+          filterGender === 'all' ||
+          p.gender === filterGender;
+
+        // 구별 필터
+        const matchesHope =
+          filterHope === 'all' ||
+          (filterHope === '다른 양' ? (!p.hope || p.hope === '다른 양') : p.hope === filterHope);
+
+        return matchesSearch && matchesGroup && matchesPosition && matchesPioneer && matchesGender && matchesHope;
       })
       .sort((a, b) => {
         if (activeSubTab === 'active' && selectedGroupFilter !== 'all') {
@@ -689,11 +752,13 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
             return a.is_active ? -1 : 1;
           }
         }
-        return a.name.localeCompare(b.name, 'ko');
+        // 이름 가나다순 오름차순/내림차순 정렬
+        const cmp = a.name.localeCompare(b.name, 'ko');
+        return sortOrder === 'asc' ? cmp : -cmp;
       });
-  }, [currentList, searchQuery, selectedGroupFilter, targetFilterGroup, activeSubTab]);
+  }, [currentList, searchQuery, selectedGroupFilter, targetFilterGroup, filterPosition, filterPioneerStatus, filterGender, filterHope, sortOrder, activeSubTab]);
 
-  // 개별 전도인 체크박스 토글
+  // 개별 전도인 체크박스 토글 (무활동자도 사용자가 직접 클릭하면 체크 가능)
   const handleToggleSelectOne = (id: string) => {
     setSelectedPublisherIds(prev => {
       const next = new Set(prev);
@@ -703,44 +768,62 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
     });
   };
 
+  // 전체 선택 기본 대상: 보관함 탭에서는 전체, 활동/집단별 탭에서는 활동 전도인만 기본 선택 (무활동자 기본 제외)
+  const selectablePublishers = useMemo(() => {
+    if (activeSubTab === 'inactive') return filteredPublishers;
+    return filteredPublishers.filter(p => p.is_active);
+  }, [filteredPublishers, activeSubTab]);
+
+  const isAllSelectableChecked = selectablePublishers.length > 0 && selectablePublishers.every(p => selectedPublisherIds.has(p.id));
+
   // 현재 필터된 전도인 전체 선택 / 전체 해제 토글
   const handleToggleSelectAll = () => {
-    if (filteredPublishers.length === 0) return;
-    const allSelected = filteredPublishers.every(p => selectedPublisherIds.has(p.id));
-    if (allSelected) {
+    if (selectablePublishers.length === 0) return;
+    if (isAllSelectableChecked) {
+      // 이미 활동 전도인(또는 전체)이 모두 선택되어 있으면 전체 해제 (수동 체크된 무활동자 포함)
       setSelectedPublisherIds(prev => {
         const next = new Set(prev);
         filteredPublishers.forEach(p => next.delete(p.id));
         return next;
       });
     } else {
+      // 기본값: 활동 전도인만 전체 선택! (무활동자는 제외되나 수동 체크 가능)
       setSelectedPublisherIds(prev => {
         const next = new Set(prev);
-        filteredPublishers.forEach(p => next.add(p.id));
+        selectablePublishers.forEach(p => next.add(p.id));
         return next;
       });
     }
   };
 
-  // 선택한 전도인 카드 일괄 인쇄 실행
+  // 선택한 전도인 카드 PDF 일괄 생성 실행 (수동으로 선택된 무활동자도 포함)
   const handlePrintSelectedCards = () => {
     const selected = filteredPublishers.filter(p => selectedPublisherIds.has(p.id));
     if (selected.length === 0) {
-      alert('인쇄할 전도인을 먼저 선택해주세요.');
+      alert('PDF로 생성할 전도인을 먼저 선택해주세요.');
       return;
     }
     setBatchPrintModalData(selected.map(p => ({ id: p.id, name: p.name })));
   };
 
-  // 현재 필터된 전체 전도인 카드 일괄 인쇄 실행
+  // 현재 필터된 전체 전도인 카드 PDF 일괄 생성 실행 (무활동자는 기본 제외, 필요 시 사용자가 체크 후 선택 생성 가능)
   const handlePrintAllCards = () => {
-    if (filteredPublishers.length === 0) {
-      alert('인쇄할 전도인이 없습니다.');
+    const targetPublishers = activeSubTab === 'inactive'
+      ? filteredPublishers
+      : filteredPublishers.filter(p => p.is_active);
+
+    if (targetPublishers.length === 0) {
+      alert('생성할 전도인이 없습니다.');
       return;
     }
-    const confirmMsg = `현재 목록의 전도인 총 ${filteredPublishers.length}명의 S-21 기록 카드를 일괄 인쇄하시겠습니까?`;
+
+    const inactiveCount = filteredPublishers.length - targetPublishers.length;
+    const confirmMsg = inactiveCount > 0
+      ? `현재 목록의 활동 전도인 총 ${targetPublishers.length}명의 S-21 기록 카드 PDF를 일괄 생성하시겠습니까?\n(무활동자 ${inactiveCount}명은 기본 제외됨. 무활동자 카드 저장은 직접 체크 후 [선택 카드 PDF]를 이용해주세요.)`
+      : `현재 목록의 전도인 총 ${targetPublishers.length}명의 S-21 기록 카드 PDF를 일괄 생성하시겠습니까?`;
+
     if (!window.confirm(confirmMsg)) return;
-    setBatchPrintModalData(filteredPublishers.map(p => ({ id: p.id, name: p.name })));
+    setBatchPrintModalData(targetPublishers.map(p => ({ id: p.id, name: p.name })));
   };
 
   // CSV 내보내기: 이름, 직책, RP, 생년월일, 침례일자, 집단, 성별, 구별, 나이, 비고
@@ -1051,7 +1134,7 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
               })}
             </div>
 
-            {/* Search & Actions (검색창, 카드 인쇄, 엑셀/CSV) */}
+            {/* Search & Actions (검색창, 필터 초기화, 카드 인쇄, 엑셀/CSV) */}
             <div style={{
               display: 'flex',
               alignItems: 'center',
@@ -1061,28 +1144,57 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
               paddingTop: 10,
               borderTop: '1px solid var(--border-color)'
             }}>
-              <div style={{ position: 'relative', flex: '1 1 180px', minWidth: 140 }}>
-                <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-faint)' }} />
-                <input
-                  type="text"
-                  placeholder="전도인 검색..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="form-input"
-                  style={{
-                    paddingLeft: 34,
-                    paddingRight: 12,
-                    paddingTop: 7,
-                    paddingBottom: 7,
-                    fontSize: '0.84rem',
-                    width: '100%',
-                    borderRadius: 'var(--radius-full)'
-                  }}
-                />
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: '1 1 240px', minWidth: 160 }}>
+                <div style={{ position: 'relative', flex: 1 }}>
+                  <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-faint)' }} />
+                  <input
+                    type="text"
+                    placeholder="전도인 검색..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="form-input"
+                    style={{
+                      paddingLeft: 34,
+                      paddingRight: 12,
+                      paddingTop: 7,
+                      paddingBottom: 7,
+                      fontSize: '0.84rem',
+                      width: '100%',
+                      borderRadius: 'var(--radius-full)'
+                    }}
+                  />
+                </div>
+
+                {(searchQuery.trim().length > 0 || filterPosition !== 'all' || filterPioneerStatus !== 'all' || filterGender !== 'all' || filterHope !== 'all') && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSearchQuery('');
+                      setFilterPosition('all');
+                      setFilterPioneerStatus('all');
+                      setFilterGender('all');
+                      setFilterHope('all');
+                    }}
+                    className="btn-secondary"
+                    style={{
+                      padding: '6px 11px',
+                      fontSize: '0.78rem',
+                      gap: 4,
+                      borderRadius: 'var(--radius-full)',
+                      color: 'var(--accent-rose)',
+                      borderColor: 'rgba(244, 63, 94, 0.3)',
+                      flexShrink: 0
+                    }}
+                    title="모든 검색 및 항목별 필터 초기화"
+                  >
+                    <RotateCcw size={12} />
+                    <span>필터 초기화</span>
+                  </button>
+                )}
               </div>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                {/* 선택 인쇄 버튼 (선택 항목이 있을 때 강조 노출) */}
+                {/* 선택 카드 PDF 버튼 (선택 항목이 있을 때 강조 노출) */}
                 {selectedPublisherIds.size > 0 && (
                   <button
                     type="button"
@@ -1097,14 +1209,14 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
                       background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
                       boxShadow: '0 2px 6px rgba(79, 70, 229, 0.3)'
                     }}
-                    title="선택한 전도인들의 S-21 기록 카드를 단일 통합 PDF로 연속 인쇄합니다"
+                    title="선택한 전도인들의 S-21 기록 카드 PDF를 생성하여 다운로드합니다 (통합본 / 개별파일 선택 가능)"
                   >
-                    <Printer size={13} />
-                    <span>선택 카드 인쇄 ({selectedPublisherIds.size}명)</span>
+                    <FileText size={13} />
+                    <span>선택 카드 PDF ({selectedPublisherIds.size}명)</span>
                   </button>
                 )}
 
-                {/* 전체 카드 인쇄 버튼 */}
+                {/* 전체 카드 PDF 버튼 (무활동자는 기본값으로 제외됨) */}
                 <button
                   type="button"
                   onClick={handlePrintAllCards}
@@ -1116,10 +1228,10 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
                     whiteSpace: 'nowrap',
                     flexShrink: 0
                   }}
-                  title="현재 목록의 모든 전도인 S-21 기록 카드를 일괄 연속 인쇄합니다"
+                  title={activeSubTab === 'inactive' ? "보관함의 모든 전도인 S-21 기록 카드 PDF를 일괄 생성합니다" : "현재 목록의 활동 전도인 S-21 기록 카드 PDF를 일괄 생성합니다 (무활동자 기본 제외)"}
                 >
-                  <Printer size={13} />
-                  <span>전체 카드 인쇄 ({filteredPublishers.length}명)</span>
+                  <FileText size={13} />
+                  <span>전체 카드 PDF ({selectablePublishers.length}명)</span>
                 </button>
 
                 {canManageAll && (
@@ -1153,22 +1265,256 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
                     <th style={{ width: 44, minWidth: 44, textAlign: 'center' }}>
                       <input
                         type="checkbox"
-                        checked={filteredPublishers.length > 0 && filteredPublishers.every(p => selectedPublisherIds.has(p.id))}
+                        checked={isAllSelectableChecked}
                         onChange={handleToggleSelectAll}
                         style={{ cursor: 'pointer', width: 16, height: 16 }}
-                        title={filteredPublishers.every(p => selectedPublisherIds.has(p.id)) ? '전체 선택 해제' : '현재 목록 전체 선택'}
+                        title={isAllSelectableChecked ? '전체 선택 해제' : '활동 전도인 전체 선택 (무활동자는 기본 제외, 필요 시 직접 체크)'}
                       />
                     </th>
-                    <th style={{ width: 110, minWidth: 110 }}>이름</th>
-                    <th style={{ width: 85, minWidth: 85, textAlign: 'center' }}>직책</th>
-                    <th style={{ width: 65, minWidth: 65, textAlign: 'center' }}>RP</th>
+
+                    {/* 1. 이름 (클릭 시 가나다순 정렬 토글) */}
+                    <th
+                      onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
+                      style={{ width: 110, minWidth: 110, cursor: 'pointer', userSelect: 'none' }}
+                      title="클릭하여 이름 가나다순 정렬 (오름차순 / 내림차순)"
+                    >
+                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                        <span style={{ fontWeight: 700, color: 'var(--primary)' }}>이름</span>
+                        {sortOrder === 'asc' ? <ArrowUp size={12} color="var(--primary)" /> : <ArrowDown size={12} color="var(--primary)" />}
+                      </div>
+                    </th>
+
+                    {/* 2. 직책 (드롭다운 필터) */}
+                    <th
+                      style={{ width: 85, minWidth: 85, textAlign: 'center', cursor: 'pointer', userSelect: 'none', position: 'relative' }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveHeaderDropdown(activeHeaderDropdown === 'position' ? null : 'position');
+                      }}
+                      title="클릭하여 직책 필터"
+                    >
+                      <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
+                        <span style={{ fontWeight: 700, color: filterPosition !== 'all' ? 'var(--primary)' : undefined }}>직책</span>
+                        {filterPosition !== 'all' && (
+                          <span style={{ fontSize: '0.62rem', padding: '1px 4px', borderRadius: 4, background: 'var(--primary)', color: '#fff', fontWeight: 800 }}>
+                            {filterPosition}
+                          </span>
+                        )}
+                        <ChevronDown size={11} style={{ opacity: filterPosition !== 'all' ? 1 : 0.45 }} />
+                      </div>
+
+                      {activeHeaderDropdown === 'position' && (
+                        <div className="header-filter-popover" onClick={e => e.stopPropagation()}>
+                          <div className="popover-header">
+                            <span>직책 필터</span>
+                          </div>
+                          {[
+                            { value: 'all', label: '전체 직책' },
+                            { value: '장로', label: '장로' },
+                            { value: '봉종', label: '봉종' },
+                            { value: '일반', label: '일반' },
+                            { value: '미침', label: '미침례' }
+                          ].map(item => (
+                            <div
+                              key={item.value}
+                              className={`popover-item ${filterPosition === item.value ? 'active' : ''}`}
+                              onClick={() => { setFilterPosition(item.value); setActiveHeaderDropdown(null); }}
+                            >
+                              <span>{item.label}</span>
+                              {filterPosition === item.value && <Check size={13} />}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </th>
+
+                    {/* 3. RP (구분) (드롭다운 필터) */}
+                    <th
+                      style={{ width: 65, minWidth: 65, textAlign: 'center', cursor: 'pointer', userSelect: 'none', position: 'relative' }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveHeaderDropdown(activeHeaderDropdown === 'pioneer' ? null : 'pioneer');
+                      }}
+                      title="클릭하여 RP(구분) 필터"
+                    >
+                      <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
+                        <span style={{ fontWeight: 700, color: filterPioneerStatus !== 'all' ? 'var(--primary)' : undefined }}>RP</span>
+                        {filterPioneerStatus !== 'all' && (
+                          <span style={{ fontSize: '0.62rem', padding: '1px 4px', borderRadius: 4, background: 'var(--primary)', color: '#fff', fontWeight: 800 }}>
+                            {filterPioneerStatus}
+                          </span>
+                        )}
+                        <ChevronDown size={11} style={{ opacity: filterPioneerStatus !== 'all' ? 1 : 0.45 }} />
+                      </div>
+
+                      {activeHeaderDropdown === 'pioneer' && (
+                        <div className="header-filter-popover" onClick={e => e.stopPropagation()}>
+                          <div className="popover-header">
+                            <span>RP (구분) 필터</span>
+                          </div>
+                          {[
+                            { value: 'all', label: '전체 구분' },
+                            { value: 'RP', label: 'RP (정규)' },
+                            { value: 'SP', label: 'SP (특별)' },
+                            { value: 'FM', label: 'FM (선교인)' },
+                            { value: '일반', label: '일반 전도인' }
+                          ].map(item => (
+                            <div
+                              key={item.value}
+                              className={`popover-item ${filterPioneerStatus === item.value ? 'active' : ''}`}
+                              onClick={() => { setFilterPioneerStatus(item.value); setActiveHeaderDropdown(null); }}
+                            >
+                              <span>{item.label}</span>
+                              {filterPioneerStatus === item.value && <Check size={13} />}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </th>
+
+                    {/* 4. 생년월일 */}
                     <th style={{ width: 105, minWidth: 105 }}>생년월일</th>
+
+                    {/* 5. 침례일자 */}
                     <th style={{ width: 105, minWidth: 105 }}>침례일자</th>
-                    <th style={{ width: 90, minWidth: 90 }}>집단</th>
-                    <th style={{ width: 65, minWidth: 65, textAlign: 'center' }}>성별</th>
-                    <th style={{ width: 95, minWidth: 95 }}>구별</th>
+
+                    {/* 6. 집단 (드롭다운 필터) */}
+                    <th
+                      style={{ width: 90, minWidth: 90, cursor: 'pointer', userSelect: 'none', position: 'relative' }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveHeaderDropdown(activeHeaderDropdown === 'group' ? null : 'group');
+                      }}
+                      title="클릭하여 집단 필터"
+                    >
+                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
+                        <span style={{ fontWeight: 700, color: selectedGroupFilter !== 'all' ? 'var(--primary)' : undefined }}>집단</span>
+                        {selectedGroupFilter !== 'all' && (
+                          <span style={{ fontSize: '0.62rem', padding: '1px 4px', borderRadius: 4, background: 'var(--primary)', color: '#fff', fontWeight: 800 }}>
+                            {targetFilterGroup?.name || '집단'}
+                          </span>
+                        )}
+                        <ChevronDown size={11} style={{ opacity: selectedGroupFilter !== 'all' ? 1 : 0.45 }} />
+                      </div>
+
+                      {activeHeaderDropdown === 'group' && (
+                        <div className="header-filter-popover" onClick={e => e.stopPropagation()}>
+                          <div className="popover-header">
+                            <span>집단 선택 필터</span>
+                          </div>
+                          <div
+                            className={`popover-item ${selectedGroupFilter === 'all' ? 'active' : ''}`}
+                            onClick={() => { setSelectedGroupFilter('all'); setActiveHeaderDropdown(null); }}
+                          >
+                            <span>전체 집단</span>
+                            {selectedGroupFilter === 'all' && <Check size={13} />}
+                          </div>
+                          <div className="popover-divider" />
+                          {groups.map(g => (
+                            <div
+                              key={g.id}
+                              className={`popover-item ${selectedGroupFilter === g.id ? 'active' : ''}`}
+                              onClick={() => { setSelectedGroupFilter(g.id); setActiveHeaderDropdown(null); }}
+                            >
+                              <span>{g.name}</span>
+                              {selectedGroupFilter === g.id && <Check size={13} />}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </th>
+
+                    {/* 7. 성별 (드롭다운 필터) */}
+                    <th
+                      style={{ width: 65, minWidth: 65, textAlign: 'center', cursor: 'pointer', userSelect: 'none', position: 'relative' }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveHeaderDropdown(activeHeaderDropdown === 'gender' ? null : 'gender');
+                      }}
+                      title="클릭하여 성별 필터"
+                    >
+                      <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
+                        <span style={{ fontWeight: 700, color: filterGender !== 'all' ? 'var(--primary)' : undefined }}>성별</span>
+                        {filterGender !== 'all' && (
+                          <span style={{ fontSize: '0.62rem', padding: '1px 4px', borderRadius: 4, background: 'var(--primary)', color: '#fff', fontWeight: 800 }}>
+                            {filterGender}
+                          </span>
+                        )}
+                        <ChevronDown size={11} style={{ opacity: filterGender !== 'all' ? 1 : 0.45 }} />
+                      </div>
+
+                      {activeHeaderDropdown === 'gender' && (
+                        <div className="header-filter-popover" onClick={e => e.stopPropagation()}>
+                          <div className="popover-header">
+                            <span>성별 필터</span>
+                          </div>
+                          {[
+                            { value: 'all', label: '전체 성별' },
+                            { value: '남', label: '남자 (형제)' },
+                            { value: '여', label: '여자 (자매)' }
+                          ].map(item => (
+                            <div
+                              key={item.value}
+                              className={`popover-item ${filterGender === item.value ? 'active' : ''}`}
+                              onClick={() => { setFilterGender(item.value); setActiveHeaderDropdown(null); }}
+                            >
+                              <span>{item.label}</span>
+                              {filterGender === item.value && <Check size={13} />}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </th>
+
+                    {/* 8. 구별 (드롭다운 필터) */}
+                    <th
+                      style={{ width: 95, minWidth: 95, cursor: 'pointer', userSelect: 'none', position: 'relative' }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveHeaderDropdown(activeHeaderDropdown === 'hope' ? null : 'hope');
+                      }}
+                      title="클릭하여 구별(희망) 필터"
+                    >
+                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
+                        <span style={{ fontWeight: 700, color: filterHope !== 'all' ? 'var(--primary)' : undefined }}>구별</span>
+                        {filterHope !== 'all' && (
+                          <span style={{ fontSize: '0.62rem', padding: '1px 4px', borderRadius: 4, background: 'var(--primary)', color: '#fff', fontWeight: 800 }}>
+                            {filterHope === '다른 양' ? '다른 양' : '기름부음'}
+                          </span>
+                        )}
+                        <ChevronDown size={11} style={{ opacity: filterHope !== 'all' ? 1 : 0.45 }} />
+                      </div>
+
+                      {activeHeaderDropdown === 'hope' && (
+                        <div className="header-filter-popover" onClick={e => e.stopPropagation()}>
+                          <div className="popover-header">
+                            <span>구별 (희망) 필터</span>
+                          </div>
+                          {[
+                            { value: 'all', label: '전체 구별' },
+                            { value: '다른 양', label: '다른 양' },
+                            { value: '기름부음받은 자', label: '기름부음받은 자' }
+                          ].map(item => (
+                            <div
+                              key={item.value}
+                              className={`popover-item ${filterHope === item.value ? 'active' : ''}`}
+                              onClick={() => { setFilterHope(item.value); setActiveHeaderDropdown(null); }}
+                            >
+                              <span>{item.label}</span>
+                              {filterHope === item.value && <Check size={13} />}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </th>
+
+                    {/* 9. 나이 */}
                     <th style={{ width: 70, minWidth: 70, textAlign: 'center' }}>나이</th>
+
+                    {/* 10. 비고 */}
                     <th style={{ minWidth: 180 }}>비고</th>
+
+                    {/* 11. 작업 */}
                     <th style={{ width: 110, minWidth: 110, textAlign: 'center' }}>작업</th>
                   </tr>
                 </thead>

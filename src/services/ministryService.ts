@@ -119,6 +119,14 @@ function getLocalData<T>(key: string, fallback: T): T {
         return parsed as unknown as T;
       }
     }
+    if (key === 'deleted_report_keys' && Array.isArray(parsed)) {
+      // 기존에 저장된 이름 기반 키(예: '손지영_9월')나 광범위한 키 자동 정리
+      const cleaned = (parsed as string[]).filter(k => typeof k === 'string' && !k.includes('손지영') && !/^[가-힣]+_\d+월$/.test(k));
+      if (cleaned.length !== parsed.length) {
+        localStorage.setItem(LOCAL_STORAGE_PREFIX + key, JSON.stringify(cleaned));
+        return cleaned as unknown as T;
+      }
+    }
     if (key === 'managers' && Array.isArray(parsed) && Array.isArray(fallback)) {
       const existingEmails = new Set(parsed.map((m: any) => (m.email || '').trim().toLowerCase()));
       let hasNew = false;
@@ -1284,14 +1292,11 @@ export async function deleteMonthlyReport(reportId: string, options?: DeleteRepo
     }
   }
 
-  // 삭제된 보고서 키(블랙리스트)를 로컬 스토리지에 기록하여 fallback 복원 원천 차단
+  // 삭제된 보고서 고유 ID를 로컬 스토리지에 기록하여 오프라인 fallback 복원 차단 (이름_월 기반 차단 배제)
   const deletedKeys = getLocalData<string[]>('deleted_report_keys', []);
   const keysToAdd = [
     reportId,
-    options?.publisherId && options?.month ? `${options.publisherId}_${options.month}` : null,
-    options?.publisherName && options?.month ? `${options.publisherName}_${options.month}` : null,
     options?.serviceYearId && options?.publisherId && options?.month ? `${options.serviceYearId}_${options.publisherId}_${options.month}` : null,
-    options?.serviceYearId && options?.publisherName && options?.month ? `${options.serviceYearId}_${options.publisherName}_${options.month}` : null,
   ].filter(Boolean) as string[];
 
   const newDeletedKeys = Array.from(new Set([...deletedKeys, ...keysToAdd]));
@@ -1321,26 +1326,19 @@ export async function getMonthlyReports(serviceYearId: string, month: ServiceMon
       .order('submitted_at', { ascending: false });
 
     if (!error && data) {
-      const fetchedReports = data
-        .filter((r: any) => {
-          if (deletedKeysSet.has(r.id)) return false;
-          if (deletedKeysSet.has(`${r.publisher_id}_${r.month}`)) return false;
-          if (r.publishers?.name && deletedKeysSet.has(`${r.publishers.name}_${r.month}`)) return false;
-          return true;
-        })
-        .map((r: any) => {
-          const pubStatus = r.publishers?.pioneer_status;
-          const isRp = pubStatus === 'RP' || r.pioneer_status === 'RP';
-          const hasHours = Number(r.hours || 0) > 0;
-          let pStatus = isRp ? 'RP' : (hasHours ? 'AP' : (isChildStatus(r.pioneer_status || pubStatus) ? '자녀 (집계 제외)' : '일반'));
-          return {
-            ...r,
-            publisher_name: r.publishers?.name || r.publisher_name,
-            position: r.publishers?.position || r.position,
-            pioneer_status: pStatus,
-            group_name: r.publishers?.groups?.name || r.group_name || '미배정',
-          };
-        }) as MonthlyReport[];
+      const fetchedReports = data.map((r: any) => {
+        const pubStatus = r.publishers?.pioneer_status;
+        const isRp = pubStatus === 'RP' || r.pioneer_status === 'RP';
+        const hasHours = Number(r.hours || 0) > 0;
+        let pStatus = isRp ? 'RP' : (hasHours ? 'AP' : (isChildStatus(r.pioneer_status || pubStatus) ? '자녀 (집계 제외)' : '일반'));
+        return {
+          ...r,
+          publisher_name: r.publishers?.name || r.publisher_name,
+          position: r.publishers?.position || r.position,
+          pioneer_status: pStatus,
+          group_name: r.publishers?.groups?.name || r.group_name || '미배정',
+        };
+      }) as MonthlyReport[];
 
       // 혹시 원격 DB에 미처 마이그레이션되지 않았거나 로컬 캐시에 있는 해당 월 보고서 누락분 보강 (삭제된 항목 제외)
       const existingKeySet = new Set(fetchedReports.map(r => `${r.publisher_name}_${r.month}`));
@@ -1371,7 +1369,13 @@ export async function getMonthlyReports(serviceYearId: string, month: ServiceMon
 
   const reports = getLocalData<MonthlyReport[]>('monthly_reports', INITIAL_REPORTS);
   return reports
-    .filter(r => r.service_year_id === serviceYearId && r.month === month)
+    .filter(r => {
+      if (r.service_year_id !== serviceYearId || r.month !== month) return false;
+      if (deletedKeysSet.has(r.id)) return false;
+      if (deletedKeysSet.has(`${r.publisher_id}_${r.month}`)) return false;
+      if (deletedKeysSet.has(`${r.publisher_name}_${r.month}`)) return false;
+      return true;
+    })
     .map(r => {
       const isRp = r.pioneer_status === 'RP';
       const hasHours = Number(r.hours || 0) > 0;
@@ -1404,26 +1408,19 @@ export async function getAllServiceYearReports(serviceYearId?: string): Promise<
     }
 
     if (allData.length > 0) {
-      const fetchedReports = allData
-        .filter((r: any) => {
-          if (deletedKeysSet.has(r.id)) return false;
-          if (deletedKeysSet.has(`${r.publisher_id}_${r.month}`)) return false;
-          if (r.publishers?.name && deletedKeysSet.has(`${r.publishers.name}_${r.month}`)) return false;
-          return true;
-        })
-        .map((r: any) => {
-          const pubStatus = r.publishers?.pioneer_status;
-          const isRp = pubStatus === 'RP' || r.pioneer_status === 'RP';
-          const hasHours = Number(r.hours || 0) > 0;
-          let pStatus = isRp ? 'RP' : (hasHours ? 'AP' : (isChildStatus(r.pioneer_status || pubStatus) ? '자녀 (집계 제외)' : '일반'));
-          return {
-            ...r,
-            publisher_name: r.publishers?.name || r.publisher_name,
-            position: r.publishers?.position || r.position,
-            pioneer_status: pStatus,
-            group_name: r.publishers?.groups?.name || r.group_name || '미배정',
-          };
-        }) as MonthlyReport[];
+      const fetchedReports = allData.map((r: any) => {
+        const pubStatus = r.publishers?.pioneer_status;
+        const isRp = pubStatus === 'RP' || r.pioneer_status === 'RP';
+        const hasHours = Number(r.hours || 0) > 0;
+        let pStatus = isRp ? 'RP' : (hasHours ? 'AP' : (isChildStatus(r.pioneer_status || pubStatus) ? '자녀 (집계 제외)' : '일반'));
+        return {
+          ...r,
+          publisher_name: r.publishers?.name || r.publisher_name,
+          position: r.publishers?.position || r.position,
+          pioneer_status: pStatus,
+          group_name: r.publishers?.groups?.name || r.group_name || '미배정',
+        };
+      }) as MonthlyReport[];
 
       // 혹시 원격 DB에 1000건 초과 데이터가 미처 마이그레이션되지 않았을 경우를 대비해 누락분 보강 (삭제된 항목 제외)
       const existingKeySet = new Set(fetchedReports.map(r => `${r.publisher_name}_${r.month}`));

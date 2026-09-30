@@ -1,5 +1,6 @@
 import { PDFDocument } from 'pdf-lib';
 import fontkit from '@pdf-lib/fontkit';
+import JSZip from 'jszip';
 import { YearlyPublisherRecord, SERVICE_MONTHS } from '../types/database';
 
 let cachedTemplate: Uint8Array | null = null;
@@ -240,4 +241,58 @@ export async function printPdfBlob(bytes: Uint8Array): Promise<void> {
     };
   });
 }
+
+/**
+ * 각 전도인별로 개별 PDF 파일을 생성하고 이를 단일 ZIP 파일로 압축하여 반환
+ */
+export async function generateIndividualPublisherCardsZip(
+  records: YearlyPublisherRecord[],
+  serviceYearName: string,
+  onProgress?: (current: number, total: number) => void
+): Promise<Blob> {
+  const zip = new JSZip();
+  const yearStr = serviceYearName.match(/\d{4}/)?.[0] || serviceYearName;
+  const usedFileNames = new Set<string>();
+
+  for (let i = 0; i < records.length; i++) {
+    const record = records[i];
+    if (onProgress) {
+      onProgress(i + 1, records.length);
+    }
+    const singlePdfBytes = await generatePublisherCardPdf(record, serviceYearName);
+    
+    // 파일명 중복 방지 (동명이인 등)
+    let safeName = record.userInfo.name || `전도인_${i + 1}`;
+    let fileName = `S-21_${yearStr}연도_${safeName}.pdf`;
+    let counter = 1;
+    while (usedFileNames.has(fileName)) {
+      fileName = `S-21_${yearStr}연도_${safeName}_${counter}.pdf`;
+      counter++;
+    }
+    usedFileNames.add(fileName);
+
+    zip.file(fileName, singlePdfBytes);
+  }
+
+  return await zip.generateAsync({
+    type: 'blob',
+    compression: 'DEFLATE',
+    compressionOptions: { level: 6 }
+  });
+}
+
+/**
+ * 범용 파일 다운로드 헬퍼
+ */
+export function downloadBlob(blob: Blob, fileName: string): void {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+}
+
 
