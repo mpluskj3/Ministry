@@ -30,15 +30,11 @@ export const UnreportedListModal: React.FC<UnreportedListModalProps> = ({
 
   // 카카오톡/문자 안내 독려 메시지 생성 (작성 링크 포함)
   const generateReminderMessage = () => {
-    const listToRemind = selectedGroupFilter === 'all' 
-      ? unreportedList 
-      : unreportedList.filter(p => p.group_name === selectedGroupFilter);
-    const names = listToRemind.map(p => p.name).join(', ');
-    const submitUrl = `${window.location.origin}${window.location.pathname}?mode=submit`;
+    const submitUrl = window.location.origin;
 
     return `[봉사 보고 안내]
 안녕하세요. ${month} 야외 봉사 보고 기간입니다.
-현재까지 보고가 확인되지 않은 형제자매들(${names})께서는 번거로우시더라도 아래 링크를 통해 오늘 중으로 봉사 보고서를 제출해주시기 바랍니다.
+번거로우시더라도 아래 링크를 통해 오늘 중으로 봉사 보고서를 제출해주시기 바랍니다.
 
 🔗 보고서 작성 링크:
 ${submitUrl}
@@ -198,7 +194,7 @@ ${submitUrl}
                 )}
               </div>
               <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: 2 }}>
-                미보고자 명단과 함께 전도인 보고서 작성 링크가 자동으로 포함되어 복사됩니다.
+                전도인 봉사 보고서 작성 안내 문구와 링크가 클립보드에 복사됩니다.
               </div>
             </div>
             <button

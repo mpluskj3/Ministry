@@ -358,11 +358,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
   // 미보고자 알림 문구 복사 (작성 링크 포함)
   const handleCopyReminder = () => {
-    const names = unreportedList.map(p => p.name).join(', ');
-    const submitUrl = `${window.location.origin}${window.location.pathname}?mode=submit`;
+    const submitUrl = window.location.origin;
     const text = `[봉사 보고 안내]
 안녕하세요. ${selectedMonth} 야외 봉사 보고 기간입니다.
-현재까지 보고가 확인되지 않은 형제자매들(${names})께서는 번거로우시더라도 아래 링크를 통해 오늘 중으로 봉사 보고서를 제출해주시기 바랍니다.
+번거로우시더라도 아래 링크를 통해 오늘 중으로 봉사 보고서를 제출해주시기 바랍니다.
 
 🔗 보고서 작성 링크:
 ${submitUrl}
@@ -375,7 +374,7 @@ ${submitUrl}
 
   // 전도인 봉사 보고 제출 페이지 링크 복사
   const handleCopySubmitLink = () => {
-    const url = `${window.location.origin}${window.location.pathname}?mode=submit`;
+    const url = window.location.origin;
     navigator.clipboard.writeText(url);
     setCopiedSubmitLink(true);
     setTimeout(() => setCopiedSubmitLink(false), 2500);
