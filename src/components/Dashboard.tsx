@@ -152,8 +152,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
     rate: number;
   }>>([]);
 
-  // 미보고자 명단
+  // 미보고자 명단 (현재 집단 기준 및 회중 전체 기준)
   const [unreportedList, setUnreportedList] = useState<Publisher[]>([]);
+  const [allUnreportedList, setAllUnreportedList] = useState<Publisher[]>([]);
   const [unreportedModalOpen, setUnreportedModalOpen] = useState(false);
   const [copiedReminder, setCopiedReminder] = useState(false);
   const [copiedSubmitLink, setCopiedSubmitLink] = useState(false);
@@ -233,18 +234,25 @@ export const Dashboard: React.FC<DashboardProps> = ({
         ? (manager.group_id || groupsData.find(g => g.name === manager.group_name)?.id || selectedGroupId)
         : selectedGroupId;
 
-      const [monthStatuses, kpi, reportList, unreported, allReports, pubs] = await Promise.all([
+      const [monthStatuses, kpi, reportList, unreported, allReports, pubs, allCongregationUnreported] = await Promise.all([
         getMonthlyStatuses(currentYear.id),
         getMonthlyKpiStats(currentYear.id, selectedMonth, targetGroupId === 'all' ? undefined : targetGroupId),
         getMonthlyReports(currentYear.id, selectedMonth),
         getUnreportedMembers(currentYear.id, selectedMonth, targetGroupId === 'all' ? undefined : targetGroupId),
         getAllServiceYearReports(currentYear.id),
         getPublishers(true),
+        manager?.role === 'group'
+          ? Promise.resolve([])
+          : (targetGroupId === 'all' ? Promise.resolve(null) : getUnreportedMembers(currentYear.id, selectedMonth, undefined)),
       ]);
 
       setStatuses(monthStatuses);
       setKpiStats(kpi);
       setUnreportedList(unreported);
+      const effectiveAllUnreported = manager?.role === 'group'
+        ? unreported
+        : (targetGroupId === 'all' ? unreported : (allCongregationUnreported || unreported));
+      setAllUnreportedList(effectiveAllUnreported);
       setAllYearReports(allReports);
       setAllPublishers(pubs);
 
@@ -260,8 +268,12 @@ export const Dashboard: React.FC<DashboardProps> = ({
       setReports(filteredReports);
 
       // 각 집단별 진척도 계산
+      const filteredGroupsForStats = manager?.role === 'group'
+        ? groupsData.filter(g => g.id === targetGroupId || g.name === manager.group_name)
+        : groupsData;
+
       const gStats = await Promise.all(
-        groupsData.map(async (g) => {
+        filteredGroupsForStats.map(async (g) => {
           const gKpi = await getMonthlyKpiStats(currentYear.id, selectedMonth, g.id);
           return {
             groupId: g.id,
@@ -311,8 +323,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
       }
     }
 
-    // 마감(완료)하려는 경우: 미보고자가 있는지 확인
-    if (unreportedList.length > 0) {
+    // 마감(완료)하려는 경우: 미보고자가 있는지 확인 (집단 관리자는 자기 집단, 총괄/회중 관리자는 전체 기준)
+    const closingUnreported = manager?.role === 'group' ? unreportedList : allUnreportedList;
+    if (closingUnreported.length > 0) {
       setCloseModalOpen(true);
     } else {
       if (!window.confirm(`전도인 전원 보고가 완료되었습니다. ${selectedMonth} 보고를 마감하시겠습니까?`)) return;
@@ -330,10 +343,11 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const handleCloseWithUnreported = async () => {
     setClosing(true);
     try {
-      await batchCloseUnreportedPublishers(currentYear.id, selectedMonth, unreportedList);
+      const closingUnreported = manager?.role === 'group' ? unreportedList : allUnreportedList;
+      await batchCloseUnreportedPublishers(currentYear.id, selectedMonth, closingUnreported);
       setCloseModalOpen(false);
       await loadDashboardData();
-      alert(`${selectedMonth} 미보고자(${unreportedList.length}명)를 '봉사 미참여(N)'로 일괄 등록하고 보고를 최종 마감 완료하였습니다.`);
+      alert(`${selectedMonth} 미보고자(${closingUnreported.length}명)를 '봉사 미참여(N)'로 일괄 등록하고 보고를 최종 마감 완료하였습니다.`);
     } catch (err: any) {
       alert('마감 처리 실패: ' + (err.message || '오류'));
     } finally {
@@ -3181,8 +3195,13 @@ ${submitUrl}
       {unreportedModalOpen && (
         <UnreportedListModal
           month={selectedMonth}
-          unreportedList={unreportedList}
+          unreportedList={manager?.role === 'group' ? unreportedList : allUnreportedList}
           groupStatsList={groupStatsList}
+          initialGroupName={
+            effectiveGroupId !== 'all'
+              ? (groups.find(g => g.id === effectiveGroupId)?.name || manager?.group_name)
+              : undefined
+          }
           onClose={() => setUnreportedModalOpen(false)}
           onSelectPublisherToReport={(pub) => {
             setEditModalData({
@@ -3254,7 +3273,7 @@ ${submitUrl}
                 {selectedMonth} 보고 마감 및 미보고자 조치
               </h3>
               <p style={{ color: 'var(--text-muted)', fontSize: '0.86rem', margin: 0 }}>
-                현재 {selectedMonth} 보고서가 미제출된 전도인이 <strong>{unreportedList.length}명</strong> 있습니다.
+                현재 {selectedMonth} 보고서가 미제출된 전도인이 <strong>{(manager?.role === 'group' ? unreportedList : allUnreportedList).length}명</strong> 있습니다.
               </p>
             </div>
 
@@ -3266,10 +3285,10 @@ ${submitUrl}
               marginBottom: 20
             }}>
               <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: 8 }}>
-                미보고자 명단 ({unreportedList.length}명)
+                미보고자 명단 ({(manager?.role === 'group' ? unreportedList : allUnreportedList).length}명)
               </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                {unreportedList.map(p => (
+                {(manager?.role === 'group' ? unreportedList : allUnreportedList).map(p => (
                   <span key={p.id} className="badge" style={{ padding: '4px 8px', fontSize: '0.82rem' }}>
                     <strong>{p.name}</strong> ({p.group_name})
                   </span>
@@ -3305,7 +3324,7 @@ ${submitUrl}
                     <span>미보고자 전원 '봉사 미참여(N)' 기록 후 완료 (권장)</span>
                   </div>
                   <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 400, lineHeight: 1.4 }}>
-                    미보고자 {unreportedList.length}명을 '미참여(0시간)'로 자동 추가하여 미보고자를 0명으로 만들고 최종 마감합니다.
+                    미보고자 {(manager?.role === 'group' ? unreportedList : allUnreportedList).length}명을 '미참여(0시간)'로 자동 추가하여 미보고자를 0명으로 만들고 최종 마감합니다.
                   </div>
                 </div>
               </button>

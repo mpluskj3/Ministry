@@ -14,6 +14,7 @@ interface UnreportedListModalProps {
   month: ServiceMonth;
   unreportedList: Publisher[];
   groupStatsList?: GroupProgressItem[];
+  initialGroupName?: string;
   onClose: () => void;
   onSelectPublisherToReport?: (pub: Publisher) => void;
 }
@@ -22,17 +23,59 @@ export const UnreportedListModal: React.FC<UnreportedListModalProps> = ({
   month,
   unreportedList,
   groupStatsList,
+  initialGroupName,
   onClose,
   onSelectPublisherToReport,
 }) => {
   const [copied, setCopied] = useState(false);
-  const [selectedGroupFilter, setSelectedGroupFilter] = useState<string>('all');
+  const [selectedGroupFilter, setSelectedGroupFilter] = useState<string>(() => {
+    if (initialGroupName && initialGroupName !== 'all') {
+      return initialGroupName;
+    }
+    return 'all';
+  });
+
+  // 집단 매칭 헬퍼 함수 (ID 및 이름, '집단' 접미사 유연 매칭)
+  const isMatchGroup = (pub: Publisher, targetGroup: string) => {
+    if (!targetGroup || targetGroup === 'all') return true;
+
+    // 1. groupStatsList에서 해당 집단 정보 찾기
+    const statItem = groupStatsList?.find(gs =>
+      gs.groupId === targetGroup ||
+      gs.groupName === targetGroup ||
+      gs.groupName.replace(/집단$/, '').trim() === targetGroup.replace(/집단$/, '').trim()
+    );
+
+    // 2. pub.group_id와 groupId 비교
+    if (statItem?.groupId && pub.group_id && statItem.groupId === pub.group_id) {
+      return true;
+    }
+    if (pub.group_id && pub.group_id === targetGroup) {
+      return true;
+    }
+
+    // 3. pub.group_name과 이름 비교
+    const cleanPubName = (pub.group_name || '').replace(/집단$/, '').trim();
+    const cleanTargetName = targetGroup.replace(/집단$/, '').trim();
+    if (cleanPubName && cleanTargetName && cleanPubName === cleanTargetName) {
+      return true;
+    }
+    if (statItem) {
+      const cleanStatName = statItem.groupName.replace(/집단$/, '').trim();
+      if (cleanPubName && cleanStatName && cleanPubName === cleanStatName) {
+        return true;
+      }
+    }
+
+    return false;
+  };
 
   // 카카오톡/문자 안내 독려 메시지 생성 (작성 링크 포함)
   const generateReminderMessage = () => {
     const submitUrl = window.location.origin;
+    const groupPrefix = selectedGroupFilter !== 'all' ? ` [${selectedGroupFilter.replace(/집단$/, '')} 집단]` : '';
 
-    return `[봉사 보고 안내]
+    return `[봉사 보고 안내${groupPrefix}]
 안녕하세요. ${month} 야외 봉사 보고 기간입니다.
 번거로우시더라도 아래 링크를 통해 오늘 중으로 봉사 보고서를 제출해주시기 바랍니다.
 
@@ -51,7 +94,7 @@ ${submitUrl}
 
   const displayList = selectedGroupFilter === 'all'
     ? unreportedList
-    : unreportedList.filter(p => p.group_name === selectedGroupFilter);
+    : unreportedList.filter(p => isMatchGroup(p, selectedGroupFilter));
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -127,12 +170,19 @@ ${submitUrl}
                 gap: 10
               }}>
                 {groupStatsList.map(gs => {
-                  const isSelected = selectedGroupFilter === gs.groupName;
-                  const groupUnreportedCount = unreportedList.filter(p => p.group_name === gs.groupName).length;
+                  const cleanFilter = selectedGroupFilter.replace(/집단$/, '').trim();
+                  const cleanGsName = gs.groupName.replace(/집단$/, '').trim();
+                  const isSelected = selectedGroupFilter !== 'all' && (cleanFilter === cleanGsName || selectedGroupFilter === gs.groupId);
+                  const groupUnreportedCount = unreportedList.filter(p => isMatchGroup(p, gs.groupName)).length;
                   return (
                     <div 
                       key={gs.groupId}
-                      onClick={() => setSelectedGroupFilter(prev => prev === gs.groupName ? 'all' : gs.groupName)}
+                      onClick={() => {
+                        setSelectedGroupFilter(prev => {
+                          const prevClean = prev.replace(/집단$/, '').trim();
+                          return (prev !== 'all' && (prevClean === cleanGsName || prev === gs.groupId)) ? 'all' : gs.groupName;
+                        });
+                      }}
                       style={{
                         padding: '10px 12px',
                         borderRadius: 'var(--radius-sm)',
@@ -142,10 +192,10 @@ ${submitUrl}
                         transition: 'all 0.15s ease',
                         boxShadow: isSelected ? '0 2px 8px rgba(99, 102, 241, 0.15)' : 'none'
                       }}
-                      title={`클릭하여 ${gs.groupName} 집단 미보고자만 필터링 (미보고 ${groupUnreportedCount}명)`}
+                      title={`클릭하여 ${cleanGsName} 집단 미보고자만 필터링 (미보고 ${groupUnreportedCount}명)`}
                     >
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.84rem', marginBottom: 6 }}>
-                        <span style={{ fontWeight: 700, color: 'var(--text-main)' }}>{gs.groupName} 집단</span>
+                        <span style={{ fontWeight: 700, color: 'var(--text-main)' }}>{cleanGsName} 집단</span>
                         <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
                           <strong style={{ color: gs.rate >= 100 ? 'var(--accent-emerald)' : 'var(--text-main)' }}>{gs.reported}</strong> / {gs.total}명
                           {' '}
@@ -189,7 +239,7 @@ ${submitUrl}
                 <span>카카오톡/문자 독려 메시지 복사 (작성 링크 포함)</span>
                 {selectedGroupFilter !== 'all' && (
                   <span className="badge" style={{ fontSize: '0.72rem', background: 'var(--primary)', color: '#fff' }}>
-                    {selectedGroupFilter} 집단
+                    {selectedGroupFilter.replace(/집단$/, '')} 집단
                   </span>
                 )}
               </div>
@@ -212,7 +262,7 @@ ${submitUrl}
             <h4 style={{ fontSize: '0.94rem', fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
               <UserX size={16} color="var(--accent-rose)" />
               <span>
-                {selectedGroupFilter === 'all' ? '전체 미보고자' : `${selectedGroupFilter} 집단 미보고자`} ({displayList.length}명)
+                {selectedGroupFilter === 'all' ? '전체 미보고자' : `${selectedGroupFilter.replace(/집단$/, '')} 집단 미보고자`} ({displayList.length}명)
               </span>
             </h4>
             {selectedGroupFilter !== 'all' && (
@@ -226,7 +276,7 @@ ${submitUrl}
             <div style={{ textAlign: 'center', padding: '36px 16px', color: 'var(--accent-emerald)', background: 'var(--bg-card-subtle, #f8fafc)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
               <div style={{ fontSize: '2rem', marginBottom: 8 }}>🎉</div>
               <h4 style={{ margin: 0, fontWeight: 800 }}>
-                {selectedGroupFilter === 'all' ? '모든 전도인이 보고를 완료했습니다!' : `${selectedGroupFilter} 집단은 전원 보고를 완료했습니다!`}
+                {selectedGroupFilter === 'all' ? '모든 전도인이 보고를 완료했습니다!' : `${selectedGroupFilter.replace(/집단$/, '')} 집단은 전원 보고를 완료했습니다!`}
               </h4>
             </div>
           ) : (
