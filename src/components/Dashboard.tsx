@@ -2981,8 +2981,8 @@ ${submitUrl}
                 width: 36,
                 height: 36,
                 borderRadius: '8px',
-                background: '#e0e7ff',
-                color: '#4338ca',
+                background: 'var(--primary-light)',
+                color: 'var(--primary)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center'

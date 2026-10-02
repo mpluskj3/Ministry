@@ -158,7 +158,7 @@ export const BatchPublisherCardModal: React.FC<BatchPublisherCardModalProps> = (
               {/* Progress Bar */}
               <div style={{
                 height: 10,
-                background: 'rgba(0,0,0,0.06)',
+                background: 'var(--border-color)',
                 borderRadius: 'var(--radius-full)',
                 overflow: 'hidden',
                 marginBottom: 16

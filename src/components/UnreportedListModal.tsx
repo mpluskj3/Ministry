@@ -140,7 +140,7 @@ ${submitUrl}
                       style={{
                         padding: '10px 12px',
                         borderRadius: 'var(--radius-sm)',
-                        background: isSelected ? 'var(--primary-light, #eff6ff)' : '#ffffff',
+                        background: isSelected ? 'var(--primary-light)' : 'var(--bg-card)',
                         border: isSelected ? '1.5px solid var(--primary)' : '1px solid var(--border-color)',
                         cursor: 'pointer',
                         transition: 'all 0.15s ease',
@@ -156,7 +156,7 @@ ${submitUrl}
                           <span style={{ fontWeight: 700, color: gs.rate >= 100 ? 'var(--accent-emerald)' : 'var(--primary)' }}>({gs.rate}%)</span>
                         </span>
                       </div>
-                      <div className="progress-track" style={{ height: 6, borderRadius: 3, background: '#e2e8f0' }}>
+                      <div className="progress-track" style={{ height: 6, borderRadius: 3, background: 'var(--border-color)' }}>
                         <div 
                           className="progress-fill" 
                           style={{ 
@@ -176,8 +176,8 @@ ${submitUrl}
 
           {/* 2. Action Card: Copy Reminder Message with Submit Link */}
           <div style={{
-            background: 'var(--primary-50, #eff6ff)',
-            border: '1px solid var(--primary-200, #bfdbfe)',
+            background: 'var(--primary-light)',
+            border: '1px solid var(--primary-border)',
             borderRadius: 'var(--radius-md)',
             padding: '14px 16px',
             marginBottom: 16,
@@ -188,7 +188,7 @@ ${submitUrl}
             gap: 12
           }}>
             <div>
-              <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--primary-700, #1d4ed8)', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: 6 }}>
                 <MessageSquare size={16} />
                 <span>카카오톡/문자 독려 메시지 복사 (작성 링크 포함)</span>
                 {selectedGroupFilter !== 'all' && (
@@ -197,7 +197,7 @@ ${submitUrl}
                   </span>
                 )}
               </div>
-              <div style={{ fontSize: '0.78rem', color: 'var(--primary-600, #2563eb)', marginTop: 2 }}>
+              <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: 2 }}>
                 미보고자 명단과 함께 전도인 보고서 작성 링크가 자동으로 포함되어 복사됩니다.
               </div>
             </div>
@@ -277,7 +277,7 @@ ${submitUrl}
                       )}
                     </td>
                     <td>
-                      <span className="badge" style={{ background: 'rgba(0,0,0,0.05)' }}>
+                      <span className="badge badge-group">
                         {p.group_name}
                       </span>
                     </td>
