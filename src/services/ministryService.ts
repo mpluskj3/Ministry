@@ -1667,43 +1667,91 @@ export async function batchCloseUnreportedPublishers(
   const localReports = getLocalData<MonthlyReport[]>('monthly_reports', INITIAL_REPORTS);
   const now = new Date().toISOString();
 
+  // 최신 전도인 목록 매핑 (UUID 불일치 방지)
+  const allPublishers = await getPublishers(true);
+  const pubMapByName = new Map(allPublishers.map(p => [p.name.trim(), p]));
+
   // 미보고자 전원에 대해 참여: false(N), 시간: 0, 연구: 0 보고서 생성
-  const newReports: MonthlyReport[] = unreportedPublishers.map((pub, idx) => ({
-    id: `rep-auto-${Date.now()}-${idx}`,
-    service_year_id: serviceYearId,
-    publisher_id: pub.id,
-    publisher_name: pub.name,
-    group_name: pub.group_name,
-    position: pub.position || '일반',
-    pioneer_status: pub.pioneer_status === 'RP' ? 'RP' : (pub.pioneer_status || '일반'),
-    month,
-    participated: false,
-    hours: 0,
-    bible_studies: 0,
-    remarks: [{ type: '마감 시 미참여 처리', hours: '0' }],
-    submitted_at: now
-  }));
+  const newReports: MonthlyReport[] = unreportedPublishers.map((pub, idx) => {
+    const matched = pubMapByName.get(pub.name.trim()) || pub;
+    return {
+      id: `rep-auto-${Date.now()}-${idx}`,
+      service_year_id: serviceYearId,
+      publisher_id: matched.id,
+      publisher_name: matched.name,
+      group_name: matched.group_name,
+      position: matched.position || '일반',
+      pioneer_status: matched.pioneer_status === 'RP' ? 'RP' : (matched.pioneer_status || '일반'),
+      month,
+      participated: false,
+      hours: 0,
+      bible_studies: 0,
+      remarks: [{ type: '마감 시 미참여 처리', hours: '0' }],
+      submitted_at: now
+    };
+  });
 
   if (supabase) {
-    try {
-      const payloads = newReports.map(r => ({
-        service_year_id: r.service_year_id,
-        publisher_id: r.publisher_id,
-        month: r.month,
-        participated: false,
-        hours: 0,
-        bible_studies: 0,
-        remarks: r.remarks,
-        pioneer_status: r.pioneer_status,
-        submitted_at: now
-      }));
+    const payloads: any[] = newReports.map(r => ({
+      service_year_id: r.service_year_id,
+      publisher_id: r.publisher_id,
+      month: r.month,
+      participated: false,
+      hours: 0,
+      bible_studies: 0,
+      remarks: r.remarks,
+      pioneer_status: r.pioneer_status,
+      submitted_at: now
+    }));
 
-      await supabase.from('monthly_reports').upsert(payloads, {
+    // 1차: 일괄 upsert 시도
+    let { error } = await supabase.from('monthly_reports').upsert(payloads, {
+      onConflict: 'service_year_id,publisher_id,month'
+    });
+
+    // Supabase 테이블에 pioneer_status 컬럼이 없는 경우 방어 (제거 후 재시도)
+    if (error && error.message && error.message.includes('pioneer_status')) {
+      const strippedPayloads = payloads.map(({ pioneer_status, ...rest }) => rest);
+      const retryRes = await supabase.from('monthly_reports').upsert(strippedPayloads, {
         onConflict: 'service_year_id,publisher_id,month'
       });
-    } catch (err) {
-      console.warn('Supabase 일괄 미참여 보고서 저장 실패, 로컬 스토리지에 보존:', err);
+      error = retryRes.error;
     }
+
+    // 일괄 upsert 실패 시 개별 항목별 단건 upsert 폴백
+    if (error) {
+      console.warn('Supabase 미보고자 일괄 upsert 실패, 개별 upsert 시도:', error);
+      for (const payload of payloads) {
+        let singlePayload: any = { ...payload };
+        let { error: singleErr } = await supabase.from('monthly_reports').upsert(singlePayload, {
+          onConflict: 'service_year_id,publisher_id,month'
+        });
+        if (singleErr && singleErr.message && singleErr.message.includes('pioneer_status')) {
+          delete singlePayload.pioneer_status;
+          const retryRes = await supabase.from('monthly_reports').upsert(singlePayload, {
+            onConflict: 'service_year_id,publisher_id,month'
+          });
+          singleErr = retryRes.error;
+        }
+        if (singleErr) {
+          console.error(`Supabase 미보고자 개별 저장 실패 (${payload.publisher_id}):`, singleErr);
+          throw new Error(`미보고자 원격 DB 저장 실패: ${singleErr.message}`);
+        }
+      }
+    }
+  }
+
+  // 삭제 블랙리스트에서 해당 보고서 키 해제
+  const deletedKeys = getLocalData<string[]>('deleted_report_keys', []);
+  if (deletedKeys.length > 0) {
+    const keysToRemove = new Set<string>();
+    newReports.forEach(nr => {
+      keysToRemove.add(`${nr.publisher_id}_${month}`);
+      keysToRemove.add(`${nr.publisher_name}_${month}`);
+      keysToRemove.add(`${serviceYearId}_${nr.publisher_id}_${month}`);
+      keysToRemove.add(`${serviceYearId}_${nr.publisher_name}_${month}`);
+    });
+    setLocalData('deleted_report_keys', deletedKeys.filter(k => !keysToRemove.has(k)));
   }
 
   // 로컬 캐시 업데이트
