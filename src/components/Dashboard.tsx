@@ -607,6 +607,10 @@ ${submitUrl}
   // -------------------------------------------------------------
   const yearlyStats = SERVICE_MONTHS.map(m => {
     let mReports = allYearReports.filter(r => r.month === m);
+    // 이미 마감된 월의 경우 전입 전 타회중 실적은 회중 1년 종합 통계에서 제외 (마감 데이터 영구 보존)
+    if (statuses[m]) {
+      mReports = mReports.filter(r => !r.is_transferred);
+    }
     if (effectiveGroupId !== 'all') {
       const gName = groups.find(g => g.id === effectiveGroupId)?.name || manager?.group_name;
       if (gName) {

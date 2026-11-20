@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { X, Check, Trash2, Plus, AlertCircle, FileEdit, Clock, BookOpen, AlertTriangle, ChevronUp, ChevronDown } from 'lucide-react';
-import { ServiceMonth, ServiceYear, RemarkItem, MonthlyReport } from '../types/database';
+import React, { useState, useMemo } from 'react';
+import { X, Check, Trash2, Plus, AlertCircle, FileEdit, Clock, BookOpen, AlertTriangle, ChevronUp, ChevronDown, Info } from 'lucide-react';
+import { ServiceMonth, ServiceYear, RemarkItem, MonthlyReport, Publisher } from '../types/database';
 import { submitMinistryReport, deleteMonthlyReport } from '../services/ministryService';
 
 const REMARK_TYPES = [
@@ -24,6 +24,10 @@ interface ReportEditModalProps {
     group_name?: string;
     position?: string;
     pioneer_status?: string;
+    special_notes?: string;
+    transfer_date?: string;
+    transfer_month?: ServiceMonth;
+    prev_congregation?: string;
   };
   month: ServiceMonth;
   existingReport?: MonthlyReport | null;
@@ -53,9 +57,24 @@ export const ReportEditModal: React.FC<ReportEditModalProps> = ({
   const [isAuxiliaryPioneer, setIsAuxiliaryPioneer] = useState<boolean>(
     existingReport?.pioneer_status === 'AP'
   );
-  const [remarks, setRemarks] = useState<RemarkItem[]>(
-    existingReport?.remarks ? [...existingReport.remarks] : []
-  );
+  // 전입 전도인 첫 보고 여부 및 정보 추출
+  const transferDate = publisher.transfer_date || publisher.special_notes?.match(/\[전입:\s*([\d-]+)/)?.[1];
+  const prevCong = publisher.prev_congregation || publisher.special_notes?.match(/\((.*?)(?:에서)?\s*전입\)/)?.[1];
+  const isTransferMonth = publisher.transfer_month ? publisher.transfer_month === month : true;
+  const isTransferPublisher = Boolean(transferDate && isTransferMonth);
+
+  const initialRemarks = useMemo(() => {
+    if (existingReport?.remarks && existingReport.remarks.length > 0) {
+      return [...existingReport.remarks];
+    }
+    if (isTransferPublisher) {
+      const autoInfo = `${transferDate} 전입${prevCong ? ` (${prevCong}에서 전입)` : ''}`;
+      return [{ type: '기타', hours: '0', etc: autoInfo }];
+    }
+    return [];
+  }, [existingReport, isTransferPublisher, transferDate, prevCong]);
+
+  const [remarks, setRemarks] = useState<RemarkItem[]>(initialRemarks);
 
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -193,6 +212,30 @@ export const ReportEditModal: React.FC<ReportEditModalProps> = ({
           }}>
             <AlertCircle size={16} />
             <span>{errorMsg}</span>
+          </div>
+        )}
+
+        {isTransferPublisher && (
+          <div style={{
+            marginBottom: 14,
+            padding: '10px 14px',
+            borderRadius: 'var(--radius-md)',
+            background: 'rgba(59, 130, 246, 0.08)',
+            border: '1px solid rgba(59, 130, 246, 0.28)',
+            color: 'var(--primary)',
+            fontSize: '0.82rem',
+            lineHeight: 1.45,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+          }}>
+            <Info size={16} style={{ flexShrink: 0 }} />
+            <div>
+              <strong>전입 전도인 첫 보고 안내:</strong> {publisher.name} 전도인님은 <strong>{transferDate}</strong>에 {prevCong ? `[${prevCong}]에서 ` : ''}전입한 전도인입니다.<br />
+              <span style={{ fontSize: '0.76rem', color: 'var(--text-muted)' }}>
+                비고란에 전입 정보가 자동 제안되었습니다. 필요 시 이전 회중이나 세부 사항을 수정/보완하세요.
+              </span>
+            </div>
           </div>
         )}
 

@@ -141,6 +141,9 @@ export interface Publisher {
   deactivated_reason?: string;
   deactivated_at?: string;
   created_at?: string;
+  transfer_date?: string; // 전입 일자 (YYYY-MM-DD)
+  transfer_month?: ServiceMonth; // 우리 회중 첫 보고 대상 월 (예: '11월')
+  prev_congregation?: string; // 이전 소속 회중명
 }
 
 export interface EmergencyContact {
@@ -197,6 +200,8 @@ export interface MonthlyReport {
   remarks: RemarkItem[];
   submitted_at: string;
   updated_at?: string;
+  is_transferred?: boolean; // 이전 회중(전입 전)에서 수행한 봉사 보고 플래그
+  transferred_from?: string; // 이전 회중명
 }
 
 export interface Manager {

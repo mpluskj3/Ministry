@@ -29,6 +29,8 @@ import {
   ArrowDown
 } from 'lucide-react';
 import { Publisher, Group, ServiceYear, Position, PioneerStatus, Hope, Gender, isChildStatus, isChild, isTransferredPublisher, isInactivePublisher, Manager } from '../types/database';
+import { DateInput } from './DateInput';
+import { TransferPublisherModal } from './TransferPublisherModal';
 import {
   getPublishers,
   getGroups,
@@ -94,6 +96,9 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
 
   // 전도인 기록 카드(S-21) 모달
   const [cardModalData, setCardModalData] = useState<{ id: string; name: string } | null>(null);
+
+  // 전입 전도인 등록(S-21 가져오기) 모달
+  const [transferModalOpen, setTransferModalOpen] = useState(false);
 
   // 다중 선택된 전도인 IDs 및 일괄 인쇄 모달 상태
   const [selectedPublisherIds, setSelectedPublisherIds] = useState<Set<string>>(new Set());
@@ -908,6 +913,25 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
             >
               <FileSpreadsheet size={15} />
               <span>시트 명단 가져오기</span>
+            </button>
+            <button
+              onClick={() => setTransferModalOpen(true)}
+              className="btn-secondary"
+              style={{
+                gap: 6,
+                padding: '8px 14px',
+                fontSize: '0.84rem',
+                whiteSpace: 'nowrap',
+                flexShrink: 0,
+                justifyContent: 'center',
+                borderColor: 'var(--primary)',
+                color: 'var(--primary)',
+                background: 'rgba(59, 130, 246, 0.05)',
+              }}
+              title="이전 회중의 전도인 기록 카드(S-21) PDF 또는 사진을 등록하여 과거 봉사 보고 및 전도인을 자동 등록합니다."
+            >
+              <Building2 size={15} />
+              <span>전입 카드(S-21) 등록</span>
             </button>
             <button
               onClick={() => handleOpenAdd(false)}
@@ -2005,11 +2029,10 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
                   <div className="form-group" style={{ margin: 0, minWidth: 0 }}>
                     <label className="form-label" style={{ whiteSpace: 'nowrap' }}>생년월일</label>
-                    <input
-                      type="date"
-                      className="form-input"
+                    <DateInput
                       value={editingPublisher.birth_date || ''}
-                      onChange={(e) => setEditingPublisher({ ...editingPublisher, birth_date: e.target.value })}
+                      onChange={(val) => setEditingPublisher({ ...editingPublisher, birth_date: val })}
+                      placeholder="예: 19921204"
                     />
                   </div>
 
@@ -2017,11 +2040,10 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
                     <label className="form-label" style={{ whiteSpace: 'nowrap' }}>
                       침례일자 <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 'normal' }}>(선택)</span>
                     </label>
-                    <input
-                      type="date"
-                      className="form-input"
+                    <DateInput
                       value={editingPublisher.baptism_date || ''}
-                      onChange={(e) => setEditingPublisher({ ...editingPublisher, baptism_date: e.target.value })}
+                      onChange={(val) => setEditingPublisher({ ...editingPublisher, baptism_date: val })}
+                      placeholder="예: 20100615"
                     />
                   </div>
                 </div>
@@ -2376,6 +2398,19 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
             </div>
           </div>
         </div>
+      )}
+
+      {/* 전입 전도인 등록 & S-21 카드 가져오기 모달 */}
+      {transferModalOpen && (
+        <TransferPublisherModal
+          currentYear={currentYear}
+          groups={groups}
+          isOpen={transferModalOpen}
+          onClose={() => setTransferModalOpen(false)}
+          onSuccess={() => {
+            loadData();
+          }}
+        />
       )}
     </div>
   );

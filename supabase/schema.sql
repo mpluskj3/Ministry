@@ -50,6 +50,9 @@ CREATE TABLE IF NOT EXISTS public.publishers (
     is_active BOOLEAN DEFAULT true,
     deactivated_reason TEXT,
     deactivated_at TIMESTAMPTZ,
+    transfer_date DATE,
+    transfer_month VARCHAR(10),
+    prev_congregation VARCHAR(100),
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
     CONSTRAINT unique_publisher_name UNIQUE (name)
@@ -80,6 +83,9 @@ CREATE TABLE IF NOT EXISTS public.monthly_reports (
     hours NUMERIC(5, 1) DEFAULT 0,
     bible_studies INT DEFAULT 0,
     remarks JSONB DEFAULT '[]'::JSONB, -- [{ "type": "원격봉사", "hours": "5", "etc": "" }]
+    pioneer_status VARCHAR(30) DEFAULT '일반',
+    is_transferred BOOLEAN DEFAULT false,
+    transferred_from VARCHAR(100),
     submitted_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
     CONSTRAINT unique_publisher_monthly_report UNIQUE (service_year_id, publisher_id, month)

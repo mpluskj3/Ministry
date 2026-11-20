@@ -23,6 +23,7 @@ import {
   Info
 } from 'lucide-react';
 import { EmergencyContact, Group, Publisher, ServiceYear, Position, Gender, Hope, isChildStatus, Manager, isInactivePublisher, isTransferredPublisher } from '../types/database';
+import { DateInput } from './DateInput';
 import {
   getEmergencyContacts,
   getPublishers,
@@ -1593,11 +1594,10 @@ export const EmergencyContacts: React.FC<EmergencyContactsProps> = ({ currentYea
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
                   <div className="form-group" style={{ margin: 0, minWidth: 0 }}>
                     <label className="form-label" style={{ whiteSpace: 'nowrap' }}>생년월일</label>
-                    <input
-                      type="date"
-                      className="form-input"
+                    <DateInput
                       value={editingContact.birth_date || ''}
-                      onChange={e => setEditingContact({ ...editingContact, birth_date: e.target.value })}
+                      onChange={val => setEditingContact({ ...editingContact, birth_date: val })}
+                      placeholder="예: 19921204"
                     />
                   </div>
 
@@ -1605,11 +1605,10 @@ export const EmergencyContacts: React.FC<EmergencyContactsProps> = ({ currentYea
                     <label className="form-label" style={{ whiteSpace: 'nowrap' }}>
                       침례일자 <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 'normal' }}>(선택)</span>
                     </label>
-                    <input
-                      type="date"
-                      className="form-input"
+                    <DateInput
                       value={editingContact.baptism_date || ''}
-                      onChange={e => setEditingContact({ ...editingContact, baptism_date: e.target.value })}
+                      onChange={val => setEditingContact({ ...editingContact, baptism_date: val })}
+                      placeholder="예: 20100615"
                     />
                   </div>
                 </div>
