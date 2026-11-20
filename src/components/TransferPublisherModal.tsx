@@ -27,7 +27,7 @@ import {
   PioneerStatus
 } from '../types/database';
 import { parseS21Pdf, ParsedS21CardData } from '../services/pdfService';
-import { saveTransferredPublisher, MONTH_ORDER, getServiceYears } from '../services/ministryService';
+import { saveTransferredPublisher, MONTH_ORDER, getServiceYears, getYearlyPublisherRecord } from '../services/ministryService';
 import { DateInput } from './DateInput';
 
 interface TransferPublisherModalProps {
@@ -137,7 +137,7 @@ export const TransferPublisherModal: React.FC<TransferPublisherModalProps> = ({
   const prevFileInputRef = useRef<HTMLInputElement>(null);
 
   // 기존 등록된 전도인 데이터 자동 대입 함수
-  const applyExistingPublisher = (pub: Publisher) => {
+  const applyExistingPublisher = async (pub: Publisher) => {
     setSelectedExistingPublisherId(pub.id);
     setName(pub.name);
     if (pub.group_id) setSelectedGroupId(pub.group_id);
@@ -160,7 +160,32 @@ export const TransferPublisherModal: React.FC<TransferPublisherModalProps> = ({
     if (pub.transfer_month) setTransferMonth(pub.transfer_month);
     if (pub.prev_congregation) setPrevCongregationName(pub.prev_congregation);
 
-    setAutoLoadedMsg(`✓ 기존 등록된 '${pub.name}' 전도인의 인적사항을 불러왔습니다.`);
+    // 기존 등록된 봉사 보고서 데이터도 함께 불러와 테이블에 대입 (수정/확인 가능)
+    try {
+      const yearlyRecord = await getYearlyPublisherRecord(currentYear.id, pub.id);
+      if (yearlyRecord && yearlyRecord.monthlyRecords) {
+        setMonthlyRecords(prev =>
+          prev.map(r => {
+            const matched = yearlyRecord.monthlyRecords.find(m => m.month === r.month);
+            if (matched) {
+              return {
+                month: r.month,
+                participated: matched.participated,
+                hours: matched.hours,
+                bibleStudies: matched.bibleStudies,
+                isAuxiliaryPioneer: matched.division === 'AP' || matched.division === '보조 파이오니아',
+                remarks: matched.remarks || '',
+              };
+            }
+            return r;
+          })
+        );
+      }
+    } catch (err) {
+      console.warn('기존 보고서 로드 실패:', err);
+    }
+
+    setAutoLoadedMsg(`✓ 기존 등록된 '${pub.name}' 전도인의 인적사항 및 봉사기록을 불러왔습니다.`);
   };
 
   // 성명 입력 시 기존 전도인 명단에서 자동 조회 및 대입
@@ -229,7 +254,16 @@ export const TransferPublisherModal: React.FC<TransferPublisherModalProps> = ({
         const buffer = await selected.arrayBuffer();
         const parsed = await parseS21Pdf(new Uint8Array(buffer));
 
-        if (parsed.name) setName(parsed.name);
+        const detectedName = parsed.name || selected.name.replace(/_?S-21.*$/i, '').replace(/[\d_\-().\s]/g, '').trim();
+        if (detectedName) {
+          setName(detectedName);
+          // 기존 전도인 명단에 있으면 자동 매칭
+          const matched = publishers.find(p => p.name === detectedName);
+          if (matched) {
+            setSelectedExistingPublisherId(matched.id);
+            if (matched.group_id) setSelectedGroupId(matched.group_id);
+          }
+        }
         if (parsed.birthDate) setBirthDate(parsed.birthDate);
         if (parsed.baptismDate) setBaptismDate(parsed.baptismDate);
         if (parsed.gender) setGender(parsed.gender);
@@ -240,7 +274,7 @@ export const TransferPublisherModal: React.FC<TransferPublisherModalProps> = ({
         if (parsed.monthlyRecords && parsed.monthlyRecords.length > 0) {
           setMonthlyRecords(parsed.monthlyRecords);
           const hasRecordMonths = parsed.monthlyRecords.filter(r => r.participated || r.hours > 0);
-          setParseMessage(`✓ PDF 카드에서 ${parsed.name || '전도인'}의 인적사항 및 ${hasRecordMonths.length}개월 봉사 보고 기록을 성공적으로 추출했습니다!`);
+          setParseMessage(`✓ S-21 카드에서 ${detectedName || '전도인'}의 인적사항 및 ${hasRecordMonths.length}개월 봉사 기록을 성공적으로 추출했습니다!`);
         } else {
           setParseMessage(`✓ 인적사항을 추출했습니다.`);
         }

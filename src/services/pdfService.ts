@@ -303,8 +303,141 @@ export interface ParsedS21CardData {
   }>;
 }
 
+function decodePdfFormString(obj: any): string {
+  if (!obj) return '';
+  let str = '';
+  if (typeof obj.value === 'string') str = obj.value;
+  else if (typeof obj.asString === 'function') str = obj.asString();
+  else str = obj.toString();
+
+  // UTF-16BE BOM 체크 (þÿ 또는 \xfe\xff)
+  if (str.startsWith('\xfe\xff') || str.startsWith('þÿ') || str.charCodeAt(0) === 0xfeff) {
+    try {
+      let decoded = '';
+      // 2바이트씩 유니코드 변환
+      const startIdx = (str.startsWith('\xfe\xff') || str.startsWith('þÿ')) ? 2 : 1;
+      for (let i = startIdx; i < str.length - 1; i += 2) {
+        const code = (str.charCodeAt(i) << 8) | str.charCodeAt(i + 1);
+        if (code !== 0) decoded += String.fromCharCode(code);
+      }
+      if (decoded.trim()) return decoded.trim();
+    } catch {
+      // fallback
+    }
+  }
+  return str.replace(/^\uFEFF/, '').trim();
+}
+
 export async function parseS21Pdf(pdfBytes: Uint8Array): Promise<ParsedS21CardData> {
   const pdfDoc = await PDFDocument.load(pdfBytes);
+
+  // 날짜 문자열 YYYY-MM-DD 정규화
+  const normalizeDate = (raw: string): string => {
+    if (!raw) return '';
+    const m = raw.match(/(\d{4})\D*(\d{1,2})\D*(\d{1,2})/);
+    if (m) {
+      return `${m[1]}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}`;
+    }
+    return raw;
+  };
+
+  // 1. 페이지의 Annots(주석 위젯)에서 공식 S-21 필드 파싱 시도
+  let parsedFromAnnots: ParsedS21CardData | null = null;
+  try {
+    const page = pdfDoc.getPage(0);
+    const annots = page.node.Annots();
+    if (annots && annots.size() > 0) {
+      const count = annots.size();
+      const fields: Record<string, { v: string; as: string; tu: string }> = {};
+
+      for (let i = 0; i < count; i++) {
+        const annot: any = annots.lookup(i);
+        if (!annot || !annot.dict) continue;
+
+        let t = '';
+        let tu = '';
+        let v = '';
+        let as = '';
+
+        for (const [keyName, valObj] of annot.dict.entries()) {
+          const k = String(keyName.encodedName || keyName.value || keyName);
+          if (k === '/T' || k === 'T') t = decodePdfFormString(valObj);
+          else if (k === '/TU' || k === 'TU') tu = decodePdfFormString(valObj);
+          else if (k === '/V' || k === 'V') v = decodePdfFormString(valObj);
+          else if (k === '/AS' || k === 'AS') as = decodePdfFormString(valObj);
+        }
+        if (t) {
+          fields[t] = { v, as, tu };
+        }
+      }
+
+      // 인적사항 추출
+      const name = fields['900_1_Text_SanSerif']?.v || fields['성명']?.v || '';
+      const birthDate = normalizeDate(fields['900_2_Text_SanSerif']?.v || fields['생년월일']?.v || '');
+      const isFemale = fields['900_4_CheckBox']?.as === '/Yes' || fields['여']?.as === '/Yes';
+      const gender: '남' | '여' = isFemale ? '여' : '남';
+      const baptismDate = normalizeDate(fields['900_5_Text_SanSerif']?.v || fields['침례 일자']?.v || fields['침례일자']?.v || '');
+      const isOtherSheep = fields['900_6_CheckBox']?.as === '/Yes' || fields['다른 양']?.as === '/Yes';
+      const hope: '다른 양' | '기름부음받은 자' = isOtherSheep ? '다른 양' : '기름부음받은 자';
+
+      let position: '장로' | '봉사의 종' | '일반' = '일반';
+      if (fields['900_8_CheckBox']?.as === '/Yes' || fields['장로']?.as === '/Yes') position = '장로';
+      else if (fields['900_9_CheckBox']?.as === '/Yes' || fields['봉사의 종']?.as === '/Yes') position = '봉사의 종';
+
+      let pioneerStatus: '일반' | 'RP' | 'SP' | 'FM' = '일반';
+      if (fields['900_10_CheckBox']?.as === '/Yes' || fields['정규 파이오니아']?.as === '/Yes') pioneerStatus = 'RP';
+      else if (fields['900_11_CheckBox']?.as === '/Yes' || fields['특별 파이오니아']?.as === '/Yes') pioneerStatus = 'SP';
+      else if (fields['900_12_CheckBox']?.as === '/Yes' || fields['야외 선교인']?.as === '/Yes') pioneerStatus = 'FM';
+
+      const serviceYearName = fields['900_13_Text_C_SanSerif']?.v || fields['봉사 연도']?.v || '';
+
+      // 12개월 실적 매핑 (index 20: 9월 ~ index 31: 8월)
+      const monthlyRecords = SERVICE_MONTHS.map((m, idx) => {
+        const rowIdx = 20 + idx;
+        const partField = fields[`901_${rowIdx}_CheckBox`] || fields[`${m} 봉사에 참여했음`];
+        const participated = partField?.as === '/Yes' || partField?.v === '/Yes' || partField?.v === '/0';
+        const studiesStr = fields[`902_${rowIdx}_Text_C_SanSerif`]?.v || fields[`${m} 성서 연구`]?.v || fields[`${m} 성서연구`]?.v || '';
+        const apField = fields[`903_${rowIdx}_CheckBox`] || fields[`${m} 보조 파이오니아`] || fields[`${m} 보조파이오니아`];
+        const isAuxiliaryPioneer = apField?.as === '/Yes' || apField?.v === '/Yes';
+        const hoursStr = fields[`904_${rowIdx}_S21_Value`]?.v || fields[`${m} 시간`]?.v || '';
+        const remarks = fields[`905_${rowIdx}_Text_SanSerif`]?.v || fields[`${m} 비고`]?.v || '';
+
+        const hours = parseFloat(hoursStr.replace(/[^0-9.]/g, '')) || 0;
+        const bibleStudies = parseInt(studiesStr.replace(/[^0-9]/g, ''), 10) || 0;
+
+        return {
+          month: m,
+          participated: participated || hours > 0,
+          bibleStudies,
+          hours,
+          isAuxiliaryPioneer,
+          remarks,
+        };
+      });
+
+      if (name || birthDate || baptismDate || monthlyRecords.some(r => r.participated || r.hours > 0)) {
+        parsedFromAnnots = {
+          name,
+          birthDate,
+          baptismDate,
+          gender,
+          hope,
+          position,
+          pioneerStatus,
+          serviceYearName,
+          monthlyRecords,
+        };
+      }
+    }
+  } catch (err) {
+    console.warn('Annots 파싱 중 예외 발생:', err);
+  }
+
+  if (parsedFromAnnots) {
+    return parsedFromAnnots;
+  }
+
+  // 2. Fallback: pdfDoc.getForm() 폼 필드 조회
   const form = pdfDoc.getForm();
 
   const getTextField = (name: string): string => {
@@ -325,23 +458,11 @@ export async function parseS21Pdf(pdfBytes: Uint8Array): Promise<ParsedS21CardDa
     }
   };
 
-  // 날짜 문자열 YYYY-MM-DD 정규화
-  const normalizeDate = (raw: string): string => {
-    if (!raw) return '';
-    const m = raw.match(/(\d{4})\D*(\d{1,2})\D*(\d{1,2})/);
-    if (m) {
-      return `${m[1]}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}`;
-    }
-    return raw;
-  };
-
-  // 기본 인적사항
   const name = getTextField('성명');
   const birthDate = normalizeDate(getTextField('생년월일'));
   const baptismDate = normalizeDate(getTextField('침례 일자') || getTextField('침례일자'));
   const serviceYearName = getTextField('봉사 연도') || getTextField('봉사연도');
 
-  // 체크박스 확인
   const isFemale = getCheckBox('여');
   const gender: '남' | '여' = isFemale ? '여' : '남';
 
@@ -357,7 +478,6 @@ export async function parseS21Pdf(pdfBytes: Uint8Array): Promise<ParsedS21CardDa
   else if (getCheckBox('특별 파이오니아')) pioneerStatus = 'SP';
   else if (getCheckBox('야외 선교인')) pioneerStatus = 'FM';
 
-  // 12개월 월별 데이터 파싱
   const monthlyRecords = SERVICE_MONTHS.map(month => {
     const participated = getCheckBox(`${month} 봉사에 참여했음`);
     const hoursStr = getTextField(`${month} 시간`);
