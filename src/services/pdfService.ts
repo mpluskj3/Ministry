@@ -99,36 +99,25 @@ export async function generatePublisherCardPdf(
   yearlyData.monthlyRecords.forEach((record, index) => {
     const mName = SERVICE_MONTHS[index]; // '9월', '10월', ...
 
-    // 봉사에 참여했음 체크박스 (정확한 PDF 필드명 매핑)
-    if (record.participated) {
-      setCheckSafe(`${mName} 봉사에 참여했음`, true);
-    }
+    // 봉사에 참여했음 체크박스 (참여하지 않은 경우 명시적 언체크)
+    setCheckSafe(`${mName} 봉사에 참여했음`, !!record.participated);
 
-    // 성서연구 수
-    if (record.bibleStudies > 0) {
-      setTextFieldSafe(`${mName} 성서 연구`, String(record.bibleStudies));
-    }
+    // 성서연구 수 (0이면 빈 칸)
+    setTextFieldSafe(`${mName} 성서 연구`, record.bibleStudies > 0 ? String(record.bibleStudies) : '');
 
-    // 봉사 시간
-    if (record.hours > 0) {
-      setTextFieldSafe(`${mName} 시간`, String(record.hours));
-    }
+    // 봉사 시간 (0이면 빈 칸으로 명시적 초기화하여 템플릿 기본값 방지)
+    setTextFieldSafe(`${mName} 시간`, record.hours > 0 ? String(record.hours) : '');
 
     // 보조 파이오니아
-    if (record.division === 'AP' || record.division === '보조 파이오니아' || record.remarks?.includes('보조')) {
-      setCheckSafe(`${mName} 보조 파이오니아`, true);
-    }
+    const isAp = record.division === 'AP' || record.division === '보조 파이오니아' || !!record.remarks?.includes('보조');
+    setCheckSafe(`${mName} 보조 파이오니아`, isAp);
 
     // 비고
-    if (record.remarks) {
-      setTextFieldSafe(`${mName} 비고`, record.remarks, 9);
-    }
+    setTextFieldSafe(`${mName} 비고`, record.remarks || '', 9);
   });
 
   // 4. 합계 및 비고 합계
-  if (yearlyData.totals.totalHours > 0) {
-    setTextFieldSafe('총계 시간', String(yearlyData.totals.totalHours));
-  }
+  setTextFieldSafe('총계 시간', yearlyData.totals.totalHours > 0 ? String(yearlyData.totals.totalHours) : '');
 
   // 비고 열 시간(?시간) 합계
   const totalRemarkHours = yearlyData.monthlyRecords.reduce((acc, m) => {
@@ -143,9 +132,7 @@ export async function generatePublisherCardPdf(
     return acc;
   }, 0);
 
-  if (totalRemarkHours > 0) {
-    setTextFieldSafe('총계 비고', `${totalRemarkHours}시간`);
-  }
+  setTextFieldSafe('총계 비고', totalRemarkHours > 0 ? `${totalRemarkHours}시간` : '');
 
   // 폼 필드 플래트닝 (인쇄 및 저장 최적화)
   try {
