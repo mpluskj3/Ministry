@@ -919,25 +919,27 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
               <FileSpreadsheet size={15} />
               <span>시트 명단 가져오기</span>
             </button>
-            <button
-              onClick={() => setTransferModalOpen(true)}
-              className="btn-secondary"
-              style={{
-                gap: 6,
-                padding: '8px 14px',
-                fontSize: '0.84rem',
-                whiteSpace: 'nowrap',
-                flexShrink: 0,
-                justifyContent: 'center',
-                borderColor: 'var(--primary)',
-                color: 'var(--primary)',
-                background: 'rgba(59, 130, 246, 0.05)',
-              }}
-              title="이전 회중의 전도인 기록 카드(S-21) PDF 또는 사진을 등록하여 과거 봉사 보고 및 전도인을 자동 등록합니다."
-            >
-              <Building2 size={15} />
-              <span>전입 카드(S-21) 등록</span>
-            </button>
+            {canManageAll && (
+              <button
+                onClick={() => setTransferModalOpen(true)}
+                className="btn-secondary"
+                style={{
+                  gap: 6,
+                  padding: '8px 14px',
+                  fontSize: '0.84rem',
+                  whiteSpace: 'nowrap',
+                  flexShrink: 0,
+                  justifyContent: 'center',
+                  borderColor: 'var(--primary)',
+                  color: 'var(--primary)',
+                  background: 'rgba(59, 130, 246, 0.05)',
+                }}
+                title="이전 회중의 전도인 기록 카드(S-21) PDF 또는 사진을 등록하여 과거 봉사 보고 및 전도인을 자동 등록합니다."
+              >
+                <Building2 size={15} />
+                <span>전입 카드(S-21) 등록</span>
+              </button>
+            )}
             <button
               onClick={() => handleOpenAdd(false)}
               className="btn-primary"
@@ -2405,8 +2407,8 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
         </div>
       )}
 
-      {/* 전입 전도인 등록 & S-21 카드 가져오기 모달 */}
-      {transferModalOpen && (
+      {/* 전입 전도인 등록 & S-21 카드 가져오기 모달 (최고관리자, 회중관리자 전용) */}
+      {transferModalOpen && canManageAll && (
         <TransferPublisherModal
           currentYear={currentYear}
           groups={groups}
