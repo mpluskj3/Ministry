@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import {
   Group,
+  Publisher,
   ServiceYear,
   ServiceMonth,
   SERVICE_MONTHS,
@@ -32,6 +33,7 @@ import { DateInput } from './DateInput';
 interface TransferPublisherModalProps {
   currentYear: ServiceYear;
   groups: Group[];
+  publishers?: Publisher[];
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
@@ -40,11 +42,16 @@ interface TransferPublisherModalProps {
 export const TransferPublisherModal: React.FC<TransferPublisherModalProps> = ({
   currentYear,
   groups,
+  publishers = [],
   isOpen,
   onClose,
   onSuccess,
 }) => {
   if (!isOpen) return null;
+
+  // 0. 기존 전도인 선택 및 자동 대입 상태
+  const [selectedExistingPublisherId, setSelectedExistingPublisherId] = useState<string>('');
+  const [autoLoadedMsg, setAutoLoadedMsg] = useState<string>('');
 
   // 1. 파일 상태 및 미리보기 (당해 연도)
   const [file, setFile] = useState<File | null>(null);
@@ -128,6 +135,64 @@ export const TransferPublisherModal: React.FC<TransferPublisherModalProps> = ({
   const [saving, setSaving] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const prevFileInputRef = useRef<HTMLInputElement>(null);
+
+  // 기존 등록된 전도인 데이터 자동 대입 함수
+  const applyExistingPublisher = (pub: Publisher) => {
+    setSelectedExistingPublisherId(pub.id);
+    setName(pub.name);
+    if (pub.group_id) setSelectedGroupId(pub.group_id);
+    if (pub.gender) setGender(pub.gender);
+    if (pub.birth_date) setBirthDate(pub.birth_date);
+    if (pub.baptism_date) setBaptismDate(pub.baptism_date);
+    if (pub.hope) setHope(pub.hope);
+    if (pub.position) setPosition(pub.position);
+    if (pub.pioneer_status) {
+      const pStatus = pub.pioneer_status === 'RP' ? 'RP' : (pub.pioneer_status === 'SP' ? 'SP' : (pub.pioneer_status === 'FM' ? 'FM' : '일반'));
+      setPioneerStatus(pStatus as PioneerStatus);
+    }
+    if (pub.phone) setPhone(pub.phone);
+    if (pub.emergency_phone) setEmergencyPhone(pub.emergency_phone);
+    if (pub.relationship) setRelationship(pub.relationship);
+    if (pub.address) setAddress(pub.address);
+    if (pub.family_head) setFamilyHead(pub.family_head);
+    if (pub.special_notes) setSpecialNotes(pub.special_notes);
+    if (pub.transfer_date) setTransferDate(pub.transfer_date);
+    if (pub.transfer_month) setTransferMonth(pub.transfer_month);
+    if (pub.prev_congregation) setPrevCongregationName(pub.prev_congregation);
+
+    setAutoLoadedMsg(`✓ 기존 등록된 '${pub.name}' 전도인의 인적사항을 불러왔습니다.`);
+  };
+
+  // 성명 입력 시 기존 전도인 명단에서 자동 조회 및 대입
+  const handleNameChange = (inputVal: string) => {
+    setName(inputVal);
+    const clean = inputVal.trim();
+    if (!clean) {
+      setSelectedExistingPublisherId('');
+      setAutoLoadedMsg('');
+      return;
+    }
+    const matched = publishers.find(p => p.name === clean);
+    if (matched) {
+      applyExistingPublisher(matched);
+    } else {
+      setSelectedExistingPublisherId('');
+      setAutoLoadedMsg('');
+    }
+  };
+
+  // 기존 전도인 드롭다운 선택 핸들러
+  const handleExistingSelect = (pubId: string) => {
+    if (!pubId) {
+      setSelectedExistingPublisherId('');
+      setAutoLoadedMsg('');
+      return;
+    }
+    const matched = publishers.find(p => p.id === pubId);
+    if (matched) {
+      applyExistingPublisher(matched);
+    }
+  };
 
   // 전체 봉사연도 목록 로드
   useEffect(() => {
@@ -284,6 +349,7 @@ export const TransferPublisherModal: React.FC<TransferPublisherModalProps> = ({
     setSaving(true);
     try {
       const res = await saveTransferredPublisher({
+        publisherId: selectedExistingPublisherId || undefined,
         serviceYearId: currentYear.id,
         name: name.trim(),
         groupId: selectedGroupId,
@@ -309,13 +375,12 @@ export const TransferPublisherModal: React.FC<TransferPublisherModalProps> = ({
 
       const prevYearName = availableYears.find(y => y.id === selectedPrevYearId)?.year_name;
       alert(
-        `🎉 [전입 등록 완료]\n\n` +
+        `전입 등록이 완료되었습니다.\n\n` +
         `• 전도인: ${res.publisher.name}\n` +
         `• 배정 집단: ${groups.find(g => g.id === selectedGroupId)?.name || '미배정'}\n` +
-        `• 전입 일자: ${transferDate.trim() || todayStr}\n` +
-        `• 저장된 과거 보고서: 총 ${res.savedCount}건 ${includePrevYear ? `(전년도 ${prevYearName || ''} 포함)` : ''}\n\n` +
-        `💡 ${transferMonth} 이전의 보고서는 '전입 전 타회중 실적'으로 등록되어, 이미 마감된 우리 회중의 월별 집계 데이터는 절대 변경되지 않고 온전히 보존됩니다.\n` +
-        `💡 전입 후 첫 보고인 ${transferMonth} 봉사보고 제출 시 비고란에 전입 정보가 자동으로 반영됩니다.`
+        `• 전입 월: ${transferMonth} (전입일자: ${transferDate.trim() || todayStr})\n` +
+        (prevCongregationName.trim() ? `• 이전 회중: ${prevCongregationName.trim()}\n` : '') +
+        `• 저장된 보고서: 총 ${res.savedCount}건 ${includePrevYear ? `(전년도 ${prevYearName || ''} 포함)` : ''}`
       );
 
       onSuccess();
@@ -391,6 +456,11 @@ export const TransferPublisherModal: React.FC<TransferPublisherModalProps> = ({
         {/* 모달 본문 */}
         <form
           onSubmit={handleSave}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+            }
+          }}
           style={{
             flex: 1,
             overflowY: 'auto',
@@ -549,7 +619,7 @@ export const TransferPublisherModal: React.FC<TransferPublisherModalProps> = ({
             </div>
           )}
 
-          {/* 2. 전입 설정 및 마감 보존 배너 */}
+          {/* 2. 전입 설정 */}
           <div
             style={{
               padding: '14px 16px',
@@ -563,8 +633,8 @@ export const TransferPublisherModal: React.FC<TransferPublisherModalProps> = ({
           >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--primary)', fontWeight: 700, fontSize: '0.88rem' }}>
-                <Info size={16} />
-                <span>전입 일자 및 마감 데이터 완벽 보존 설정</span>
+                <Building2 size={16} />
+                <span>전입 설정</span>
               </div>
 
               {/* 전년도 실적 추가 토글 체크박스 */}
@@ -595,10 +665,10 @@ export const TransferPublisherModal: React.FC<TransferPublisherModalProps> = ({
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10 }}>
-              {/* 전입 일자 (자동 비고 반영의 핵심) */}
+              {/* 전입 일자 */}
               <div className="form-group" style={{ margin: 0 }}>
-                <label className="form-label" style={{ fontWeight: 700, color: 'var(--primary)' }}>
-                  전입 일자 <span style={{ fontSize: '0.7rem', fontWeight: 'normal', color: 'var(--text-muted)' }}>(첫 보고 비고 자동 반영)</span>
+                <label className="form-label" style={{ fontWeight: 700 }}>
+                  전입 일자 <span style={{ color: 'var(--primary)' }}>*</span>
                 </label>
                 <DateInput
                   value={transferDate}
@@ -607,9 +677,10 @@ export const TransferPublisherModal: React.FC<TransferPublisherModalProps> = ({
                 />
               </div>
 
+              {/* 전입 월 */}
               <div className="form-group" style={{ margin: 0 }}>
                 <label className="form-label" style={{ fontWeight: 700 }}>
-                  우리 회중 전입 월 <span style={{ color: 'var(--primary)' }}>*</span>
+                  전입 월 <span style={{ color: 'var(--primary)' }}>*</span>
                 </label>
                 <select
                   className="form-select"
@@ -619,7 +690,7 @@ export const TransferPublisherModal: React.FC<TransferPublisherModalProps> = ({
                 >
                   {SERVICE_MONTHS.map(m => (
                     <option key={m} value={m}>
-                      {m} (우리 회중 첫 보고 대상 월)
+                      {m}
                     </option>
                   ))}
                 </select>
@@ -633,6 +704,7 @@ export const TransferPublisherModal: React.FC<TransferPublisherModalProps> = ({
                   placeholder="예: 서울서초 회중"
                   value={prevCongregationName}
                   onChange={e => setPrevCongregationName(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') e.preventDefault(); }}
                 />
               </div>
 
@@ -675,29 +747,70 @@ export const TransferPublisherModal: React.FC<TransferPublisherModalProps> = ({
                 </div>
               )}
             </div>
-
-            <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', lineHeight: 1.5, background: 'rgba(255,255,255,0.6)', padding: '8px 10px', borderRadius: 4 }}>
-              📌 <strong>자동 비고 및 마감 보존 작동 방식:</strong><br />
-              1. <strong>첫 보고 비고 자동 반영</strong>: 전도인 또는 관리자가 <strong>{transferMonth}</strong> 봉사보고를 작성할 때, 비고란에 <code>"{transferDate} 전입{prevCongregationName ? ` (${prevCongregationName}에서 전입)` : ''}"</code> 문구가 <strong>자동으로 입력</strong>되어 관리자에게 안내됩니다.<br />
-              2. <strong>마감 데이터 보존</strong>: <strong>{transferMonth} 이전의 월</strong>은 '타회중 전입자료'로 격리 등록되어 <strong>이미 마감된 우리 회중의 월별 집계(KPI/평균시간/인원수)가 절대 바뀌지 않습니다.</strong>
-            </div>
           </div>
 
           {/* 3. 기본 인적사항 섹션 */}
           <div style={{ border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', padding: '14px 16px' }}>
-            <div style={{ fontSize: '0.86rem', fontWeight: 700, marginBottom: 12, color: 'var(--text-main)' }}>
-              1. 전도인 기본 인적사항
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
+              <div style={{ fontSize: '0.86rem', fontWeight: 700, color: 'var(--text-main)' }}>
+                1. 전도인 기본 인적사항
+              </div>
+
+              {/* 기존 등록 전도인 자동 불러오기 선택 드롭다운 */}
+              {publishers && publishers.length > 0 && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ fontSize: '0.76rem', color: 'var(--text-muted)' }}>이미 등록된 전도인:</span>
+                  <select
+                    className="form-select"
+                    style={{ padding: '3px 8px', fontSize: '0.78rem', minWidth: 170, borderColor: selectedExistingPublisherId ? 'var(--primary)' : undefined }}
+                    value={selectedExistingPublisherId}
+                    onChange={e => handleExistingSelect(e.target.value)}
+                  >
+                    <option value="">-- 기존 전도인 선택 불러오기 --</option>
+                    {publishers.map(p => (
+                      <option key={p.id} value={p.id}>
+                        {p.name} ({p.group_name || '미배정'})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
+
+            {/* 자동 대입 안내 배너 */}
+            {autoLoadedMsg && (
+              <div
+                style={{
+                  marginBottom: 10,
+                  padding: '6px 10px',
+                  borderRadius: 4,
+                  fontSize: '0.78rem',
+                  fontWeight: 600,
+                  background: 'rgba(16, 185, 129, 0.1)',
+                  color: '#059669',
+                  border: '1px solid rgba(16, 185, 129, 0.25)',
+                }}
+              >
+                {autoLoadedMsg}
+              </div>
+            )}
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10, marginBottom: 10 }}>
               <div className="form-group" style={{ margin: 0 }}>
-                <label className="form-label">성명 *</label>
+                <label className="form-label">
+                  성명 <span style={{ color: 'var(--primary)' }}>*</span>
+                </label>
                 <input
                   type="text"
                   className="form-input"
                   placeholder="홍길동"
                   value={name}
-                  onChange={e => setName(e.target.value)}
+                  onChange={e => handleNameChange(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                    }
+                  }}
                   required
                 />
               </div>
