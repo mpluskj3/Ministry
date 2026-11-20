@@ -1918,23 +1918,10 @@ export async function saveTransferredPublisher(
     const isRp = params.pioneerStatus === 'RP';
     const status = isRp ? 'RP' : (rec.isAuxiliaryPioneer && hasHours ? 'AP' : '일반');
 
+    // 파일에 있는 비고 그대로 저장 (시간이나 시스템 메모를 인위적으로 덧붙이지 않음)
     const remarksList: Array<{ type: string; hours: string; etc?: string }> = [];
     if (rec.remarks && rec.remarks.trim()) {
-      remarksList.push({ type: rec.remarks.trim(), hours: String(rec.hours || 0) });
-    }
-    if (isTransferredMonth) {
-      remarksList.push({
-        type: '타회중 전입자료',
-        hours: String(rec.hours || 0),
-        etc: params.prevCongregationName ? `이전: ${params.prevCongregationName}` : '전입 전 실적'
-      });
-    } else if (isFirstOurMonth) {
-      // 전입 후 첫 보고 월인 경우 전입 정보 자동 기재
-      remarksList.push({
-        type: '기타',
-        hours: '0',
-        etc: `${transferDateStr} 전입 (${params.prevCongregationName || '타회중'}에서 전입)`
-      });
+      remarksList.push({ type: rec.remarks.trim(), hours: '' });
     }
 
     return {
@@ -1964,15 +1951,11 @@ export async function saveTransferredPublisher(
       const isRp = params.pioneerStatus === 'RP';
       const status = isRp ? 'RP' : (pRec.isAuxiliaryPioneer && hasH ? 'AP' : '일반');
 
+      // 전년도 역시 파일에 있는 비고 그대로 저장
       const pRemarksList: Array<{ type: string; hours: string; etc?: string }> = [];
       if (pRec.remarks && pRec.remarks.trim()) {
-        pRemarksList.push({ type: pRec.remarks.trim(), hours: String(pRec.hours || 0) });
+        pRemarksList.push({ type: pRec.remarks.trim(), hours: '' });
       }
-      pRemarksList.push({
-        type: '타회중 전입자료(전년도)',
-        hours: String(pRec.hours || 0),
-        etc: params.prevCongregationName ? `전년도 (${params.prevCongregationName})` : '전년도 타회중 실적'
-      });
 
       newReports.push({
         id: `rep-trans-prev-${Date.now()}-${pIdx}`,
@@ -2165,13 +2148,18 @@ export async function getYearlyPublisherRecord(serviceYearId: string, publisherI
 
     const remarksStr = (rep?.remarks || [])
       .map(rm => {
-        if (!rm || !rm.type) return '';
-        const val = String(rm.hours || '').trim();
-        if (!val) return rm.type;
-        if (!isNaN(Number(val)) && Number(val) > 0) {
-          return `${rm.type}: ${val}시간`;
+        if (!rm) return '';
+        const rawType = typeof rm === 'string' ? rm : (rm.type || '');
+        const typeStr = rawType.trim();
+        if (!typeStr) return '';
+        // 타회중 전입자료 등 불필요한 시스템 메모 제외
+        if (typeStr.includes('타회중 전입자료') || typeStr.includes('전입자료') || typeStr.includes('전입 실적')) {
+          return '';
         }
-        return `${rm.type}: ${val}`;
+        // 사용자가 명시한 룰: 시간에 이미 기록되어 있으므로 비고에 시간을 붙이지 않고 파일에 있는 비고 그대로만 출력
+        // 과거 데이터에 ': 41시간' 또는 ': 41' 등이 붙어있더라도 순수 비고 내용만 복원
+        const cleaned = typeStr.replace(/:\s*\d+(\.\d+)?\s*시간?/g, '').trim();
+        return cleaned || typeStr;
       })
       .filter(Boolean)
       .join(', ');

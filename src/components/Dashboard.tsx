@@ -584,7 +584,11 @@ ${submitUrl}
       r.participated ? 'Y' : 'N',
       r.bible_studies || 0,
       r.hours || 0,
-      (r.remarks || []).map(rm => (!isNaN(Number(rm.hours)) && Number(rm.hours) > 0 ? `${rm.type}: ${rm.hours}시간` : `${rm.type}: ${rm.hours}`)).join(' '),
+      (r.remarks || [])
+        .filter(rm => rm && !rm.type?.includes('타회중 전입자료'))
+        .map(rm => (rm.type || '').replace(/:\s*\d+(\.\d+)?\s*시간?/g, '').trim())
+        .filter(Boolean)
+        .join(' '),
       r.pioneer_status === 'RP'
         ? 'RP'
         : (Number(r.hours || 0) > 0 ? 'AP' : (isChildStatus(r.pioneer_status) ? '자녀' : '전도인')),
@@ -2902,9 +2906,13 @@ ${submitUrl}
                           {r.hours > 0 ? r.hours : '-'}
                         </td>
 
-                        {/* 비고: 특기사항 및 인정시간 */}
+                        {/* 비고: 파일에 기록된 순수 특기사항 표시 */}
                         <td style={{ fontSize: '0.8rem', color: 'var(--text-muted)', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', textAlign: 'center' }}>
-                          {(r.remarks || []).map(rm => (!isNaN(Number(rm.hours)) && Number(rm.hours) > 0 ? `${rm.type}: ${rm.hours}시간` : `${rm.type}: ${rm.hours}`)).join(', ') || '-'}
+                          {(r.remarks || [])
+                            .filter(rm => rm && !rm.type?.includes('타회중 전입자료'))
+                            .map(rm => (rm.type || '').replace(/:\s*\d+(\.\d+)?\s*시간?/g, '').trim())
+                            .filter(Boolean)
+                            .join(', ') || '-'}
                         </td>
 
                         {/* 구분: RP가 아닌데 시간 보고가 되어 있다면 AP로 표시 */}
