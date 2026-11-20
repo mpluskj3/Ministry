@@ -1606,10 +1606,8 @@ export async function getMonthlyKpiStats(serviceYearId: string, month: ServiceMo
     ? reports.filter(r => r.group_name === targetGroup.name || (r.publisher_id && r.group_name?.includes(targetGroup.name)))
     : reports;
 
-  // 이미 마감된 월의 경우: 전입 전 타회중 보고서는 회중 마감 통계에서 제외하여 마감 데이터 완벽 보존
-  if (isClosed) {
-    filteredReports = filteredReports.filter(r => !r.is_transferred);
-  }
+  // 전입 전 타회중 보고서는 우리 회중 월별 통계 및 마감 데이터에서 제외 (우리 회중 실적만 집계)
+  filteredReports = filteredReports.filter(r => !r.is_transferred);
 
   let totalReporters = 0;
   let totalSubmitted = 0;
