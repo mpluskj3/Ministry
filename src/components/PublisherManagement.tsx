@@ -2405,6 +2405,7 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
         <TransferPublisherModal
           currentYear={currentYear}
           groups={groups}
+          publishers={allPublishers}
           isOpen={transferModalOpen}
           onClose={() => setTransferModalOpen(false)}
           onSuccess={() => {

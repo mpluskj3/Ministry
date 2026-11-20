@@ -1823,6 +1823,7 @@ export async function batchCloseUnreportedPublishers(
 // 7-2. 전입(이사) 전도인 등록 및 과거 전도인카드(S-21) 데이터 일괄 저장
 // -------------------------------------------------------------
 export interface SaveTransferredPublisherParams {
+  publisherId?: string; // 기존 등록된 전도인 ID (선택)
   serviceYearId: string;
   name: string;
   groupId: string;
@@ -1876,6 +1877,7 @@ export async function saveTransferredPublisher(
     : (rawNotes ? `${rawNotes.trim()} ${transferInfoTag}` : transferInfoTag);
 
   const publisher = await savePublisher({
+    id: params.publisherId,
     name: params.name.trim(),
     group_id: params.groupId,
     gender: params.gender,
