@@ -1,7 +1,7 @@
 import { PDFDocument } from 'pdf-lib';
 import fontkit from '@pdf-lib/fontkit';
 import JSZip from 'jszip';
-import { YearlyPublisherRecord, SERVICE_MONTHS } from '../types/database';
+import { YearlyPublisherRecord, SERVICE_MONTHS, ServiceMonth } from '../types/database';
 
 let cachedTemplate: Uint8Array | null = null;
 let cachedFontBytes: Uint8Array | null = null;
@@ -282,6 +282,116 @@ export async function generateIndividualPublisherCardsZip(
 }
 
 /**
+ * S-21 PDF 파일에서 전도인 정보 및 12개월 봉사 보고 기록을 추출하는 파서
+ */
+export interface ParsedS21CardData {
+  name: string;
+  birthDate: string;
+  baptismDate: string;
+  gender: '남' | '여';
+  hope: '다른 양' | '기름부음받은 자';
+  position: '장로' | '봉사의 종' | '일반';
+  pioneerStatus: '일반' | 'RP' | 'SP' | 'FM';
+  serviceYearName?: string;
+  monthlyRecords: Array<{
+    month: ServiceMonth;
+    participated: boolean;
+    bibleStudies: number;
+    hours: number;
+    isAuxiliaryPioneer: boolean;
+    remarks: string;
+  }>;
+}
+
+export async function parseS21Pdf(pdfBytes: Uint8Array): Promise<ParsedS21CardData> {
+  const pdfDoc = await PDFDocument.load(pdfBytes);
+  const form = pdfDoc.getForm();
+
+  const getTextField = (name: string): string => {
+    try {
+      const field = form.getTextField(name);
+      return (field.getText() || '').trim();
+    } catch {
+      return '';
+    }
+  };
+
+  const getCheckBox = (name: string): boolean => {
+    try {
+      const field = form.getCheckBox(name);
+      return field.isChecked();
+    } catch {
+      return false;
+    }
+  };
+
+  // 날짜 문자열 YYYY-MM-DD 정규화
+  const normalizeDate = (raw: string): string => {
+    if (!raw) return '';
+    const m = raw.match(/(\d{4})\D*(\d{1,2})\D*(\d{1,2})/);
+    if (m) {
+      return `${m[1]}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}`;
+    }
+    return raw;
+  };
+
+  // 기본 인적사항
+  const name = getTextField('성명');
+  const birthDate = normalizeDate(getTextField('생년월일'));
+  const baptismDate = normalizeDate(getTextField('침례 일자') || getTextField('침례일자'));
+  const serviceYearName = getTextField('봉사 연도') || getTextField('봉사연도');
+
+  // 체크박스 확인
+  const isFemale = getCheckBox('여');
+  const gender: '남' | '여' = isFemale ? '여' : '남';
+
+  const isAnointed = getCheckBox('기름부음받은 자');
+  const hope: '다른 양' | '기름부음받은 자' = isAnointed ? '기름부음받은 자' : '다른 양';
+
+  let position: '장로' | '봉사의 종' | '일반' = '일반';
+  if (getCheckBox('장로')) position = '장로';
+  else if (getCheckBox('봉사의 종')) position = '봉사의 종';
+
+  let pioneerStatus: '일반' | 'RP' | 'SP' | 'FM' = '일반';
+  if (getCheckBox('정규 파이오니아')) pioneerStatus = 'RP';
+  else if (getCheckBox('특별 파이오니아')) pioneerStatus = 'SP';
+  else if (getCheckBox('야외 선교인')) pioneerStatus = 'FM';
+
+  // 12개월 월별 데이터 파싱
+  const monthlyRecords = SERVICE_MONTHS.map(month => {
+    const participated = getCheckBox(`${month} 봉사에 참여했음`);
+    const hoursStr = getTextField(`${month} 시간`);
+    const studiesStr = getTextField(`${month} 성서 연구`) || getTextField(`${month} 성서연구`);
+    const isAuxiliaryPioneer = getCheckBox(`${month} 보조 파이오니아`) || getCheckBox(`${month} 보조파이오니아`);
+    const remarks = getTextField(`${month} 비고`);
+
+    const hours = parseFloat(hoursStr.replace(/[^0-9.]/g, '')) || 0;
+    const bibleStudies = parseInt(studiesStr.replace(/[^0-9]/g, ''), 10) || 0;
+
+    return {
+      month,
+      participated: participated || hours > 0,
+      bibleStudies,
+      hours,
+      isAuxiliaryPioneer,
+      remarks,
+    };
+  });
+
+  return {
+    name,
+    birthDate,
+    baptismDate,
+    gender,
+    hope,
+    position,
+    pioneerStatus,
+    serviceYearName,
+    monthlyRecords,
+  };
+}
+
+/**
  * 범용 파일 다운로드 헬퍼
  */
 export function downloadBlob(blob: Blob, fileName: string): void {
@@ -294,5 +404,7 @@ export function downloadBlob(blob: Blob, fileName: string): void {
   document.body.removeChild(a);
   setTimeout(() => URL.revokeObjectURL(url), 10000);
 }
+
+
 
 

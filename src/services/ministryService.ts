@@ -13,7 +13,11 @@ import {
   SERVICE_MONTHS,
   EmergencyContact,
   isChildStatus,
-  getCurrentDateServiceMonth
+  getCurrentDateServiceMonth,
+  Gender,
+  Hope,
+  Position,
+  PioneerStatus
 } from '../types/database';
 
 import actualData from '../data/actualData.json';
@@ -520,6 +524,9 @@ export async function getPublishers(includeInactive = false): Promise<Publisher[
             address: row.address || '',
             family_head: row.family_head || '',
             special_notes: row.special_notes || '',
+            transfer_date: row.transfer_date || '',
+            transfer_month: row.transfer_month || undefined,
+            prev_congregation: row.prev_congregation || '',
           } as Publisher;
         });
         // Supabase 데이터를 오프라인 fallback 캐시로 보존
@@ -610,7 +617,10 @@ export async function savePublisher(publisher: Partial<Publisher>): Promise<Publ
     'special_notes',
     'is_active',
     'deactivated_reason',
-    'deactivated_at'
+    'deactivated_at',
+    'transfer_date',
+    'transfer_month',
+    'prev_congregation'
   ];
 
   const dbPayload: any = {};
@@ -635,20 +645,49 @@ export async function savePublisher(publisher: Partial<Publisher>): Promise<Publ
 
       let savedRow: any;
       if (targetId) {
-        const { data, error } = await supabase
+        let { data, error } = await supabase
           .from('publishers')
           .update(dbPayload)
           .eq('id', targetId)
           .select('*, groups(name)')
           .single();
+
+        // 전입 컬럼이 아직 DB에 없는 경우 방어 (제거 후 재시도)
+        if (error && (error.message.includes('transfer_') || error.message.includes('prev_congregation'))) {
+          delete dbPayload.transfer_date;
+          delete dbPayload.transfer_month;
+          delete dbPayload.prev_congregation;
+          const retryRes = await supabase
+            .from('publishers')
+            .update(dbPayload)
+            .eq('id', targetId)
+            .select('*, groups(name)')
+            .single();
+          data = retryRes.data;
+          error = retryRes.error;
+        }
         if (error) throw error;
         savedRow = data;
       } else {
-        const { data, error } = await supabase
+        let { data, error } = await supabase
           .from('publishers')
           .insert([dbPayload])
           .select('*, groups(name)')
           .single();
+
+        // 전입 컬럼이 아직 DB에 없는 경우 방어 (제거 후 재시도)
+        if (error && (error.message.includes('transfer_') || error.message.includes('prev_congregation'))) {
+          delete dbPayload.transfer_date;
+          delete dbPayload.transfer_month;
+          delete dbPayload.prev_congregation;
+          const retryRes = await supabase
+            .from('publishers')
+            .insert([dbPayload])
+            .select('*, groups(name)')
+            .single();
+          data = retryRes.data;
+          error = retryRes.error;
+        }
         if (error) throw error;
         savedRow = data;
       }
@@ -663,6 +702,9 @@ export async function savePublisher(publisher: Partial<Publisher>): Promise<Publ
         address: savedRow.address || '',
         family_head: savedRow.family_head || '',
         special_notes: savedRow.special_notes || '',
+        transfer_date: savedRow.transfer_date || sanitized.transfer_date || '',
+        transfer_month: savedRow.transfer_month || sanitized.transfer_month || undefined,
+        prev_congregation: savedRow.prev_congregation || sanitized.prev_congregation || '',
       };
 
       // 오프라인 캐시 갱신
@@ -1554,9 +1596,14 @@ export async function getMonthlyKpiStats(serviceYearId: string, month: ServiceMo
   const targetGroup = groupId ? allGroups.find(g => g.id === groupId) : null;
 
   // 집단 필터링: 전출 여부와 무관하게 보고서에 보관된 집단명 또는 publisher_id 기준으로 온전하게 보존
-  const filteredReports = targetGroup
+  let filteredReports = targetGroup
     ? reports.filter(r => r.group_name === targetGroup.name || (r.publisher_id && r.group_name?.includes(targetGroup.name)))
     : reports;
+
+  // 이미 마감된 월의 경우: 전입 전 타회중 보고서는 회중 마감 통계에서 제외하여 마감 데이터 완벽 보존
+  if (isClosed) {
+    filteredReports = filteredReports.filter(r => !r.is_transferred);
+  }
 
   let totalReporters = 0;
   let totalSubmitted = 0;
@@ -1770,6 +1817,255 @@ export async function batchCloseUnreportedPublishers(
 
   // 해당 월 보고 마감 상태 잠금
   await toggleMonthStatus(serviceYearId, month);
+}
+
+// -------------------------------------------------------------
+// 7-2. 전입(이사) 전도인 등록 및 과거 전도인카드(S-21) 데이터 일괄 저장
+// -------------------------------------------------------------
+export interface SaveTransferredPublisherParams {
+  serviceYearId: string;
+  name: string;
+  groupId: string;
+  gender: Gender;
+  birthDate?: string;
+  baptismDate?: string;
+  hope: Hope;
+  position: Position;
+  pioneerStatus: PioneerStatus;
+  phone?: string;
+  address?: string;
+  familyHead?: string;
+  emergencyPhone?: string;
+  relationship?: string;
+  specialNotes?: string;
+  transferDate?: string; // 전입 일자 (YYYY-MM-DD)
+  transferMonth: ServiceMonth; // 전입 월 (이 월 이전 데이터는 '타회중 전입'으로 보존됨)
+  prevCongregationName?: string; // 이전 회중명
+  monthlyRecords: Array<{
+    month: ServiceMonth;
+    participated: boolean;
+    hours: number;
+    bibleStudies: number;
+    isAuxiliaryPioneer?: boolean;
+    remarks?: string;
+  }>;
+  // 전년도 봉사기록 (선택)
+  prevYearServiceYearId?: string;
+  prevYearRecords?: Array<{
+    month: ServiceMonth;
+    participated: boolean;
+    hours: number;
+    bibleStudies: number;
+    isAuxiliaryPioneer?: boolean;
+    remarks?: string;
+  }>;
+}
+
+export async function saveTransferredPublisher(
+  params: SaveTransferredPublisherParams
+): Promise<{ publisher: Publisher; savedCount: number }> {
+  // 1. 신규 전도인 기본 정보 저장
+  const groups = await getGroups();
+  const matchedGroup = groups.find(g => g.id === params.groupId);
+
+  const transferDateStr = params.transferDate || new Date().toISOString().slice(0, 10);
+  const transferInfoTag = `[전입: ${transferDateStr}${params.prevCongregationName ? ` (${params.prevCongregationName}에서)` : ''}]`;
+  const rawNotes = params.specialNotes || '';
+  const combinedSpecialNotes = rawNotes.includes('[전입:')
+    ? rawNotes
+    : (rawNotes ? `${rawNotes.trim()} ${transferInfoTag}` : transferInfoTag);
+
+  const publisher = await savePublisher({
+    name: params.name.trim(),
+    group_id: params.groupId,
+    gender: params.gender,
+    birth_date: params.birthDate || '',
+    baptism_date: params.baptismDate || '',
+    hope: params.hope,
+    position: params.position,
+    pioneer_status: params.pioneerStatus,
+    phone: params.phone || '',
+    address: params.address || '',
+    family_head: params.familyHead || '',
+    emergency_phone: params.emergencyPhone || '',
+    relationship: params.relationship || '',
+    special_notes: combinedSpecialNotes,
+    transfer_date: transferDateStr,
+    transfer_month: params.transferMonth,
+    prev_congregation: params.prevCongregationName || '',
+    is_active: true
+  });
+
+  // 2. 월별 봉사 보고서 일괄 저장
+  const transferOrder = MONTH_ORDER[params.transferMonth] || 1;
+  const supabase = getSupabaseClient();
+  const now = new Date().toISOString();
+  const localReports = getLocalData<MonthlyReport[]>('monthly_reports', INITIAL_REPORTS);
+  let savedCount = 0;
+
+  // 당해 연도 유효 기록 매핑
+  const validRecords = params.monthlyRecords.filter(r => r.participated || Number(r.hours || 0) > 0 || Number(r.bibleStudies || 0) > 0 || (r.remarks && r.remarks.trim()));
+
+  const newReports: MonthlyReport[] = validRecords.map((rec, idx) => {
+    const isTransferredMonth = (MONTH_ORDER[rec.month] || 0) < transferOrder;
+    const isFirstOurMonth = rec.month === params.transferMonth;
+    const hasHours = Number(rec.hours || 0) > 0;
+    const isRp = params.pioneerStatus === 'RP';
+    const status = isRp ? 'RP' : (rec.isAuxiliaryPioneer && hasHours ? 'AP' : '일반');
+
+    const remarksList: Array<{ type: string; hours: string; etc?: string }> = [];
+    if (rec.remarks && rec.remarks.trim()) {
+      remarksList.push({ type: rec.remarks.trim(), hours: String(rec.hours || 0) });
+    }
+    if (isTransferredMonth) {
+      remarksList.push({
+        type: '타회중 전입자료',
+        hours: String(rec.hours || 0),
+        etc: params.prevCongregationName ? `이전: ${params.prevCongregationName}` : '전입 전 실적'
+      });
+    } else if (isFirstOurMonth) {
+      // 전입 후 첫 보고 월인 경우 전입 정보 자동 기재
+      remarksList.push({
+        type: '기타',
+        hours: '0',
+        etc: `${transferDateStr} 전입 (${params.prevCongregationName || '타회중'}에서 전입)`
+      });
+    }
+
+    return {
+      id: `rep-trans-${Date.now()}-${idx}`,
+      service_year_id: params.serviceYearId,
+      publisher_id: publisher.id,
+      publisher_name: publisher.name,
+      group_name: matchedGroup?.name || '미배정',
+      position: params.position,
+      pioneer_status: status,
+      month: rec.month,
+      participated: rec.participated !== false,
+      hours: Number(rec.hours || 0),
+      bible_studies: Number(rec.bibleStudies || 0),
+      remarks: remarksList,
+      submitted_at: now,
+      is_transferred: isTransferredMonth,
+      transferred_from: isTransferredMonth ? params.prevCongregationName : undefined,
+    };
+  });
+
+  // 전년도 기록도 함께 전달된 경우 추가
+  if (params.prevYearServiceYearId && params.prevYearRecords && params.prevYearRecords.length > 0) {
+    const validPrevRecords = params.prevYearRecords.filter(r => r.participated || Number(r.hours || 0) > 0 || Number(r.bibleStudies || 0) > 0 || (r.remarks && r.remarks.trim()));
+    validPrevRecords.forEach((pRec, pIdx) => {
+      const hasH = Number(pRec.hours || 0) > 0;
+      const isRp = params.pioneerStatus === 'RP';
+      const status = isRp ? 'RP' : (pRec.isAuxiliaryPioneer && hasH ? 'AP' : '일반');
+
+      const pRemarksList: Array<{ type: string; hours: string; etc?: string }> = [];
+      if (pRec.remarks && pRec.remarks.trim()) {
+        pRemarksList.push({ type: pRec.remarks.trim(), hours: String(pRec.hours || 0) });
+      }
+      pRemarksList.push({
+        type: '타회중 전입자료(전년도)',
+        hours: String(pRec.hours || 0),
+        etc: params.prevCongregationName ? `전년도 (${params.prevCongregationName})` : '전년도 타회중 실적'
+      });
+
+      newReports.push({
+        id: `rep-trans-prev-${Date.now()}-${pIdx}`,
+        service_year_id: params.prevYearServiceYearId!,
+        publisher_id: publisher.id,
+        publisher_name: publisher.name,
+        group_name: matchedGroup?.name || '미배정',
+        position: params.position,
+        pioneer_status: status,
+        month: pRec.month,
+        participated: pRec.participated !== false,
+        hours: Number(pRec.hours || 0),
+        bible_studies: Number(pRec.bibleStudies || 0),
+        remarks: pRemarksList,
+        submitted_at: now,
+        is_transferred: true,
+        transferred_from: params.prevCongregationName,
+      });
+    });
+  }
+
+  if (newReports.length > 0) {
+    if (supabase) {
+      const payloads = newReports.map(r => ({
+        service_year_id: r.service_year_id,
+        publisher_id: r.publisher_id,
+        month: r.month,
+        participated: r.participated,
+        hours: r.hours,
+        bible_studies: r.bible_studies,
+        remarks: r.remarks,
+        pioneer_status: r.pioneer_status,
+        submitted_at: now
+      }));
+
+      // 1차 일괄 upsert
+      let { error } = await supabase.from('monthly_reports').upsert(payloads, {
+        onConflict: 'service_year_id,publisher_id,month'
+      });
+
+      // pioneer_status 컬럼 미존재 시 방어
+      if (error && error.message && error.message.includes('pioneer_status')) {
+        const stripped = payloads.map(({ pioneer_status, ...rest }) => rest);
+        const retryRes = await supabase.from('monthly_reports').upsert(stripped, {
+          onConflict: 'service_year_id,publisher_id,month'
+        });
+        error = retryRes.error;
+      }
+
+      // 개별 upsert 폴백
+      if (error) {
+        console.warn('전입 보고서 일괄 upsert 실패, 개별 upsert 시도:', error);
+        for (const payload of payloads) {
+          let single: any = { ...payload };
+          let { error: sErr } = await supabase.from('monthly_reports').upsert(single, {
+            onConflict: 'service_year_id,publisher_id,month'
+          });
+          if (sErr && sErr.message && sErr.message.includes('pioneer_status')) {
+            delete single.pioneer_status;
+            const r2 = await supabase.from('monthly_reports').upsert(single, {
+              onConflict: 'service_year_id,publisher_id,month'
+            });
+            sErr = r2.error;
+          }
+        }
+      }
+    }
+
+    // 로컬 스토리지 캐시 동기화
+    const updatedReports = [...localReports];
+    newReports.forEach(nr => {
+      const existingIdx = updatedReports.findIndex(
+        r => r.service_year_id === nr.service_year_id && r.publisher_id === nr.publisher_id && r.month === nr.month
+      );
+      if (existingIdx >= 0) {
+        updatedReports[existingIdx] = nr;
+      } else {
+        updatedReports.push(nr);
+      }
+    });
+    setLocalData('monthly_reports', updatedReports);
+    savedCount = newReports.length;
+
+    // 삭제 블랙리스트 해제
+    const deletedKeys = getLocalData<string[]>('deleted_report_keys', []);
+    if (deletedKeys.length > 0) {
+      const keysToRemove = new Set<string>();
+      newReports.forEach(nr => {
+        keysToRemove.add(`${nr.publisher_id}_${nr.month}`);
+        keysToRemove.add(`${nr.publisher_name}_${nr.month}`);
+        keysToRemove.add(`${nr.service_year_id}_${nr.publisher_id}_${nr.month}`);
+        keysToRemove.add(`${nr.service_year_id}_${nr.publisher_name}_${nr.month}`);
+      });
+      setLocalData('deleted_report_keys', deletedKeys.filter(k => !keysToRemove.has(k)));
+    }
+  }
+
+  return { publisher, savedCount };
 }
 
 // -------------------------------------------------------------
