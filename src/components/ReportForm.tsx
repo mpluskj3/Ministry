@@ -131,6 +131,9 @@ export const ReportForm: React.FC<ReportFormProps> = ({
   const [showApConfirmModal, setShowApConfirmModal] = useState(false);
   const [pendingPublisher, setPendingPublisher] = useState<Publisher | null>(null);
 
+  // 전입 전도인 첫 보고 안내 배너 상태
+  const [transferNotice, setTransferNotice] = useState<string | null>(null);
+
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [submittedReceipt, setSubmittedReceipt] = useState<any | null>(null);
@@ -198,10 +201,31 @@ export const ReportForm: React.FC<ReportFormProps> = ({
       if (prev) {
         setExistingReport(prev);
         setShowExistingAlert(true);
+        setTransferNotice(null);
       } else {
         setExistingReport(null);
         setShowExistingAlert(false);
         setIsEditMode(false);
+
+        // 기존 보고가 없는 신규 작성인 경우: 전입 전도인의 첫 보고서 여부 확인
+        const pub = publishers.find(p => p.id === pubId);
+        if (pub) {
+          const tDate = pub.transfer_date || pub.special_notes?.match(/\[전입:\s*([\d-]+)/)?.[1];
+          const prevCong = pub.prev_congregation || pub.special_notes?.match(/\((.*?)(?:에서)?\s*전입\)/)?.[1];
+          const isTransferTargetMonth = !pub.transfer_month || pub.transfer_month === targetMonth;
+
+          if (tDate && isTransferTargetMonth) {
+            const autoInfo = `${tDate} 전입${prevCong ? ` (${prevCong}에서 전입)` : ''}`;
+            setRemarks([{
+              type: '기타',
+              hours: '0',
+              etc: autoInfo
+            }]);
+            setTransferNotice(`💡 [전입 전도인 첫 보고 안내] ${pub.name} 전도인님은 ${tDate}에 전입한 전도인입니다. 비고란에 전입 정보("${autoInfo}")가 자동으로 입력되었습니다.`);
+          } else {
+            setTransferNotice(null);
+          }
+        }
       }
     } catch (err) {
       console.error('Failed to check existing report:', err);
@@ -261,6 +285,7 @@ export const ReportForm: React.FC<ReportFormProps> = ({
     setBibleStudies('');
     setIsAuxiliaryPioneer(false);
     setRemarks([]);
+    setTransferNotice(null);
     setParticipated(true);
     setErrorMsg(null);
 
@@ -1287,6 +1312,24 @@ export const ReportForm: React.FC<ReportFormProps> = ({
 
               {/* 6. 비고 (고려받을 시간) */}
               <div className="form-group">
+                {transferNotice && (
+                  <div style={{
+                    marginBottom: 10,
+                    padding: '9px 13px',
+                    borderRadius: 'var(--radius-md)',
+                    background: 'rgba(59, 130, 246, 0.08)',
+                    border: '1px solid rgba(59, 130, 246, 0.28)',
+                    color: 'var(--primary)',
+                    fontSize: '0.82rem',
+                    lineHeight: 1.45,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                  }}>
+                    <Info size={16} style={{ flexShrink: 0 }} />
+                    <span>{transferNotice}</span>
+                  </div>
+                )}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, gap: 8 }}>
                   <label className="form-label" style={{
                     margin: 0,
