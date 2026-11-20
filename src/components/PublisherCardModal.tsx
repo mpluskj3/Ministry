@@ -162,7 +162,7 @@ export const PublisherCardModal: React.FC<PublisherCardModalProps> = ({
                     </thead>
                     <tbody>
                       {record.monthlyRecords.map((m) => {
-                        const isAp = m.division === 'AP' || m.division === '보조 파이오니아' || m.remarks?.includes('보조');
+                        const isAp = m.isAuxiliaryPioneer || m.division === 'AP' || m.division === '보조 파이오니아' || m.remarks?.includes('보조');
                         return (
                           <tr key={m.month}>
                             <td style={{ fontWeight: 600 }}>{m.month}</td>

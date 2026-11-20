@@ -1915,8 +1915,10 @@ export async function saveTransferredPublisher(
     const isTransferredMonth = (MONTH_ORDER[rec.month] || 0) < transferOrder;
     const isFirstOurMonth = rec.month === params.transferMonth;
     const hasHours = Number(rec.hours || 0) > 0;
-    const isRp = params.pioneerStatus === 'RP';
-    const status = isRp ? 'RP' : (rec.isAuxiliaryPioneer && hasHours ? 'AP' : '일반');
+    // 보조 파이오니아(AP) 체크가 되어 있으면 해당 월의 지위는 무조건 'AP'
+    const status = rec.isAuxiliaryPioneer
+      ? 'AP'
+      : (params.pioneerStatus && params.pioneerStatus !== '일반' ? params.pioneerStatus : '일반');
 
     // 파일에 있는 비고 그대로 저장 (시간이나 시스템 메모를 인위적으로 덧붙이지 않음)
     const remarksList: Array<{ type: string; hours: string; etc?: string }> = [];
@@ -1948,8 +1950,10 @@ export async function saveTransferredPublisher(
     const validPrevRecords = params.prevYearRecords.filter(r => r.participated || Number(r.hours || 0) > 0 || Number(r.bibleStudies || 0) > 0 || (r.remarks && r.remarks.trim()));
     validPrevRecords.forEach((pRec, pIdx) => {
       const hasH = Number(pRec.hours || 0) > 0;
-      const isRp = params.pioneerStatus === 'RP';
-      const status = isRp ? 'RP' : (pRec.isAuxiliaryPioneer && hasH ? 'AP' : '일반');
+      // 전년도 역시 보조 파이오니아(AP) 체크가 되어 있으면 해당 월의 지위는 무조건 'AP'
+      const status = pRec.isAuxiliaryPioneer
+        ? 'AP'
+        : (params.pioneerStatus && params.pioneerStatus !== '일반' ? params.pioneerStatus : '일반');
 
       // 전년도 역시 파일에 있는 비고 그대로 저장
       const pRemarksList: Array<{ type: string; hours: string; etc?: string }> = [];
@@ -2164,13 +2168,18 @@ export async function getYearlyPublisherRecord(serviceYearId: string, publisherI
       .filter(Boolean)
       .join(', ');
 
+    const repStatus = rep?.pioneer_status;
+    const isApMonth = repStatus === 'AP' || repStatus === '보조 파이오니아' || rep?.remarks?.some(r => r.type?.includes('보조'));
+    const effectiveDivision = isApMonth ? 'AP' : (repStatus || (publisher.pioneer_status === '일반' ? '' : publisher.pioneer_status));
+
     return {
       month,
       participated,
       bibleStudies,
       hours,
       remarks: remarksStr,
-      division: publisher.pioneer_status === '일반' ? '' : publisher.pioneer_status,
+      division: effectiveDivision,
+      isAuxiliaryPioneer: isApMonth,
     };
   });
 

@@ -109,7 +109,7 @@ export async function generatePublisherCardPdf(
     setTextFieldSafe(`${mName} 시간`, record.hours > 0 ? String(record.hours) : '');
 
     // 보조 파이오니아
-    const isAp = record.division === 'AP' || record.division === '보조 파이오니아' || !!record.remarks?.includes('보조');
+    const isAp = record.division === 'AP' || record.division === '보조 파이오니아' || (record as any).isAuxiliaryPioneer === true || !!record.remarks?.includes('보조');
     setCheckSafe(`${mName} 보조 파이오니아`, isAp);
 
     // 비고
@@ -386,7 +386,8 @@ export async function parseS21Pdf(pdfBytes: Uint8Array): Promise<ParsedS21CardDa
         const apField = fields[`903_${rowIdx}_CheckBox`] || fields[`${m} 보조 파이오니아`] || fields[`${m} 보조파이오니아`];
         const isAuxiliaryPioneer = apField?.as === '/Yes' || apField?.v === '/Yes';
         const hoursStr = fields[`904_${rowIdx}_S21_Value`]?.v || fields[`${m} 시간`]?.v || '';
-        const remarks = fields[`905_${rowIdx}_Text_SanSerif`]?.v || fields[`${m} 비고`]?.v || '';
+        const remarksRaw = fields[`905_${rowIdx}_Text_SanSerif`]?.v || fields[`${m} 비고`]?.v || '';
+        const remarks = remarksRaw.trim() === '()' ? '' : remarksRaw.trim();
 
         const hours = parseFloat(hoursStr.replace(/[^0-9.]/g, '')) || 0;
         const bibleStudies = parseInt(studiesStr.replace(/[^0-9]/g, ''), 10) || 0;

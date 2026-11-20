@@ -253,6 +253,7 @@ export interface YearlyPublisherRecord {
     hours: number;
     remarks: string;
     division?: string;
+    isAuxiliaryPioneer?: boolean;
   }>;
   totals: {
     totalHours: number;
