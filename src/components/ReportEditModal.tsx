@@ -54,6 +54,12 @@ export const ReportEditModal: React.FC<ReportEditModalProps> = ({
   const [bibleStudies, setBibleStudies] = useState<string>(
     existingReport && existingReport.bible_studies > 0 ? String(existingReport.bible_studies) : ''
   );
+  // 이미 정규 파이오니아(RP/SP/FM)인 경우 보조 파이오니아(AP) 선택 불가
+  // 단, 과거에 AP로 보고되었던 이전 달의 기존 보고서 수정인 경우 예외적으로 AP 유지 허용
+  const isFulltimePioneer = ['RP', 'SP', 'FM'].includes(publisher.pioneer_status || '');
+  const isExistingAp = existingReport?.pioneer_status === 'AP';
+  const canSelectAp = !isFulltimePioneer || isExistingAp;
+
   const [isAuxiliaryPioneer, setIsAuxiliaryPioneer] = useState<boolean>(
     existingReport?.pioneer_status === 'AP'
   );
@@ -130,7 +136,7 @@ export const ReportEditModal: React.FC<ReportEditModalProps> = ({
         remarks: remarks
           .filter(r => r.hours && String(r.hours).trim().length > 0)
           .map(r => ({ type: r.type, hours: String(r.hours).trim(), etc: r.etc || '' })),
-        isAuxiliaryPioneer,
+        isAuxiliaryPioneer: canSelectAp ? isAuxiliaryPioneer : false,
         isAdminOverride: true,
       });
       onSaved();
@@ -452,20 +458,27 @@ export const ReportEditModal: React.FC<ReportEditModalProps> = ({
             marginBottom: 16,
             padding: '10px 14px',
             borderRadius: 'var(--radius-md)',
-            background: isAuxiliaryPioneer ? 'var(--accent-amber-light)' : 'transparent',
+            background: isAuxiliaryPioneer ? 'var(--accent-amber-light)' : (canSelectAp ? 'transparent' : 'rgba(0,0,0,0.02)'),
             border: isAuxiliaryPioneer ? '1px solid var(--accent-amber)' : '1px solid var(--border-subtle)',
+            opacity: canSelectAp ? 1 : 0.65,
             transition: 'all 0.15s ease'
           }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', userSelect: 'none' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: canSelectAp ? 'pointer' : 'not-allowed', userSelect: 'none' }}>
               <input
                 type="checkbox"
                 checked={isAuxiliaryPioneer}
-                onChange={(e) => setIsAuxiliaryPioneer(e.target.checked)}
-                style={{ width: 16, height: 16, cursor: 'pointer' }}
+                disabled={!canSelectAp}
+                onChange={(e) => canSelectAp && setIsAuxiliaryPioneer(e.target.checked)}
+                style={{ width: 16, height: 16, cursor: canSelectAp ? 'pointer' : 'not-allowed' }}
               />
               <span style={{ fontSize: '0.85rem', fontWeight: 700, color: isAuxiliaryPioneer ? 'var(--accent-amber)' : 'var(--text-main)' }}>
                 이달에 보조 파이오니아 봉사 참여
               </span>
+              {!canSelectAp && (
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: 'auto' }}>
+                  (정규 파이오니아는 보조 선택 불가)
+                </span>
+              )}
             </label>
           </div>
 

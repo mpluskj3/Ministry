@@ -307,9 +307,10 @@ export const ReportForm: React.FC<ReportFormProps> = ({
     setShowDropdown(false);
     setErrorMsg(null);
 
-    // RP인 경우 참여 자동 true
-    if (pub.pioneer_status === 'RP') {
+    // RP/전시간 파이오니아인 경우 참여 자동 true 및 보조 파이오니아 선택 해제
+    if (['RP', 'SP', 'FM'].includes(pub.pioneer_status || '')) {
       setParticipated(true);
+      setIsAuxiliaryPioneer(false);
     }
   };
 
@@ -414,6 +415,9 @@ export const ReportForm: React.FC<ReportFormProps> = ({
   const doSubmit = async (targetPublisher: Publisher, finalIsAuxiliaryPioneer: boolean, overrideHours?: number) => {
     const numHours = overrideHours !== undefined ? overrideHours : (parseFloat(hours) || 0);
     const numStudies = parseInt(bibleStudies) || 0;
+    // 정규/전시간 파이오니아는 보조 파이오니아 선택 불가 방어
+    const isTargetFulltime = ['RP', 'SP', 'FM'].includes(targetPublisher.pioneer_status || '');
+    const safeIsAuxiliary = isTargetFulltime ? false : finalIsAuxiliaryPioneer;
 
     setLoading(true);
     try {
@@ -433,7 +437,7 @@ export const ReportForm: React.FC<ReportFormProps> = ({
         bibleStudies: numStudies,
         hours: numHours,
         remarks: validRemarks,
-        isAuxiliaryPioneer: finalIsAuxiliaryPioneer,
+        isAuxiliaryPioneer: safeIsAuxiliary,
         isAdminOverride: isManager,
       });
 
@@ -1275,40 +1279,53 @@ export const ReportForm: React.FC<ReportFormProps> = ({
                 </div>
               </div>
 
-              {/* 5. 보조 파이오니아 활동 여부 */}
-              <div style={{
-                background: isAuxiliaryPioneer ? 'var(--primary-light)' : 'var(--bg-app)',
-                border: isAuxiliaryPioneer ? '1px solid var(--primary)' : '1px solid var(--border-color)',
-                borderRadius: 'var(--radius-md)',
-                padding: '12px 14px',
-                marginBottom: 20,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: 10,
-                cursor: isClosed ? 'not-allowed' : 'pointer'
-              }} onClick={() => !isClosed && setIsAuxiliaryPioneer(!isAuxiliaryPioneer)}>
-                <div style={{ minWidth: 0, flex: 1 }}>
-                  <div style={{
-                    fontWeight: 700,
-                    fontSize: 'clamp(0.82rem, 3.4vw, 0.92rem)',
-                    whiteSpace: 'nowrap',
-                    letterSpacing: '-0.02em'
-                  }}>
-                    이번 달 보조 파이오니아로 봉사함
+              {/* 5. 보조 파이오니아 활동 여부 (정규 파이오니아는 선택 불가 조건 작동) */}
+              {(() => {
+                const isFulltime = ['RP', 'SP', 'FM'].includes(selectedPublisher?.pioneer_status || '');
+                const isDisabled = isClosed || isFulltime;
+                return (
+                  <div
+                    style={{
+                      background: isAuxiliaryPioneer ? 'var(--primary-light)' : (isFulltime ? 'rgba(0,0,0,0.02)' : 'var(--bg-app)'),
+                      border: isAuxiliaryPioneer ? '1px solid var(--primary)' : '1px solid var(--border-color)',
+                      borderRadius: 'var(--radius-md)',
+                      padding: '12px 14px',
+                      marginBottom: 20,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: 10,
+                      opacity: isFulltime ? 0.65 : 1,
+                      cursor: isDisabled ? 'not-allowed' : 'pointer'
+                    }}
+                    onClick={() => !isDisabled && setIsAuxiliaryPioneer(!isAuxiliaryPioneer)}
+                  >
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <div style={{
+                        fontWeight: 700,
+                        fontSize: 'clamp(0.82rem, 3.4vw, 0.92rem)',
+                        whiteSpace: 'nowrap',
+                        letterSpacing: '-0.02em',
+                        color: isFulltime ? 'var(--text-muted)' : 'var(--text-main)'
+                      }}>
+                        이번 달 보조 파이오니아로 봉사함
+                      </div>
+                      <div style={{ fontSize: '0.76rem', color: isFulltime ? 'var(--text-muted)' : 'var(--text-muted)', marginTop: 2 }}>
+                        {isFulltime
+                          ? `${selectedPublisher?.pioneer_status === 'RP' ? '정규 파이오니아(RP)' : '전시간 파이오니아'}는 보조 파이오니아를 선택할 수 없습니다.`
+                          : '보조 파이오니아 15시간 또는 30시간 활동 시 체크해 주세요.'}
+                      </div>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={isAuxiliaryPioneer && !isFulltime}
+                      onChange={(e) => !isDisabled && setIsAuxiliaryPioneer(e.target.checked)}
+                      disabled={isDisabled}
+                      style={{ width: 18, height: 18, accentColor: 'var(--primary)', cursor: isDisabled ? 'not-allowed' : 'pointer', flexShrink: 0 }}
+                    />
                   </div>
-                  <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)', marginTop: 2 }}>
-                    보조 파이오니아 15시간 또는 30시간 활동 시 체크해 주세요.
-                  </div>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={isAuxiliaryPioneer}
-                  onChange={(e) => setIsAuxiliaryPioneer(e.target.checked)}
-                  disabled={isClosed}
-                  style={{ width: 18, height: 18, accentColor: 'var(--primary)', cursor: 'pointer', flexShrink: 0 }}
-                />
-              </div>
+                );
+              })()}
 
               {/* 6. 비고 (고려받을 시간) */}
               <div className="form-group">

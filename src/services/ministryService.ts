@@ -1192,7 +1192,10 @@ export async function submitMinistryReport(params: {
   }
 
   const hasHours = Number(params.hours || 0) > 0;
-  const determinedPioneerStatus = (params.isAuxiliaryPioneer && hasHours)
+  const isFulltime = ['RP', 'SP', 'FM'].includes(publisher.pioneer_status || '');
+  // 정규/전시간 파이오니아는 보조 파이오니아를 선택할 수 없음 (과거 AP 보고서 수정 관리자 오버라이드 제외)
+  const canBeAp = params.isAuxiliaryPioneer && (!isFulltime || params.isAdminOverride);
+  const determinedPioneerStatus = (canBeAp && hasHours)
     ? 'AP' 
     : (publisher.pioneer_status === 'RP' ? 'RP' : (publisher.pioneer_status === 'AP' ? '일반' : (publisher.pioneer_status || '일반')));
 
