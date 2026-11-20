@@ -1016,11 +1016,11 @@ export const TransferPublisherModal: React.FC<TransferPublisherModalProps> = ({
                 <table className="table" style={{ fontSize: '0.8rem', width: '100%', minWidth: 550 }}>
                   <thead>
                     <tr>
-                      <th style={{ width: 70, textAlign: 'center' }}>월</th>
-                      <th style={{ width: 70, textAlign: 'center' }}>참여(Y)</th>
-                      <th style={{ width: 85, textAlign: 'center' }}>시간(h)</th>
-                      <th style={{ width: 75, textAlign: 'center' }}>연구(건)</th>
-                      <th style={{ width: 75, textAlign: 'center' }}>보조(AP)</th>
+                      <th style={{ width: 65, textAlign: 'center' }}>월</th>
+                      <th style={{ width: 95, textAlign: 'center' }}>봉사에 참여했음</th>
+                      <th style={{ width: 80, textAlign: 'center' }}>성서 연구</th>
+                      <th style={{ width: 90, textAlign: 'center' }}>보조 파이오니아</th>
+                      <th style={{ width: 85, textAlign: 'center' }}>시간</th>
                       <th style={{ minWidth: 160 }}>비고</th>
                     </tr>
                   </thead>
@@ -1040,17 +1040,6 @@ export const TransferPublisherModal: React.FC<TransferPublisherModalProps> = ({
                             type="number"
                             className="form-input"
                             style={{ padding: '3px 6px', fontSize: '0.8rem', textAlign: 'center' }}
-                            value={rec.hours || 0}
-                            min={0}
-                            step={0.5}
-                            onChange={e => handleRecordChange(rec.month, 'hours', parseFloat(e.target.value) || 0)}
-                          />
-                        </td>
-                        <td style={{ textAlign: 'center' }}>
-                          <input
-                            type="number"
-                            className="form-input"
-                            style={{ padding: '3px 6px', fontSize: '0.8rem', textAlign: 'center' }}
                             value={rec.bibleStudies || 0}
                             min={0}
                             onChange={e => handleRecordChange(rec.month, 'bibleStudies', parseInt(e.target.value, 10) || 0)}
@@ -1061,6 +1050,17 @@ export const TransferPublisherModal: React.FC<TransferPublisherModalProps> = ({
                             type="checkbox"
                             checked={rec.isAuxiliaryPioneer}
                             onChange={e => handleRecordChange(rec.month, 'isAuxiliaryPioneer', e.target.checked)}
+                          />
+                        </td>
+                        <td style={{ textAlign: 'center' }}>
+                          <input
+                            type="number"
+                            className="form-input"
+                            style={{ padding: '3px 6px', fontSize: '0.8rem', textAlign: 'center' }}
+                            value={rec.hours || 0}
+                            min={0}
+                            step={0.5}
+                            onChange={e => handleRecordChange(rec.month, 'hours', parseFloat(e.target.value) || 0)}
                           />
                         </td>
                         <td>
@@ -1089,11 +1089,11 @@ export const TransferPublisherModal: React.FC<TransferPublisherModalProps> = ({
                 <table className="table" style={{ fontSize: '0.8rem', width: '100%', minWidth: 550 }}>
                   <thead>
                     <tr>
-                      <th style={{ width: 70, textAlign: 'center' }}>월</th>
-                      <th style={{ width: 70, textAlign: 'center' }}>참여(Y)</th>
-                      <th style={{ width: 85, textAlign: 'center' }}>시간(h)</th>
-                      <th style={{ width: 75, textAlign: 'center' }}>연구(건)</th>
-                      <th style={{ width: 75, textAlign: 'center' }}>보조(AP)</th>
+                      <th style={{ width: 65, textAlign: 'center' }}>월</th>
+                      <th style={{ width: 95, textAlign: 'center' }}>봉사에 참여했음</th>
+                      <th style={{ width: 80, textAlign: 'center' }}>성서 연구</th>
+                      <th style={{ width: 90, textAlign: 'center' }}>보조 파이오니아</th>
+                      <th style={{ width: 85, textAlign: 'center' }}>시간</th>
                       <th style={{ minWidth: 160 }}>비고</th>
                     </tr>
                   </thead>
@@ -1113,17 +1113,6 @@ export const TransferPublisherModal: React.FC<TransferPublisherModalProps> = ({
                             type="number"
                             className="form-input"
                             style={{ padding: '3px 6px', fontSize: '0.8rem', textAlign: 'center' }}
-                            value={rec.hours || 0}
-                            min={0}
-                            step={0.5}
-                            onChange={e => handlePrevRecordChange(rec.month, 'hours', parseFloat(e.target.value) || 0)}
-                          />
-                        </td>
-                        <td style={{ textAlign: 'center' }}>
-                          <input
-                            type="number"
-                            className="form-input"
-                            style={{ padding: '3px 6px', fontSize: '0.8rem', textAlign: 'center' }}
                             value={rec.bibleStudies || 0}
                             min={0}
                             onChange={e => handlePrevRecordChange(rec.month, 'bibleStudies', parseInt(e.target.value, 10) || 0)}
@@ -1134,6 +1123,17 @@ export const TransferPublisherModal: React.FC<TransferPublisherModalProps> = ({
                             type="checkbox"
                             checked={rec.isAuxiliaryPioneer}
                             onChange={e => handlePrevRecordChange(rec.month, 'isAuxiliaryPioneer', e.target.checked)}
+                          />
+                        </td>
+                        <td style={{ textAlign: 'center' }}>
+                          <input
+                            type="number"
+                            className="form-input"
+                            style={{ padding: '3px 6px', fontSize: '0.8rem', textAlign: 'center' }}
+                            value={rec.hours || 0}
+                            min={0}
+                            step={0.5}
+                            onChange={e => handlePrevRecordChange(rec.month, 'hours', parseFloat(e.target.value) || 0)}
                           />
                         </td>
                         <td>

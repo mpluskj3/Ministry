@@ -153,39 +153,51 @@ export const PublisherCardModal: React.FC<PublisherCardModalProps> = ({
                     <thead>
                       <tr>
                         <th>월</th>
-                        <th>참여</th>
+                        <th>봉사에 참여했음</th>
                         <th>성서 연구</th>
-                        <th>봉사 시간</th>
+                        <th>보조 파이오니아</th>
+                        <th>시간</th>
                         <th>비고</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {record.monthlyRecords.map((m) => (
-                        <tr key={m.month}>
-                          <td style={{ fontWeight: 600 }}>{m.month}</td>
-                          <td>
-                            {m.participated ? (
-                              <span style={{ color: 'var(--accent-emerald)', display: 'inline-flex', alignItems: 'center' }} title="참여">
-                                <CheckCircle2 size={17} />
-                              </span>
-                            ) : (
-                              <span style={{ color: 'var(--text-faint)' }}>-</span>
-                            )}
-                          </td>
-                          <td>{m.bibleStudies > 0 ? m.bibleStudies : '-'}</td>
-                          <td style={{ fontWeight: m.hours > 0 ? 700 : 400 }}>
-                            {m.hours > 0 ? m.hours : '-'}
-                          </td>
-                          <td style={{ color: 'var(--text-muted)', fontSize: '0.82rem' }}>
-                            {m.remarks || '-'}
-                          </td>
-                        </tr>
-                      ))}
+                      {record.monthlyRecords.map((m) => {
+                        const isAp = m.division === 'AP' || m.division === '보조 파이오니아' || m.remarks?.includes('보조');
+                        return (
+                          <tr key={m.month}>
+                            <td style={{ fontWeight: 600 }}>{m.month}</td>
+                            <td>
+                              {m.participated ? (
+                                <span style={{ color: 'var(--accent-emerald)', display: 'inline-flex', alignItems: 'center' }} title="참여">
+                                  <CheckCircle2 size={17} />
+                                </span>
+                              ) : (
+                                <span style={{ color: 'var(--text-faint)' }}>-</span>
+                              )}
+                            </td>
+                            <td>{m.bibleStudies > 0 ? m.bibleStudies : '-'}</td>
+                            <td>
+                              {isAp ? (
+                                <span style={{ color: 'var(--primary)', fontWeight: 600 }}>✓</span>
+                              ) : (
+                                <span style={{ color: 'var(--text-faint)' }}>-</span>
+                              )}
+                            </td>
+                            <td style={{ fontWeight: m.hours > 0 ? 700 : 400 }}>
+                              {m.hours > 0 ? m.hours : '-'}
+                            </td>
+                            <td style={{ color: 'var(--text-muted)', fontSize: '0.82rem' }}>
+                              {m.remarks || '-'}
+                            </td>
+                          </tr>
+                        );
+                      })}
                       {/* Totals Row */}
                       <tr style={{ background: 'var(--primary-50)', fontWeight: 700 }}>
                         <td style={{ color: 'var(--primary-700)' }}>총계</td>
                         <td>{record.totals.activeMonths > 0 ? record.totals.activeMonths : '-'}</td>
                         <td>{record.totals.totalStudies > 0 ? record.totals.totalStudies : '-'}</td>
+                        <td>-</td>
                         <td style={{ color: 'var(--primary-700)' }}>{record.totals.totalHours > 0 ? record.totals.totalHours : '-'}</td>
                         <td style={{ color: totalRemarkHours > 0 ? 'var(--text-main)' : 'var(--text-faint)' }}>
                           {totalRemarkHours > 0 ? `${totalRemarkHours}시간` : '-'}

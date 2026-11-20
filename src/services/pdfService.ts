@@ -395,7 +395,6 @@ export async function parseS21Pdf(pdfBytes: Uint8Array): Promise<ParsedS21CardDa
       const monthlyRecords = SERVICE_MONTHS.map((m, idx) => {
         const rowIdx = 20 + idx;
         const partField = fields[`901_${rowIdx}_CheckBox`] || fields[`${m} 봉사에 참여했음`];
-        const participated = partField?.as === '/Yes' || partField?.v === '/Yes' || partField?.v === '/0';
         const studiesStr = fields[`902_${rowIdx}_Text_C_SanSerif`]?.v || fields[`${m} 성서 연구`]?.v || fields[`${m} 성서연구`]?.v || '';
         const apField = fields[`903_${rowIdx}_CheckBox`] || fields[`${m} 보조 파이오니아`] || fields[`${m} 보조파이오니아`];
         const isAuxiliaryPioneer = apField?.as === '/Yes' || apField?.v === '/Yes';
@@ -405,9 +404,15 @@ export async function parseS21Pdf(pdfBytes: Uint8Array): Promise<ParsedS21CardDa
         const hours = parseFloat(hoursStr.replace(/[^0-9.]/g, '')) || 0;
         const bibleStudies = parseInt(studiesStr.replace(/[^0-9]/g, ''), 10) || 0;
 
+        // 사용자의 비즈니스 룰:
+        // 1) 시간이 입력된 경우 참여에 체크 (hours > 0)
+        // 2) 시간이 없거나 0인 경우: 명시적으로 /Yes 체크된 경우에만 참여 체크 (/0, /Off 등은 비체크로 판정)
+        const isExplicitlyChecked = partField?.as === '/Yes' || partField?.v === '/Yes' || partField?.as === 'Yes' || partField?.v === 'Yes';
+        const participated = hours > 0 || isExplicitlyChecked;
+
         return {
           month: m,
-          participated: participated || hours > 0,
+          participated,
           bibleStudies,
           hours,
           isAuxiliaryPioneer,

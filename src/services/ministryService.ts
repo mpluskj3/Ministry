@@ -1991,6 +1991,54 @@ export async function saveTransferredPublisher(
     });
   }
 
+  // 기존에 저장되어 있었으나 전입 모달에서 비워진 월(미참여 & 0시간 & 무비고) 정리 (삭제/수정 지원)
+  if (params.publisherId) {
+    const emptyMonths = SERVICE_MONTHS.filter(m => !validRecords.some(r => r.month === m));
+    if (emptyMonths.length > 0) {
+      if (supabase) {
+        try {
+          await supabase
+            .from('monthly_reports')
+            .delete()
+            .eq('service_year_id', params.serviceYearId)
+            .eq('publisher_id', publisher.id)
+            .in('month', emptyMonths);
+        } catch (delErr) {
+          console.warn('비워진 월 보고서 삭제 중 오류:', delErr);
+        }
+      }
+      const curLocal = getLocalData<MonthlyReport[]>('monthly_reports', INITIAL_REPORTS);
+      const cleaned = curLocal.filter(
+        r => !(r.service_year_id === params.serviceYearId && r.publisher_id === publisher.id && emptyMonths.includes(r.month))
+      );
+      setLocalData('monthly_reports', cleaned);
+    }
+
+    if (params.prevYearServiceYearId && params.prevYearRecords) {
+      const validPrev = params.prevYearRecords.filter(r => r.participated || Number(r.hours || 0) > 0 || Number(r.bibleStudies || 0) > 0 || (r.remarks && r.remarks.trim()));
+      const emptyPrev = SERVICE_MONTHS.filter(m => !validPrev.some(r => r.month === m));
+      if (emptyPrev.length > 0) {
+        if (supabase) {
+          try {
+            await supabase
+              .from('monthly_reports')
+              .delete()
+              .eq('service_year_id', params.prevYearServiceYearId)
+              .eq('publisher_id', publisher.id)
+              .in('month', emptyPrev);
+          } catch (delErr) {
+            console.warn('전년도 비워진 월 보고서 삭제 중 오류:', delErr);
+          }
+        }
+        const curLocal = getLocalData<MonthlyReport[]>('monthly_reports', INITIAL_REPORTS);
+        const cleanedPrev = curLocal.filter(
+          r => !(r.service_year_id === params.prevYearServiceYearId && r.publisher_id === publisher.id && emptyPrev.includes(r.month))
+        );
+        setLocalData('monthly_reports', cleanedPrev);
+      }
+    }
+  }
+
   if (newReports.length > 0) {
     if (supabase) {
       const payloads = newReports.map(r => ({
