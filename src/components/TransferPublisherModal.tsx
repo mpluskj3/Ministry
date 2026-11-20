@@ -440,7 +440,7 @@ export const TransferPublisherModal: React.FC<TransferPublisherModalProps> = ({
                 전입(이사) 전도인 등록 & S-21 카드 가져오기
               </h3>
               <p style={{ margin: '2px 0 0 0', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                이전 회중의 전도인 기록 카드(S-21) PDF 또는 사진을 넣으면 당해 연도 및 전년도 기록까지 자동 등록됩니다.
+                이전 회중의 전도인 기록 카드(S-21) PDF 또는 사진을 넣으면 봉사 기록까지 자동 등록됩니다.
               </p>
             </div>
           </div>
@@ -510,7 +510,7 @@ export const TransferPublisherModal: React.FC<TransferPublisherModalProps> = ({
                 </div>
                 <div style={{ textAlign: 'left', minWidth: 0 }}>
                   <div style={{ fontSize: '0.9rem', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {file ? file.name : `당해 연도 S-21 카드 (${currentYear.year_name}연도) PDF / 사진`}
+                    {file ? file.name : `S-21 카드 (${currentYear.year_name}연도) PDF / 사진`}
                   </div>
                   <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>
                     {file
@@ -603,9 +603,9 @@ export const TransferPublisherModal: React.FC<TransferPublisherModalProps> = ({
               {previewUrl && (
                 <div style={{ border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', padding: 10, background: 'var(--bg-surface)', textAlign: 'center' }}>
                   <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)', marginBottom: 4, fontWeight: 600 }}>
-                    📷 당해 연도 S-21 카드 사진 미리보기
+                    📷 S-21 카드 사진 미리보기
                   </div>
-                  <img src={previewUrl} alt="당해연도 카드 사진" style={{ maxWidth: '100%', maxHeight: '180px', borderRadius: '4px', objectFit: 'contain' }} />
+                  <img src={previewUrl} alt="S-21 카드 사진" style={{ maxWidth: '100%', maxHeight: '180px', borderRadius: '4px', objectFit: 'contain' }} />
                 </div>
               )}
               {prevYearPreviewUrl && (
@@ -756,24 +756,27 @@ export const TransferPublisherModal: React.FC<TransferPublisherModalProps> = ({
                 1. 전도인 기본 인적사항
               </div>
 
-              {/* 기존 등록 전도인 자동 불러오기 선택 드롭다운 */}
+              {/* 기존 등록 전도인 불러오기 드롭다운 */}
               {publishers && publishers.length > 0 && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{ fontSize: '0.76rem', color: 'var(--text-muted)' }}>이미 등록된 전도인:</span>
-                  <select
-                    className="form-select"
-                    style={{ padding: '3px 8px', fontSize: '0.78rem', minWidth: 170, borderColor: selectedExistingPublisherId ? 'var(--primary)' : undefined }}
-                    value={selectedExistingPublisherId}
-                    onChange={e => handleExistingSelect(e.target.value)}
-                  >
-                    <option value="">-- 기존 전도인 선택 불러오기 --</option>
-                    {publishers.map(p => (
-                      <option key={p.id} value={p.id}>
-                        {p.name} ({p.group_name || '미배정'})
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                <select
+                  className="form-select"
+                  style={{
+                    padding: '4px 10px',
+                    fontSize: '0.8rem',
+                    minWidth: 160,
+                    borderColor: selectedExistingPublisherId ? 'var(--primary)' : undefined,
+                    fontWeight: selectedExistingPublisherId ? 600 : 400,
+                  }}
+                  value={selectedExistingPublisherId}
+                  onChange={e => handleExistingSelect(e.target.value)}
+                >
+                  <option value="">전도인 불러오기</option>
+                  {publishers.map(p => (
+                    <option key={p.id} value={p.id}>
+                      {p.name} ({p.group_name || '미배정'})
+                    </option>
+                  ))}
+                </select>
               )}
             </div>
 
@@ -930,9 +933,6 @@ export const TransferPublisherModal: React.FC<TransferPublisherModalProps> = ({
                 <span style={{ fontSize: '0.86rem', fontWeight: 700, color: 'var(--text-main)' }}>
                   2. 봉사연도 12개월 봉사 기록
                 </span>
-                <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)', marginLeft: 8 }}>
-                  (전입 이전 월은 타회중 실적으로 자동 태깅됩니다)
-                </span>
               </div>
 
               {/* 연도 탭 스위처 */}
@@ -953,7 +953,7 @@ export const TransferPublisherModal: React.FC<TransferPublisherModalProps> = ({
                       cursor: 'pointer'
                     }}
                   >
-                    당해 연도 ({currentYear.year_name})
+                    {currentYear.year_name}연도
                   </button>
                   <button
                     type="button"
@@ -970,128 +970,77 @@ export const TransferPublisherModal: React.FC<TransferPublisherModalProps> = ({
                       cursor: 'pointer'
                     }}
                   >
-                    전년도 ({currentPrevYearName})
+                    {currentPrevYearName}연도
                   </button>
                 </div>
               )}
             </div>
 
-            {/* 당해 연도 테이블 */}
+            {/* 당해 연도 테이블 (전도인 카드 입력란과 동일한 심플 구조) */}
             {activeRecordsTab === 'current' && (
               <div style={{ overflowX: 'auto' }}>
-                <table className="table" style={{ fontSize: '0.8rem', width: '100%', minWidth: 650 }}>
+                <table className="table" style={{ fontSize: '0.8rem', width: '100%', minWidth: 550 }}>
                   <thead>
                     <tr>
-                      <th style={{ width: 65, textAlign: 'center' }}>월</th>
-                      <th style={{ width: 110, textAlign: 'center' }}>상태 구분</th>
-                      <th style={{ width: 60, textAlign: 'center' }}>참여(Y)</th>
-                      <th style={{ width: 80, textAlign: 'center' }}>시간(h)</th>
-                      <th style={{ width: 70, textAlign: 'center' }}>연구(건)</th>
-                      <th style={{ width: 65, textAlign: 'center' }}>보조(AP)</th>
-                      <th style={{ minWidth: 140 }}>비고</th>
+                      <th style={{ width: 70, textAlign: 'center' }}>월</th>
+                      <th style={{ width: 70, textAlign: 'center' }}>참여(Y)</th>
+                      <th style={{ width: 85, textAlign: 'center' }}>시간(h)</th>
+                      <th style={{ width: 75, textAlign: 'center' }}>연구(건)</th>
+                      <th style={{ width: 75, textAlign: 'center' }}>보조(AP)</th>
+                      <th style={{ minWidth: 160 }}>비고</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {monthlyRecords.map(rec => {
-                      const isTransferredMonth = (MONTH_ORDER[rec.month] || 0) < transferOrder;
-                      const isFirstMonth = rec.month === transferMonth;
-                      return (
-                        <tr
-                          key={rec.month}
-                          style={{
-                            background: isTransferredMonth ? 'rgba(245, 158, 11, 0.04)' : (isFirstMonth ? 'rgba(59, 130, 246, 0.05)' : undefined),
-                          }}
-                        >
-                          <td style={{ textAlign: 'center', fontWeight: 700 }}>{rec.month}</td>
-                          <td style={{ textAlign: 'center' }}>
-                            {isTransferredMonth ? (
-                              <span
-                                style={{
-                                  padding: '2px 6px',
-                                  borderRadius: 4,
-                                  fontSize: '0.7rem',
-                                  background: 'rgba(245, 158, 11, 0.15)',
-                                  color: '#d97706',
-                                  fontWeight: 700,
-                                }}
-                              >
-                                타회중 실적
-                              </span>
-                            ) : isFirstMonth ? (
-                              <span
-                                style={{
-                                  padding: '2px 6px',
-                                  borderRadius: 4,
-                                  fontSize: '0.7rem',
-                                  background: 'rgba(59, 130, 246, 0.18)',
-                                  color: 'var(--primary)',
-                                  fontWeight: 700,
-                                }}
-                              >
-                                ★ 전입 첫 보고
-                              </span>
-                            ) : (
-                              <span
-                                style={{
-                                  padding: '2px 6px',
-                                  borderRadius: 4,
-                                  fontSize: '0.7rem',
-                                  background: 'rgba(59, 130, 246, 0.1)',
-                                  color: 'var(--text-muted)',
-                                }}
-                              >
-                                우리 회중
-                              </span>
-                            )}
-                          </td>
-                          <td style={{ textAlign: 'center' }}>
-                            <input
-                              type="checkbox"
-                              checked={rec.participated}
-                              onChange={e => handleRecordChange(rec.month, 'participated', e.target.checked)}
-                            />
-                          </td>
-                          <td style={{ textAlign: 'center' }}>
-                            <input
-                              type="number"
-                              className="form-input"
-                              style={{ padding: '3px 6px', fontSize: '0.8rem', textAlign: 'center' }}
-                              value={rec.hours || 0}
-                              min={0}
-                              step={0.5}
-                              onChange={e => handleRecordChange(rec.month, 'hours', parseFloat(e.target.value) || 0)}
-                            />
-                          </td>
-                          <td style={{ textAlign: 'center' }}>
-                            <input
-                              type="number"
-                              className="form-input"
-                              style={{ padding: '3px 6px', fontSize: '0.8rem', textAlign: 'center' }}
-                              value={rec.bibleStudies || 0}
-                              min={0}
-                              onChange={e => handleRecordChange(rec.month, 'bibleStudies', parseInt(e.target.value, 10) || 0)}
-                            />
-                          </td>
-                          <td style={{ textAlign: 'center' }}>
-                            <input
-                              type="checkbox"
-                              checked={rec.isAuxiliaryPioneer}
-                              onChange={e => handleRecordChange(rec.month, 'isAuxiliaryPioneer', e.target.checked)}
-                            />
-                          </td>
-                          <td>
-                            <input
-                              type="text"
-                              className="form-input"
-                              style={{ padding: '3px 6px', fontSize: '0.8rem' }}
-                              placeholder={isTransferredMonth ? '예: 타회중 실적' : isFirstMonth ? `자동 반영: ${transferDate} 전입` : '비고 입력'}
-                              value={rec.remarks || ''}
-                              onChange={e => handleRecordChange(rec.month, 'remarks', e.target.value)}
-                            />
-                          </td>
-                        </tr>
-                      );
-                    })}
+                    {monthlyRecords.map(rec => (
+                      <tr key={rec.month}>
+                        <td style={{ textAlign: 'center', fontWeight: 700 }}>{rec.month}</td>
+                        <td style={{ textAlign: 'center' }}>
+                          <input
+                            type="checkbox"
+                            checked={rec.participated}
+                            onChange={e => handleRecordChange(rec.month, 'participated', e.target.checked)}
+                          />
+                        </td>
+                        <td style={{ textAlign: 'center' }}>
+                          <input
+                            type="number"
+                            className="form-input"
+                            style={{ padding: '3px 6px', fontSize: '0.8rem', textAlign: 'center' }}
+                            value={rec.hours || 0}
+                            min={0}
+                            step={0.5}
+                            onChange={e => handleRecordChange(rec.month, 'hours', parseFloat(e.target.value) || 0)}
+                          />
+                        </td>
+                        <td style={{ textAlign: 'center' }}>
+                          <input
+                            type="number"
+                            className="form-input"
+                            style={{ padding: '3px 6px', fontSize: '0.8rem', textAlign: 'center' }}
+                            value={rec.bibleStudies || 0}
+                            min={0}
+                            onChange={e => handleRecordChange(rec.month, 'bibleStudies', parseInt(e.target.value, 10) || 0)}
+                          />
+                        </td>
+                        <td style={{ textAlign: 'center' }}>
+                          <input
+                            type="checkbox"
+                            checked={rec.isAuxiliaryPioneer}
+                            onChange={e => handleRecordChange(rec.month, 'isAuxiliaryPioneer', e.target.checked)}
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type="text"
+                            className="form-input"
+                            style={{ padding: '3px 6px', fontSize: '0.8rem' }}
+                            placeholder="비고 입력"
+                            value={rec.remarks || ''}
+                            onChange={e => handleRecordChange(rec.month, 'remarks', e.target.value)}
+                          />
+                        </td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>
@@ -1101,38 +1050,23 @@ export const TransferPublisherModal: React.FC<TransferPublisherModalProps> = ({
             {activeRecordsTab === 'prev' && includePrevYear && (
               <div style={{ overflowX: 'auto' }}>
                 <div style={{ fontSize: '0.76rem', color: '#9333ea', marginBottom: 8, fontWeight: 600 }}>
-                  🕒 {currentPrevYearName} 봉사연도 12개월 과거 실적 (타회중 보관 자료로 등록됩니다)
+                  🕒 {currentPrevYearName} 봉사연도 12개월 봉사 기록
                 </div>
-                <table className="table" style={{ fontSize: '0.8rem', width: '100%', minWidth: 650 }}>
+                <table className="table" style={{ fontSize: '0.8rem', width: '100%', minWidth: 550 }}>
                   <thead>
                     <tr>
-                      <th style={{ width: 65, textAlign: 'center' }}>월</th>
-                      <th style={{ width: 110, textAlign: 'center' }}>구분</th>
-                      <th style={{ width: 60, textAlign: 'center' }}>참여(Y)</th>
-                      <th style={{ width: 80, textAlign: 'center' }}>시간(h)</th>
-                      <th style={{ width: 70, textAlign: 'center' }}>연구(건)</th>
-                      <th style={{ width: 65, textAlign: 'center' }}>보조(AP)</th>
-                      <th style={{ minWidth: 140 }}>비고</th>
+                      <th style={{ width: 70, textAlign: 'center' }}>월</th>
+                      <th style={{ width: 70, textAlign: 'center' }}>참여(Y)</th>
+                      <th style={{ width: 85, textAlign: 'center' }}>시간(h)</th>
+                      <th style={{ width: 75, textAlign: 'center' }}>연구(건)</th>
+                      <th style={{ width: 75, textAlign: 'center' }}>보조(AP)</th>
+                      <th style={{ minWidth: 160 }}>비고</th>
                     </tr>
                   </thead>
                   <tbody>
                     {prevYearRecords.map(rec => (
-                      <tr key={rec.month} style={{ background: 'rgba(147, 51, 234, 0.03)' }}>
+                      <tr key={rec.month}>
                         <td style={{ textAlign: 'center', fontWeight: 700 }}>{rec.month}</td>
-                        <td style={{ textAlign: 'center' }}>
-                          <span
-                            style={{
-                              padding: '2px 6px',
-                              borderRadius: 4,
-                              fontSize: '0.7rem',
-                              background: 'rgba(147, 51, 234, 0.15)',
-                              color: '#9333ea',
-                              fontWeight: 700,
-                            }}
-                          >
-                            전년도 실적
-                          </span>
-                        </td>
                         <td style={{ textAlign: 'center' }}>
                           <input
                             type="checkbox"
@@ -1173,7 +1107,7 @@ export const TransferPublisherModal: React.FC<TransferPublisherModalProps> = ({
                             type="text"
                             className="form-input"
                             style={{ padding: '3px 6px', fontSize: '0.8rem' }}
-                            placeholder="예: 전년도 봉사실적"
+                            placeholder="비고 입력"
                             value={rec.remarks || ''}
                             onChange={e => handlePrevRecordChange(rec.month, 'remarks', e.target.value)}
                           />
@@ -1209,9 +1143,9 @@ export const TransferPublisherModal: React.FC<TransferPublisherModalProps> = ({
               type="submit"
               className="btn-primary"
               disabled={saving}
-              style={{ gap: 6, minWidth: 150, justifyContent: 'center' }}
+              style={{ gap: 6, minWidth: 90, justifyContent: 'center' }}
             >
-              {saving ? '저장 및 마감 보존 동기화 중...' : '전입 전도인 & 실적 저장 완료'}
+              {saving ? '저장 중...' : '저장'}
             </button>
           </div>
         </form>
