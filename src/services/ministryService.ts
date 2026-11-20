@@ -21,6 +21,7 @@ import {
 } from '../types/database';
 
 import actualData from '../data/actualData.json';
+import { formatPhoneNumber } from '../utils/phoneUtils';
 
 // -------------------------------------------------------------
 // 구글 시트에서 가져온 실제 데이터 (5개 집단, 90명 전도인, 1,016건 보고서)
@@ -580,6 +581,8 @@ export async function savePublisher(publisher: Partial<Publisher>): Promise<Publ
   const sanitized: any = { ...publisher };
   if (!sanitized.baptism_date) sanitized.baptism_date = null;
   if (!sanitized.birth_date) sanitized.birth_date = null;
+  if (sanitized.phone) sanitized.phone = formatPhoneNumber(sanitized.phone);
+  if (sanitized.emergency_phone) sanitized.emergency_phone = formatPhoneNumber(sanitized.emergency_phone);
 
   // publishers_position_check 제약조건 위반 방지: 빈 문자열, null, '(선택 안 함)'은 '일반'으로 표준화
   if (sanitized.position !== undefined) {

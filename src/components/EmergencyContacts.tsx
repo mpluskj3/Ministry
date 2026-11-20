@@ -42,6 +42,7 @@ import {
   DEFAULT_EMERGENCY_COVER_DATA,
   EMERGENCY_COVER_STORAGE_KEY
 } from '../types/emergency';
+import { formatPhoneNumber } from '../utils/phoneUtils';
 
 // 가족 묶음 구분을 위한 감각적이고 조화로운 파스텔 배경 색상 및 테두리 팔레트
 export const FAMILY_PALETTES = [
@@ -289,6 +290,8 @@ export const EmergencyContacts: React.FC<EmergencyContactsProps> = ({ currentYea
     const linkedPub = allPublishers.find(p => p.id === contact.publisher_id || p.name === contact.name);
     setEditingContact({
       ...contact,
+      phone: formatPhoneNumber(contact.phone),
+      emergency_phone: formatPhoneNumber(contact.emergency_phone),
       position: contact.position || linkedPub?.position || '일반',
       gender: contact.gender || linkedPub?.gender || '남',
       baptism_date: contact.baptism_date || linkedPub?.baptism_date || '',
@@ -1648,7 +1651,7 @@ export const EmergencyContacts: React.FC<EmergencyContactsProps> = ({ currentYea
                       className="form-input"
                       placeholder="010-0000-0000"
                       value={editingContact.phone || ''}
-                      onChange={e => setEditingContact({ ...editingContact, phone: e.target.value })}
+                      onChange={e => setEditingContact({ ...editingContact, phone: formatPhoneNumber(e.target.value) })}
                     />
                   </div>
 
@@ -1738,7 +1741,7 @@ export const EmergencyContacts: React.FC<EmergencyContactsProps> = ({ currentYea
                       className="form-input"
                       placeholder="010-0000-0000"
                       value={editingContact.emergency_phone || ''}
-                      onChange={e => setEditingContact({ ...editingContact, emergency_phone: e.target.value })}
+                      onChange={e => setEditingContact({ ...editingContact, emergency_phone: formatPhoneNumber(e.target.value) })}
                     />
                   </div>
 

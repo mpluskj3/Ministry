@@ -29,6 +29,7 @@ import {
 import { parseS21Pdf, ParsedS21CardData } from '../services/pdfService';
 import { saveTransferredPublisher, MONTH_ORDER, getServiceYears, getYearlyPublisherRecord } from '../services/ministryService';
 import { DateInput } from './DateInput';
+import { formatPhoneNumber } from '../utils/phoneUtils';
 
 interface TransferPublisherModalProps {
   currentYear: ServiceYear;
@@ -150,8 +151,8 @@ export const TransferPublisherModal: React.FC<TransferPublisherModalProps> = ({
       const pStatus = pub.pioneer_status === 'RP' ? 'RP' : (pub.pioneer_status === 'SP' ? 'SP' : (pub.pioneer_status === 'FM' ? 'FM' : '일반'));
       setPioneerStatus(pStatus as PioneerStatus);
     }
-    if (pub.phone) setPhone(pub.phone);
-    if (pub.emergency_phone) setEmergencyPhone(pub.emergency_phone);
+    if (pub.phone) setPhone(formatPhoneNumber(pub.phone));
+    if (pub.emergency_phone) setEmergencyPhone(formatPhoneNumber(pub.emergency_phone));
     if (pub.relationship) setRelationship(pub.relationship);
     if (pub.address) setAddress(pub.address);
     if (pub.family_head) setFamilyHead(pub.family_head);
@@ -934,7 +935,7 @@ export const TransferPublisherModal: React.FC<TransferPublisherModalProps> = ({
                   className="form-input"
                   placeholder="010-0000-0000"
                   value={phone}
-                  onChange={e => setPhone(e.target.value)}
+                  onChange={e => setPhone(formatPhoneNumber(e.target.value))}
                 />
               </div>
               <div className="form-group" style={{ margin: 0 }}>

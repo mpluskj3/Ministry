@@ -31,6 +31,7 @@ import {
 import { Publisher, Group, ServiceYear, Position, PioneerStatus, Hope, Gender, isChildStatus, isChild, isTransferredPublisher, isInactivePublisher, Manager } from '../types/database';
 import { DateInput } from './DateInput';
 import { TransferPublisherModal } from './TransferPublisherModal';
+import { formatPhoneNumber } from '../utils/phoneUtils';
 import {
   getPublishers,
   getGroups,
@@ -325,8 +326,8 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
             baptism_date: formatDateStr(rawBapt) || existing.baptism_date,
             gender: gender !== undefined ? gender : existing.gender,
             hope: hope !== undefined ? hope : existing.hope,
-            phone: rawPhone || existing.phone,
-            emergency_phone: rawEmPhone || existing.emergency_phone,
+            phone: formatPhoneNumber(rawPhone) || existing.phone,
+            emergency_phone: formatPhoneNumber(rawEmPhone) || existing.emergency_phone,
             relationship: rawRel || existing.relationship,
             address: rawAddr || existing.address,
             is_active: true
@@ -342,8 +343,8 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
             baptism_date: formatDateStr(rawBapt) || '',
             gender: gender || '남',
             hope: hope || '다른 양',
-            phone: rawPhone,
-            emergency_phone: rawEmPhone,
+            phone: formatPhoneNumber(rawPhone),
+            emergency_phone: formatPhoneNumber(rawEmPhone),
             relationship: rawRel,
             address: rawAddr,
             is_active: true
@@ -475,7 +476,11 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
       alert('자신이 소속된 집단의 전도인 정보만 수정할 수 있습니다.');
       return;
     }
-    setEditingPublisher({ ...pub });
+    setEditingPublisher({
+      ...pub,
+      phone: formatPhoneNumber(pub.phone),
+      emergency_phone: formatPhoneNumber(pub.emergency_phone)
+    });
     setEditModalOpen(true);
   };
 
@@ -2083,7 +2088,7 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
                       className="form-input"
                       placeholder="010-0000-0000"
                       value={editingPublisher.phone || ''}
-                      onChange={(e) => setEditingPublisher({ ...editingPublisher, phone: e.target.value })}
+                      onChange={(e) => setEditingPublisher({ ...editingPublisher, phone: formatPhoneNumber(e.target.value) })}
                     />
                   </div>
 
@@ -2120,7 +2125,7 @@ export const PublisherManagement: React.FC<PublisherManagementProps> = ({ curren
                       className="form-input"
                       placeholder="010-0000-0000"
                       value={editingPublisher.emergency_phone || ''}
-                      onChange={(e) => setEditingPublisher({ ...editingPublisher, emergency_phone: e.target.value })}
+                      onChange={(e) => setEditingPublisher({ ...editingPublisher, emergency_phone: formatPhoneNumber(e.target.value) })}
                     />
                   </div>
 
