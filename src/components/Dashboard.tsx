@@ -56,7 +56,8 @@ import {
   getUnreportedMembers,
   batchCloseUnreportedPublishers,
   getAllServiceYearReports,
-  getPublishers
+  getPublishers,
+  isTransferredReport
 } from '../services/ministryService';
 import { UnreportedListModal } from './UnreportedListModal';
 import { PublisherCardModal } from './PublisherCardModal';
@@ -443,10 +444,15 @@ ${submitUrl}
   const isSelectedMonthClosed = !!statuses[selectedMonth];
 
   const displayReports = useMemo(() => {
+    const pubMapById = new Map(allPublishers.map(p => [p.id, p]));
+    const pubMapByName = new Map(allPublishers.map(p => [p.name.trim(), p]));
+
     // 1. 필터링
     let result = reports.filter(r => {
-      // 이미 마감된 월에서는 전입 전 타회중 실적(is_transferred)은 회중 공식 보고서 목록에서 제외 (마감 데이터 및 CSV 원본 완벽 보존)
-      if (isSelectedMonthClosed && r.is_transferred) return false;
+      // 전입 전 타회중 실적(is_transferred)은 회중 공식 보고서 세부 목록에서 100% 제외 (개인 전도인 카드에서만 보존)
+      const pub = (r.publisher_id ? pubMapById.get(r.publisher_id) : undefined) ||
+                  (r.publisher_name ? pubMapByName.get(r.publisher_name.trim()) : undefined);
+      if (r.is_transferred || isTransferredReport(r, pub)) return false;
 
       // 성명 또는 집단 검색
       if (searchQuery.trim()) {
@@ -617,7 +623,13 @@ ${submitUrl}
   const yearlyStats = SERVICE_MONTHS.map(m => {
     let mReports = allYearReports.filter(r => r.month === m);
     // 전입 전 타회중 실적은 우리 회중 1년 종합 통계에서 제외 (우리 회중 실적만 집계)
-    mReports = mReports.filter(r => !r.is_transferred);
+    const pubMapById = new Map(allPublishers.map(p => [p.id, p]));
+    const pubMapByName = new Map(allPublishers.map(p => [p.name.trim(), p]));
+    mReports = mReports.filter(r => {
+      const pub = (r.publisher_id ? pubMapById.get(r.publisher_id) : undefined) ||
+                  (r.publisher_name ? pubMapByName.get(r.publisher_name.trim()) : undefined);
+      return !r.is_transferred && !isTransferredReport(r, pub);
+    });
     if (effectiveGroupId !== 'all') {
       const gName = groups.find(g => g.id === effectiveGroupId)?.name || manager?.group_name;
       if (gName) {
@@ -973,10 +985,16 @@ ${submitUrl}
 
   // -------------------------------------------------------------
   // 선택된 월의 통계 계산 (상단 5열 표: 전도인/보조/정규/총계)
-  // 전입 전 타회중 실적(is_transferred)은 우리 회중 봉사보고 통계에서 제외
+  // 전입 전 타회중 실적(is_transferred)은 우리 회중 봉사보고 통계에서 100% 제외
   // -------------------------------------------------------------
   const selectedMonthStat = (() => {
-    let mReports = reports.filter(r => !r.is_transferred);
+    const pubMapById = new Map(allPublishers.map(p => [p.id, p]));
+    const pubMapByName = new Map(allPublishers.map(p => [p.name.trim(), p]));
+    let mReports = reports.filter(r => {
+      const pub = (r.publisher_id ? pubMapById.get(r.publisher_id) : undefined) ||
+                  (r.publisher_name ? pubMapByName.get(r.publisher_name.trim()) : undefined);
+      return !r.is_transferred && !isTransferredReport(r, pub);
+    });
     let publisherCount = 0;
     let publisherStudies = 0;
     let apCount = 0;

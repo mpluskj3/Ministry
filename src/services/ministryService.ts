@@ -940,6 +940,75 @@ export function resolveEffectivePioneerStatus(
   return baseStatus && baseStatus !== '일반' ? baseStatus : '';
 }
 
+// 전입 전 타회중 실적 여부 정밀 판정 헬퍼 함수
+// (개인 전도인 기록 카드에는 보존하되, 우리 회중 월별 보고서/통계/세부목록에서는 100% 제외)
+export function isTransferredReport(
+  report: MonthlyReport,
+  publisher?: Publisher | null
+): boolean {
+  // 1. 보고서 자체에 is_transferred 플래그가 true이거나 이전 회중명이 기재된 경우
+  if (report.is_transferred) return true;
+  if (report.transferred_from) return true;
+
+  // 2. 비고에 타회중 전입 표시가 포함된 경우
+  if (Array.isArray(report.remarks)) {
+    if (report.remarks.some(rem => {
+      const typeStr = typeof rem === 'string' ? rem : (rem?.type || rem?.etc || '');
+      return typeStr.includes('전입');
+    })) {
+      return true;
+    }
+  }
+
+  // 3. 전도인 인적사항(전입월, 전입일자, 이전회중, 특이사항)을 통한 대조 판정
+  if (publisher) {
+    // 3-1. 전입 월(transfer_month)이 지정되어 있는 경우 (전입 월 이전 데이터는 타회중 실적)
+    if (publisher.transfer_month) {
+      const transferOrder = MONTH_ORDER[publisher.transfer_month] || 1;
+      const reportOrder = MONTH_ORDER[report.month] || 0;
+      if (reportOrder > 0 && reportOrder < transferOrder) return true;
+    }
+
+    // 3-2. 전입일자(transfer_date)가 있는 경우 (예: 11월 전입일 시 9월, 10월은 타회중 실적)
+    if (publisher.transfer_date) {
+      const match = publisher.transfer_date.match(/(?:20\d{2}[-./년\s]+)?0?(\d{1,2})월?/);
+      if (match) {
+        const calMonth = parseInt(match[1], 10);
+        const tMonth = `${calMonth}월` as ServiceMonth;
+        const transferOrder = MONTH_ORDER[tMonth];
+        const reportOrder = MONTH_ORDER[report.month] || 0;
+        if (transferOrder && reportOrder > 0 && reportOrder < transferOrder) {
+          return true;
+        }
+      }
+    }
+
+    // 3-3. special_notes에 [전입: ...] 태그가 있는 경우
+    if (publisher.special_notes && publisher.special_notes.includes('[전입:')) {
+      const match = publisher.special_notes.match(/\[전입:\s*(?:20\d{2}[-./년\s]+)?0?(\d{1,2})/);
+      if (match) {
+        const calMonth = parseInt(match[1], 10);
+        const tMonth = `${calMonth}월` as ServiceMonth;
+        const transferOrder = MONTH_ORDER[tMonth];
+        const reportOrder = MONTH_ORDER[report.month] || 0;
+        if (transferOrder && reportOrder > 0 && reportOrder < transferOrder) {
+          return true;
+        }
+      }
+      if (report.month === '9월' || report.month === '10월') {
+        return true;
+      }
+    }
+
+    // 3-4. 이전 회중(prev_congregation)이 기재되어 있는 경우
+    if (publisher.prev_congregation && (report.month === '9월' || report.month === '10월')) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 // 각 전도인의 가장 최근(최신 보고 월) 보고서 기반 AP/RP 상태 맵 조회
 export async function getLatestPioneerStatusMap(serviceYearId?: string): Promise<Map<string, string>> {
   const localReports = getLocalData<MonthlyReport[]>('monthly_reports', INITIAL_REPORTS);
@@ -1364,27 +1433,34 @@ export async function deleteMonthlyReport(reportId: string, options?: DeleteRepo
 
 export async function getMonthlyReports(serviceYearId: string, month: ServiceMonth): Promise<MonthlyReport[]> {
   const deletedKeysSet = new Set(getLocalData<string[]>('deleted_report_keys', []));
+  const localPublishers = getLocalData<Publisher[]>('publishers', INITIAL_PUBLISHERS);
+  const pubMapById = new Map(localPublishers.map(p => [p.id, p]));
+  const pubMapByName = new Map(localPublishers.map(p => [p.name.trim(), p]));
+
   const supabase = getSupabaseClient();
   if (supabase) {
     const { data, error } = await supabase
       .from('monthly_reports')
-      .select('*, publishers(name, position, pioneer_status, groups(name))')
+      .select('*, publishers(id, name, position, pioneer_status, transfer_date, transfer_month, prev_congregation, special_notes, groups(name))')
       .eq('service_year_id', serviceYearId)
       .eq('month', month)
       .order('submitted_at', { ascending: false });
 
     if (!error && data) {
       const fetchedReports = data.map((r: any) => {
-        const pubStatus = r.publishers?.pioneer_status;
+        const pub = r.publishers || (r.publisher_id ? pubMapById.get(r.publisher_id) : undefined) || (r.publisher_name ? pubMapByName.get(r.publisher_name.trim()) : undefined);
+        const pubStatus = pub?.pioneer_status;
         const isRp = pubStatus === 'RP' || r.pioneer_status === 'RP';
         const hasHours = Number(r.hours || 0) > 0;
         let pStatus = isRp ? 'RP' : (hasHours ? 'AP' : (isChildStatus(r.pioneer_status || pubStatus) ? '자녀 (집계 제외)' : '일반'));
+        const isTrans = r.is_transferred || isTransferredReport(r, pub);
         return {
           ...r,
-          publisher_name: r.publishers?.name || r.publisher_name,
-          position: r.publishers?.position || r.position,
+          publisher_name: pub?.name || r.publisher_name,
+          position: pub?.position || r.position,
           pioneer_status: pStatus,
-          group_name: r.publishers?.groups?.name || r.group_name || '미배정',
+          group_name: pub?.groups?.name || r.group_name || '미배정',
+          is_transferred: isTrans,
         };
       }) as MonthlyReport[];
 
@@ -1401,11 +1477,15 @@ export async function getMonthlyReports(serviceYearId: string, month: ServiceMon
           !deletedKeysSet.has(`${serviceYearId}_${fb.publisher_id}_${fb.month}`) &&
           !deletedKeysSet.has(`${serviceYearId}_${fb.publisher_name}_${fb.month}`)
         ) {
+          const matchedPub = (fb.publisher_id ? pubMapById.get(fb.publisher_id) : undefined) ||
+                             (fb.publisher_name ? pubMapByName.get(fb.publisher_name.trim()) : undefined);
           const isRp = fb.pioneer_status === 'RP';
           const hasHours = Number(fb.hours || 0) > 0;
+          const isTrans = fb.is_transferred || isTransferredReport(fb, matchedPub);
           fetchedReports.push({
             ...fb,
-            pioneer_status: isRp ? 'RP' : (hasHours ? 'AP' : (isChildStatus(fb.pioneer_status) ? fb.pioneer_status : '일반'))
+            pioneer_status: isRp ? 'RP' : (hasHours ? 'AP' : (isChildStatus(fb.pioneer_status) ? fb.pioneer_status : '일반')),
+            is_transferred: isTrans,
           });
           existingKeySet.add(`${fb.publisher_name}_${fb.month}`);
         }
@@ -1425,16 +1505,26 @@ export async function getMonthlyReports(serviceYearId: string, month: ServiceMon
       return true;
     })
     .map(r => {
+      const matchedPub = (r.publisher_id ? pubMapById.get(r.publisher_id) : undefined) ||
+                         (r.publisher_name ? pubMapByName.get(r.publisher_name.trim()) : undefined);
       const isRp = r.pioneer_status === 'RP';
       const hasHours = Number(r.hours || 0) > 0;
       const pStatus = isRp ? 'RP' : (hasHours ? 'AP' : (isChildStatus(r.pioneer_status) ? r.pioneer_status : '일반'));
-      return { ...r, pioneer_status: pStatus };
+      return {
+        ...r,
+        pioneer_status: pStatus,
+        is_transferred: r.is_transferred || isTransferredReport(r, matchedPub)
+      };
     });
 }
 
 export async function getAllServiceYearReports(serviceYearId?: string): Promise<MonthlyReport[]> {
   const supabase = getSupabaseClient();
   const deletedKeysSet = new Set(getLocalData<string[]>('deleted_report_keys', []));
+  const localPublishers = getLocalData<Publisher[]>('publishers', INITIAL_PUBLISHERS);
+  const pubMapById = new Map(localPublishers.map(p => [p.id, p]));
+  const pubMapByName = new Map(localPublishers.map(p => [p.name.trim(), p]));
+
   if (supabase) {
     let allData: any[] = [];
     let page = 0;
@@ -1442,7 +1532,7 @@ export async function getAllServiceYearReports(serviceYearId?: string): Promise<
     while (true) {
       let query = supabase
         .from('monthly_reports')
-        .select('*, publishers(name, position, pioneer_status, groups(name))')
+        .select('*, publishers(id, name, position, pioneer_status, transfer_date, transfer_month, prev_congregation, special_notes, groups(name))')
         .order('submitted_at', { ascending: false })
         .range(page * pageSize, (page + 1) * pageSize - 1);
       if (serviceYearId) {
@@ -1457,16 +1547,19 @@ export async function getAllServiceYearReports(serviceYearId?: string): Promise<
 
     if (allData.length > 0) {
       const fetchedReports = allData.map((r: any) => {
-        const pubStatus = r.publishers?.pioneer_status;
+        const pub = r.publishers || (r.publisher_id ? pubMapById.get(r.publisher_id) : undefined) || (r.publisher_name ? pubMapByName.get(r.publisher_name.trim()) : undefined);
+        const pubStatus = pub?.pioneer_status;
         const isRp = pubStatus === 'RP' || r.pioneer_status === 'RP';
         const hasHours = Number(r.hours || 0) > 0;
         let pStatus = isRp ? 'RP' : (hasHours ? 'AP' : (isChildStatus(r.pioneer_status || pubStatus) ? '자녀 (집계 제외)' : '일반'));
+        const isTrans = r.is_transferred || isTransferredReport(r, pub);
         return {
           ...r,
-          publisher_name: r.publishers?.name || r.publisher_name,
-          position: r.publishers?.position || r.position,
+          publisher_name: pub?.name || r.publisher_name,
+          position: pub?.position || r.position,
           pioneer_status: pStatus,
-          group_name: r.publishers?.groups?.name || r.group_name || '미배정',
+          group_name: pub?.groups?.name || r.group_name || '미배정',
+          is_transferred: isTrans,
         };
       }) as MonthlyReport[];
 
@@ -1483,11 +1576,15 @@ export async function getAllServiceYearReports(serviceYearId?: string): Promise<
           !deletedKeysSet.has(`${serviceYearId}_${fb.publisher_id}_${fb.month}`) &&
           !deletedKeysSet.has(`${serviceYearId}_${fb.publisher_name}_${fb.month}`)
         ) {
+          const matchedPub = (fb.publisher_id ? pubMapById.get(fb.publisher_id) : undefined) ||
+                             (fb.publisher_name ? pubMapByName.get(fb.publisher_name.trim()) : undefined);
           const isRp = fb.pioneer_status === 'RP';
           const hasHours = Number(fb.hours || 0) > 0;
+          const isTrans = fb.is_transferred || isTransferredReport(fb, matchedPub);
           fetchedReports.push({
             ...fb,
-            pioneer_status: isRp ? 'RP' : (hasHours ? 'AP' : (isChildStatus(fb.pioneer_status) ? fb.pioneer_status : '일반'))
+            pioneer_status: isRp ? 'RP' : (hasHours ? 'AP' : (isChildStatus(fb.pioneer_status) ? fb.pioneer_status : '일반')),
+            is_transferred: isTrans,
           });
           existingKeySet.add(`${fb.publisher_name}_${fb.month}`);
         }
@@ -1501,10 +1598,16 @@ export async function getAllServiceYearReports(serviceYearId?: string): Promise<
   const target = (serviceYearId ? reports.filter(r => r.service_year_id === serviceYearId) : reports)
     .filter(r => !deletedKeysSet.has(r.id) && !deletedKeysSet.has(`${r.publisher_id}_${r.month}`) && !deletedKeysSet.has(`${r.publisher_name}_${r.month}`));
   return target.map(r => {
+    const matchedPub = (r.publisher_id ? pubMapById.get(r.publisher_id) : undefined) ||
+                       (r.publisher_name ? pubMapByName.get(r.publisher_name.trim()) : undefined);
     const isRp = r.pioneer_status === 'RP';
     const hasHours = Number(r.hours || 0) > 0;
     const pStatus = isRp ? 'RP' : (hasHours ? 'AP' : (isChildStatus(r.pioneer_status) ? r.pioneer_status : '일반'));
-    return { ...r, pioneer_status: pStatus };
+    return {
+      ...r,
+      pioneer_status: pStatus,
+      is_transferred: r.is_transferred || isTransferredReport(r, matchedPub)
+    };
   });
 }
 
@@ -1593,13 +1696,16 @@ export async function importMonthlyReports(
 // 6. 통계 및 집계 (Monthly KPI & Stats)
 // -------------------------------------------------------------
 export async function getMonthlyKpiStats(serviceYearId: string, month: ServiceMonth, groupId?: string): Promise<MonthlyKpiStats> {
-  const [statuses, reports, allGroups] = await Promise.all([
+  const [statuses, reports, allGroups, allPublishers] = await Promise.all([
     getMonthlyStatuses(serviceYearId),
     getMonthlyReports(serviceYearId, month),
-    getGroups()
+    getGroups(),
+    getPublishers(true)
   ]);
   const isClosed = !!statuses[month];
   const targetGroup = groupId ? allGroups.find(g => g.id === groupId) : null;
+  const pubMapById = new Map(allPublishers.map(p => [p.id, p]));
+  const pubMapByName = new Map(allPublishers.map(p => [p.name.trim(), p]));
 
   // 집단 필터링: 전출 여부와 무관하게 보고서에 보관된 집단명 또는 publisher_id 기준으로 온전하게 보존
   let filteredReports = targetGroup
@@ -1607,7 +1713,11 @@ export async function getMonthlyKpiStats(serviceYearId: string, month: ServiceMo
     : reports;
 
   // 전입 전 타회중 보고서는 우리 회중 월별 통계 및 마감 데이터에서 제외 (우리 회중 실적만 집계)
-  filteredReports = filteredReports.filter(r => !r.is_transferred);
+  filteredReports = filteredReports.filter(r => {
+    const pub = (r.publisher_id ? pubMapById.get(r.publisher_id) : undefined) ||
+                (r.publisher_name ? pubMapByName.get(r.publisher_name.trim()) : undefined);
+    return !r.is_transferred && !isTransferredReport(r, pub);
+  });
 
   let totalReporters = 0;
   let totalSubmitted = 0;
@@ -1663,7 +1773,15 @@ export async function getMonthlyKpiStats(serviceYearId: string, month: ServiceMo
     // 마감 전(보고 접수 진행 중)일 때만 현재 활동 중인 전도인 명단을 기준으로 진척도/미보고자 계산
     const allPublishers = await getPublishers(false);
     const targetPublishers = (groupId ? allPublishers.filter(p => p.group_id === groupId) : allPublishers)
-      .filter(p => !isChildStatus(p.pioneer_status));
+      .filter(p => !isChildStatus(p.pioneer_status))
+      .filter(p => {
+        if (p.transfer_month) {
+          const transferOrder = MONTH_ORDER[p.transfer_month] || 1;
+          const currentOrder = MONTH_ORDER[month] || 0;
+          if (currentOrder > 0 && currentOrder < transferOrder) return false;
+        }
+        return true;
+      });
     totalPublishers = Math.max(targetPublishers.length, totalSubmitted);
     reportRate = totalPublishers > 0 ? Math.round((totalSubmitted / totalPublishers) * 100) : 0;
   }
@@ -1698,9 +1816,17 @@ export async function getUnreportedMembers(serviceYearId: string, month: Service
   }
 
   const allPublishers = await getPublishers(false);
-  // '자녀 (집계 제외)'는 봉사보고 집계 및 미보고자 목록에 포함되지 않음
+  // '자녀 (집계 제외)'는 봉사보고 집계 및 미보고자 목록에 포함되지 않음 (전입 전 이전 월 역시 제외)
   const targetPublishers = (groupId ? allPublishers.filter(p => p.group_id === groupId) : allPublishers)
-    .filter(p => !isChildStatus(p.pioneer_status));
+    .filter(p => !isChildStatus(p.pioneer_status))
+    .filter(p => {
+      if (p.transfer_month) {
+        const transferOrder = MONTH_ORDER[p.transfer_month] || 1;
+        const currentOrder = MONTH_ORDER[month] || 0;
+        if (currentOrder > 0 && currentOrder < transferOrder) return false;
+      }
+      return true;
+    });
   const reports = await getMonthlyReports(serviceYearId, month);
   const reportedPubIds = new Set(reports.map(r => r.publisher_id));
   const reportedPubNames = new Set(reports.map(r => r.publisher_name));
@@ -2041,7 +2167,9 @@ export async function saveTransferredPublisher(
         bible_studies: r.bible_studies,
         remarks: r.remarks,
         pioneer_status: r.pioneer_status,
-        submitted_at: now
+        submitted_at: now,
+        is_transferred: r.is_transferred ?? false,
+        transferred_from: r.transferred_from ?? null,
       }));
 
       // 1차 일괄 upsert
@@ -2049,10 +2177,16 @@ export async function saveTransferredPublisher(
         onConflict: 'service_year_id,publisher_id,month'
       });
 
-      // pioneer_status 컬럼 미존재 시 방어
-      if (error && error.message && error.message.includes('pioneer_status')) {
-        const stripped = payloads.map(({ pioneer_status, ...rest }) => rest);
-        const retryRes = await supabase.from('monthly_reports').upsert(stripped, {
+      // 만약 컬럼 에러 발생 시 방어 (pioneer_status, is_transferred 등)
+      if (error && error.message) {
+        let cleanPayloads = payloads;
+        if (error.message.includes('is_transferred') || error.message.includes('transferred_from')) {
+          cleanPayloads = cleanPayloads.map(({ is_transferred, transferred_from, ...rest }) => rest as any);
+        }
+        if (error.message.includes('pioneer_status')) {
+          cleanPayloads = cleanPayloads.map(({ pioneer_status, ...rest }) => rest as any);
+        }
+        const retryRes = await supabase.from('monthly_reports').upsert(cleanPayloads, {
           onConflict: 'service_year_id,publisher_id,month'
         });
         error = retryRes.error;
@@ -2066,12 +2200,17 @@ export async function saveTransferredPublisher(
           let { error: sErr } = await supabase.from('monthly_reports').upsert(single, {
             onConflict: 'service_year_id,publisher_id,month'
           });
-          if (sErr && sErr.message && sErr.message.includes('pioneer_status')) {
-            delete single.pioneer_status;
-            const r2 = await supabase.from('monthly_reports').upsert(single, {
+          if (sErr && sErr.message) {
+            if (sErr.message.includes('is_transferred') || sErr.message.includes('transferred_from')) {
+              delete single.is_transferred;
+              delete single.transferred_from;
+            }
+            if (sErr.message.includes('pioneer_status')) {
+              delete single.pioneer_status;
+            }
+            await supabase.from('monthly_reports').upsert(single, {
               onConflict: 'service_year_id,publisher_id,month'
             });
-            sErr = r2.error;
           }
         }
       }
